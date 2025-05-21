@@ -1,0 +1,107 @@
+= Kubernetes Manifests Library
+:toc: left
+:toclevels: 3
+:source-highlighter: rouge
+:icons: font
+:docinfo: shared
+
+== Introduction
+
+The Kubernetes Manifests Library is a Go-based toolkit designed to simplify the management, transformation, and rendering of Kubernetes manifests. It provides a robust set of utilities for working with Kubernetes resources programmatically, making it easier to generate, modify, and validate Kubernetes configurations.
+
+== Features
+
+* Manifest rendering and templating
+* Resource transformation and filtering
+* Type-safe Kubernetes resource definitions
+* Utility functions for common operations
+* Extensible engine for custom processing
+
+== Installation
+
+[source,bash]
+----
+go get github.com/lburgazzoli/k8s-manifests-lib
+----
+
+== Quick Start
+
+Here's a simple example of how to use the library to render Kubernetes manifests from a Kustomize directory:
+
+[source,go]
+----
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize"
+)
+
+func main() {
+    ctx := context.Background()
+    tmpDir := "/path/to/kustomize-example"
+
+    eng := engine.NewEngine(
+        engine.WithRenderer(
+            kustomize.New([]kustomize.Data{{
+                Path: tmpDir,
+            }}),
+        ),
+    )
+
+    renderedObjects, err := eng.Render(ctx)
+    if err != nil {
+        log.Fatalf("Error rendering manifests: %v", err)
+    }
+
+    fmt.Println("--- Basic Kustomize Rendering Example ---")
+    for _, obj := range renderedObjects {
+        fmt.Printf("Kind: %s, Name: %s\n", obj.GetKind(), obj.GetName())
+    }
+}
+----
+
+== Project Structure
+
+[cols="1,4"]
+|===
+|Directory |Description
+
+|pkg/
+|Main package directory containing all library code
+
+|pkg/types/
+|Type definitions for Kubernetes resources
+
+|pkg/renderer/
+|Manifest rendering and templating utilities
+
+|pkg/transformer/
+|Resource transformation utilities
+
+|pkg/filter/
+|Resource filtering utilities
+
+|pkg/engine/
+|Core processing engine
+
+|pkg/util/
+|Common utility functions
+|===
+
+== Contributing
+
+We welcome contributions! Please see our link:CONTRIBUTING.adoc[Contributing Guide] for details.
+
+== License
+
+This project is licensed under the terms of the included link:LICENSE[License file].
+
+== Support
+
+* GitHub Issues: https://github.com/lburgazzoli/k8s-manifests-lib/issues
+* Documentation: https://github.com/lburgazzoli/k8s-manifests-lib/docs 
