@@ -5,20 +5,20 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"strings"
 	"text/template"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 )
 
 // Data represents the input for a GoTemplate rendering operation.
 type Data struct {
-	FS       fs.FS       // Filesystem containing the templates
-	BasePath string      // Base path within the FS to start recursive traversal
-	Values   interface{} // Values to apply to the templates
+	FS     fs.FS       // Filesystem containing the templates
+	Path   string      // Path pattern to match templates (can include globs)
+	Values interface{} // Values to apply to the templates
 }
 
 // Renderer handles Go template rendering operations.
@@ -27,6 +27,7 @@ type Renderer struct {
 	inputs       []Data
 	filters      []types.Filter
 	transformers []types.Transformer
+	decoder      runtime.Decoder
 }
 
 // New creates a new GoTemplate Renderer with the given inputs and options.
@@ -35,6 +36,7 @@ func New(inputs []Data, opts ...Option) *Renderer {
 		inputs:       inputs,
 		filters:      make([]types.Filter, 0),
 		transformers: make([]types.Transformer, 0),
+		decoder:      yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -49,7 +51,7 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 	for _, input := range r.inputs {
 		objects, err := r.renderSingle(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("error rendering template %s: %w", input.BasePath, err)
+			return nil, fmt.Errorf("error rendering template %s: %w", input.Path, err)
 		}
 		allObjects = append(allObjects, objects...)
 	}
@@ -73,57 +75,32 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 func (r *Renderer) renderSingle(ctx context.Context, data Data) ([]unstructured.Unstructured, error) {
 	var objects []unstructured.Unstructured
 
-	// Walk the filesystem starting from the base path
-	err := fs.WalkDir(data.FS, data.BasePath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	// Create a template with all files matching the path pattern
+	tmpl, err := template.ParseFS(data.FS, data.Path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse templates: %w", err)
+	}
 
-		// Skip directories and non-template files
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".tpl") {
-			return nil
-		}
-
-		// Read the template file
-		content, err := fs.ReadFile(data.FS, path)
-		if err != nil {
-			return fmt.Errorf("failed to read template %s: %w", path, err)
-		}
-
-		// Create a new template with the file name as the template name
-		tmpl, err := template.New(d.Name()).Parse(string(content))
-		if err != nil {
-			return fmt.Errorf("failed to parse template %s: %w", path, err)
+	// Execute each template
+	for _, t := range tmpl.Templates() {
+		// Skip the root template
+		if t.Name() == "" {
+			continue
 		}
 
 		// Execute the template
 		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, data.Values); err != nil {
-			return fmt.Errorf("failed to execute template %s: %w", path, err)
+		if err := t.Execute(&buf, data.Values); err != nil {
+			return nil, fmt.Errorf("failed to execute template %s: %w", t.Name(), err)
 		}
 
-		// Split the rendered output into individual YAML documents
-		docs := bytes.Split(buf.Bytes(), []byte("---"))
-		for _, doc := range docs {
-			// Skip empty documents
-			if len(bytes.TrimSpace(doc)) == 0 {
-				continue
-			}
-
-			// Parse the YAML into an unstructured object
-			obj := &unstructured.Unstructured{}
-			if err := yaml.Unmarshal(doc, obj); err != nil {
-				return fmt.Errorf("failed to parse YAML from template %s: %w", path, err)
-			}
-
-			objects = append(objects, *obj)
+		// Decode the rendered output into unstructured objects
+		objs, err := util.DecodeYAML(r.decoder, buf.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode YAML from template %s: %w", t.Name(), err)
 		}
 
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
+		objects = append(objects, objs...)
 	}
 
 	return objects, nil
