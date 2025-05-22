@@ -548,6 +548,8 @@ k8s-manifests-lib/
 
 == 10. Test Cases (Adjustments Needed)
 
+Tests will be written using vanilla `gomega` (i.e., no `ginkgo` or other BDD frameworks) and placed in the `tests/` directory for integration/e2e tests, and alongside the respective packages for unit tests. Subtests (`t.Run`) should be used where appropriate to organize related test cases within a single test function.
+
 Unit tests for renderers will test their `Process(ctx)` method, ensuring it correctly renders, filters (with its specific filters), and transforms (with its specific transformers).
 Tests for filter/transformer providers (e.g., `jq.NewFilter`) will check if they return a correctly behaving function.
 Integration tests will involve:
@@ -730,7 +732,7 @@ func main() {
 
 === 11.4. Registering Multiple Renderers of the Same Concrete Type
 
-(This example remains largely the same as the structure of adding renderers to the engine has not changed significantly, only how those renderers are internally configured with F/T)
+(This example remains largely the same as the structure of adding renderers to the engine has nt changed significantly, only how those renderers are internally configured with F/T)
 [source,go]
 ----
 package main

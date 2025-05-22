@@ -16,9 +16,9 @@ import (
 
 // Data represents the input for a GoTemplate rendering operation.
 type Data struct {
-	FS     fs.FS       // Filesystem containing the templates
-	Path   string      // Path pattern to match templates (can include globs)
-	Values interface{} // Values to apply to the templates
+	FS     fs.FS  // Filesystem containing the templates
+	Path   string // Path pattern to match templates (can include globs)
+	Values any    // Values to apply to the templates
 }
 
 // Renderer handles Go template rendering operations.
@@ -72,7 +72,7 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 }
 
 // renderSingle performs the rendering for a single template input.
-func (r *Renderer) renderSingle(ctx context.Context, data Data) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(_ context.Context, data Data) ([]unstructured.Unstructured, error) {
 	var objects []unstructured.Unstructured
 
 	// Create a template with all files matching the path pattern
@@ -80,6 +80,8 @@ func (r *Renderer) renderSingle(ctx context.Context, data Data) ([]unstructured.
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse templates: %w", err)
 	}
+
+	tmpl = tmpl.Option("missingkey=error")
 
 	// Execute each template
 	for _, t := range tmpl.Templates() {

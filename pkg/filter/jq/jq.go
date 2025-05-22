@@ -2,37 +2,34 @@ package jq
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/itchyny/gojq"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/jq"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func NewFilter(expression string) (types.Filter, error) {
-	query, err := gojq.Parse(expression)
-	if err != nil {
-		return nil, err
-	}
-
-	code, err := gojq.Compile(query)
+// NewFilter creates a new JQ filter with the given expression and options
+func NewFilter(expression string, opts ...jq.Option) (types.Filter, error) {
+	// Create a new JQ engine
+	engine, err := jq.NewEngine(expression, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(ctx context.Context, obj unstructured.Unstructured) (bool, error) {
-		iter := code.Run(obj.Object)
-		for {
-			v, ok := iter.Next()
-			if !ok {
-				break
-			}
-			if err, ok := v.(error); ok {
-				return false, err
-			}
-			if b, ok := v.(bool); ok && b {
-				return true, nil
-			}
+		// Run the JQ program and get a single value
+		v, err := engine.Run(obj.Object)
+		if err != nil {
+			return false, err
 		}
-		return false, nil
+
+		// Convert the result to a boolean
+		if b, ok := v.(bool); ok {
+			return b, nil
+		}
+
+		return false, fmt.Errorf("jq expression must return a boolean, got %T", v)
 	}, nil
 }

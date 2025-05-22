@@ -2,13 +2,12 @@ package labels
 
 import (
 	"context"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 )
 
-func NewTransformer(labelsToApply map[string]string) engine.Transformer {
+func NewTransformer(labelsToApply map[string]string) types.Transformer {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		values := obj.GetLabels()
 		if values == nil {
