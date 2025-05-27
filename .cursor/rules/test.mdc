@@ -1,0 +1,12 @@
+---
+description: 
+globs: **/*_test.go
+alwaysApply: false
+---
+- Use vanilla gomega, not ginko
+- Use dot import for gomega's packages
+- Prefer using Should instead of To
+- For error validation use Should/ShouldNot(HaveOccoured())
+- Use subtests when possible
+- When creating tests structs, use gomega's Matcher to validate the result, avoid passing true/false/expected result
+- As we are using go 1.24, use t.Context() instead of creating background/TODO context for testing

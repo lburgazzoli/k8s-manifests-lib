@@ -1,0 +1,165 @@
+= Kubernetes Manifests Library
+:toc: left
+:toclevels: 3
+:source-highlighter: rouge
+:icons: font
+:docinfo: shared
+
+== Introduction
+
+The Kubernetes Manifests Library is a Go-based toolkit designed to simplify the management, transformation, and rendering of Kubernetes manifests. It provides a robust set of utilities for working with Kubernetes resources programmatically, making it easier to generate, modify, and validate Kubernetes configurations.
+
+== Features
+
+* Manifest rendering and templating
+* Resource transformation and filtering
+* Type-safe Kubernetes resource definitions
+* Utility functions for common operations
+* Extensible engine for custom processing
+
+== Installation
+
+[source,bash]
+----
+go get github.com/lburgazzoli/k8s-manifests-lib
+----
+
+== Quick Start
+
+Here's a comprehensive example that demonstrates how to use the library to render Kubernetes manifests from a Helm chart, with filtering and transformation:
+
+[source,go]
+----
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/jq"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+)
+
+func main() {
+    // Create a Helm renderer for a chart
+    helmRenderer, err := helm.New([]helm.Data{
+        {
+            ChartSource: "oci://registry.example.com/my-chart:1.0.0", // or "/path/to/chart"
+            ReleaseName: "my-release",
+            Namespace:   "my-namespace",
+            Values: map[string]any{
+                "replicaCount": 3,
+                "image": map[string]any{
+                    "repository": "nginx",
+                    "tag":        "latest",
+                },
+            },
+        },
+    })
+    if err != nil {
+        log.Fatalf("Failed to create Helm renderer: %v", err)
+    }
+
+    // Create a JQ filter for namespace selection
+    namespaceFilter, err := jq.NewFilter(`.metadata.namespace == "my-namespace"`)
+    if err != nil {
+        log.Fatalf("Failed to create namespace filter: %v", err)
+    }
+
+    // Create the engine with initial configuration
+    e := engine.New(
+        // Add the Helm renderer
+        engine.WithRenderer(helmRenderer),
+        // Add a filter to only keep resources in my-namespace
+        engine.WithFilter(namespaceFilter),
+        // Add a transformer to add a common label
+        engine.WithTransformer(labels.Transform(map[string]string{
+            "app.kubernetes.io/managed-by": "my-operator",
+        })),
+    )
+
+    // Create a context
+    ctx := context.Background()
+
+    // Create a JQ filter for kind selection
+    kindFilter, err := jq.NewFilter(`.kind == "Deployment"`)
+    if err != nil {
+        log.Fatalf("Failed to create kind filter: %v", err)
+    }
+
+    // Render with additional render-time options
+    objects, err := e.Render(ctx,
+        // Add a render-time filter to only keep Deployments
+        engine.WithRenderFilter(kindFilter),
+        // Add a render-time transformer to add an environment label
+        engine.WithRenderTransformer(labels.Transform(map[string]string{
+            "environment": "production",
+        })),
+    )
+    if err != nil {
+        log.Fatalf("Failed to render: %v", err)
+    }
+
+    // Print the results
+    fmt.Printf("Rendered %d objects:\n", len(objects))
+    for _, obj := range objects {
+        fmt.Printf("- %s/%s (%s)\n", obj.GetKind(), obj.GetName(), obj.GetNamespace())
+        fmt.Printf("  Labels: %v\n", obj.GetLabels())
+    }
+}
+----
+
+This example demonstrates several key features of the library:
+
+* Rendering manifests from a Helm chart with custom values
+* Using JQ filters to select resources by namespace and kind
+* Adding labels to resources using transformers
+* Combining engine-level and render-time options
+* Error handling and context support
+
+The library supports multiple renderers (Helm, Kustomize, Go templates) and provides various filters and transformers for resource processing. See the link:docs/design.adoc[Design Document] for more details.
+
+== Project Structure
+
+[cols="1,4"]
+|===
+|Directory |Description
+
+|pkg/
+|Main package directory containing all library code
+
+|pkg/types/
+|Type definitions for Kubernetes resources
+
+|pkg/renderer/
+|Manifest rendering and templating utilities
+
+|pkg/transformer/
+|Resource transformation utilities
+
+|pkg/filter/
+|Resource filtering utilities
+
+|pkg/engine/
+|Core processing engine
+
+|pkg/util/
+|Common utility functions
+|===
+
+== Contributing
+
+We welcome contributions! Please see our link:CONTRIBUTING.adoc[Contributing Guide] for details.
+
+== License
+
+This project is licensed under the terms of the included link:LICENSE[License file].
+
+== Support
+
+* GitHub Issues: https://github.com/lburgazzoli/k8s-manifests-lib/issues
+* Documentation: https://github.com/lburgazzoli/k8s-manifests-lib/docs 

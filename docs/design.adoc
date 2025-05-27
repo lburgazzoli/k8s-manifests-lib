@@ -1,0 +1,792 @@
+= Design Document: k8s-manifests-lib Manifest Renderer (Simplified Type Safety & Function-based F/T)
+
+== 1. Introduction
+
+This document outlines the design for a new Go library, `k8s-manifests-lib`, intended to be hosted within the `lburgazzoli/k8s-manifests-lib` GitHub repository. The primary goal of this library is to provide a robust and extensible engine for rendering Kubernetes manifests from various sources into `unstructured.Unstructured` objects, with an emphasis on compile-time type safety for renderer inputs and a simplified, function-based approach for filters and transformers.
+
+Inspired by `manifestival`, this library aims to offer comprehensive capabilities for rendering, filtering, and transforming Kubernetes resources. This revised design ensures that renderers are configured with and receive input data of the expected type at compile time by having specific renderer constructors accept typed inputs directly. Filters and Transformers are now defined as function types, operating on single objects and accepting a `context.Context`. Renderer-specific filters and transformers are applied *within* the concrete renderer's own processing logic. The Engine also supports its own chain of filters and transformers applied to the aggregated results. Individual renderer implementations remain highly configurable using their own functional options. The design emphasizes modularity, allowing for easy extension with new rendering methods, filters, and transformers.
+
+This document serves as a blueprint for an AI agent to generate the initial codebase, detailing the high-level architecture, core interfaces, configuration patterns, specific renderer implementations, filtering/transformation mechanisms, and a comprehensive set of tasks and tests.
+
+== 2. High-Level Design
+
+The library will consist of a central `Engine` that orchestrates the rendering process. The `Engine` is configured with a slice of `Renderer` interface instances. Each `Renderer` instance is a concrete renderer type (e.g., `*kustomize.ConcreteRenderer`) that has been constructed with its specific typed inputs (e.g., `[]kustomize.Data`) and configured with its own options, including any renderer-specific filters and transformers (which are now function types). When the `Engine`'s `Render` method is called, it will process all registered `Renderer` configurations. For each configuration, the `Engine` will invoke its `Process` method. The `Process` method is responsible for rendering its inputs and then applying its own configured renderer-specific filters and transformers. The `Engine` then aggregates these processed objects from all renderers and applies its own final chain of filter/transformer functions.
+
+[mermaid]
+----
+graph TD
+    A["Engine Configuration (WithRenderer, WithFilter, WithTransformer)"] --> B{Engine};
+    B -- "Registers" --> C_R{"Renderer (Interface)"};
+    C_R --> KR["kustomize.ConcreteRenderer Instance"];
+    KR -- "Constructed with" --> KData["[]kustomize.Data (Typed Inputs)"];
+    KR -- "Configured with" --> KOpts["Kustomize Options (incl. specific Filter/Transformer funcs)"];
+    C_R --> HR["helm.ConcreteRenderer Instance"];
+    HR -- "Constructed with" --> HData["[]helm.Data (Typed Inputs)"];
+    HR -- "Configured with" --> HOpts["Helm Options (incl. specific Filter/Transformer funcs)"];
+    B -- "On Render() call" --> D{"Process all registered Renderers"};
+    D -- "For each Renderer" --> R_P["Renderer.Process(ctx) \n (internally renders, applies specific F/T)"];
+    R_P -- "Outputs renderer-specific processed objects" --> F1_ProcessedOutput["Objects (from one Renderer.Process)"];
+    F1_ProcessedOutput -- "Aggregate from all renderers" --> AGG["Aggregated Objects"];
+    AGG -- "Apply Engine Filters" --> G2_EngineFiltered["Objects after Engine Filters"];
+    G2_EngineFiltered -- "Apply Engine Transformers" --> H2_EngineTransformed["Objects after Engine Transformers"];
+    H2_EngineTransformed -- "Outputs" --> I_FinalOutput["Final unstructured.Unstructured Objects"];
+----
+
+== 3. Core Concepts and Interfaces
+
+=== 3.1. Engine
+
+The central component responsible for managing the rendering process.
+
+[source,go]
+----
+// Engine represents the core manifest rendering and processing engine.
+type Engine struct {
+    // renderers is a slice of Renderer interface instances.
+    // Each instance is a concrete renderer (e.g., *kustomize.ConcreteRenderer)
+    // that has been configured with its typed inputs.
+    renderers          []Renderer
+    filters            []Filter      // Filters applied by the Engine after all renderer processing
+    transformers       []Transformer // Transformers applied by the Engine after all renderer processing
+    // logger is an optional logging interface for diagnostic output.
+    // logger             Logger // To be defined, e.g., compatible with log/slog
+    // ... other configuration options
+}
+----
+[source,go]
+----
+// RenderOptions defines options for rendering manifests.
+// Currently, this struct is a placeholder for future extensibility and has no options.
+type RenderOptions struct {
+    // ... options specific to the rendering process
+}
+----
+[source,go]
+----
+// Render processes all inputs associated with the registered Renderer configurations
+// and returns a consolidated slice of unstructured.Unstructured objects.
+func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructured.Unstructured, error)
+----
+
+=== 3.2. `Renderer` Interface (in `pkg/engine/engine.go`)
+
+A non-generic interface that each concrete renderer type (e.g., `*kustomize.ConcreteRenderer`) will implement. This allows the `Engine` to manage a heterogeneous list of renderer configurations.
+
+[source,go]
+----
+// Renderer is a non-generic interface that concrete renderer types implement.
+// This allows the Engine to manage them heterogeneously.
+type Renderer interface {
+    // Process executes the rendering logic for all configured inputs of this renderer,
+    // applies any renderer-specific filters and transformers, and returns the
+    // resulting slice of unstructured.Unstructured objects.
+    Process(ctx context.Context) ([]unstructured.Unstructured, error)
+
+    // Cleanup allows a renderer to perform any necessary cleanup of temporary resources.
+    // Cleanup(ctx context.Context) error // Optional: To be considered for resource management
+}
+----
+
+Specific input data types (e.g., `kustomize.Data`, `helm.Data`) will be defined in their respective renderer packages. These structs hold the specific information needed by their renderer. The concrete renderer struct (e.g., `kustomize.ConcreteRenderer`) will typically have a `Type()` method or field for internal identification or logging, but it's not part of the `engine.Renderer` interface.
+
+=== 3.3. Filter Function Type (in `pkg/engine/engine.go`)
+
+Defines the signature for a filter function. It processes a single object and decides whether to keep it.
+
+[source,go]
+----
+// Filter is a function type that processes a single unstructured.Unstructured object
+// and returns true if the object should be kept, or false if it should be discarded.
+// It can also return an error if the filtering process itself fails.
+type Filter func(ctx context.Context, object unstructured.Unstructured) (keep bool, err error)
+----
+
+=== 3.4. Transformer Function Type (in `pkg/engine/engine.go`)
+
+Defines the signature for a transformer function. It processes a single object and returns its transformed version.
+
+[source,go]
+----
+// Transformer is a function type that processes a single unstructured.Unstructured object
+// and returns the transformed object. It can also return an error if the transformation fails.
+type Transformer func(ctx context.Context, object unstructured.Unstructured) (transformed unstructured.Unstructured, err error)
+----
+
+== 4. Configuration: Optional Function Pattern
+
+The `Engine` is configured using `EngineOption`s. Concrete renderer types (e.g., `kustomize.ConcreteRenderer`) are configured using their own specific functional options when they are constructed.
+
+[source,go]
+----
+// EngineOption defines a functional option for the Engine.
+type EngineOption func(*Engine)
+
+// WithRenderer adds a configured renderer to the engine.
+// The 'r' instance (e.g., *kustomize.ConcreteRenderer) has already been
+// constructed with its typed inputs and specific options.
+func WithRenderer(r Renderer) EngineOption {
+    return func(e *Engine) {
+        e.renderers = append(e.renderers, r)
+    }
+}
+
+// WithFilter adds a filter function to the engine's processing chain.
+func WithFilter(f Filter) EngineOption {
+    return func(e *Engine) {
+        e.filters = append(e.filters, f)
+    }
+}
+
+// WithTransformer adds a transformer function to the engine's processing chain.
+func WithTransformer(t Transformer) EngineOption {
+    return func(e *Engine) {
+        e.transformers = append(e.transformers, t)
+    }
+}
+
+// WithLogger sets a logger for the engine.
+// func WithLogger(l Logger) EngineOption {
+//     return func(e *Engine) {
+//         e.logger = l
+//     }
+// }
+
+// NewEngine creates a new Engine with the given options.
+func NewEngine(opts ...EngineOption) *Engine {
+    e := &Engine{
+        renderers:          []Renderer{},
+        filters:            []Filter{},      // Renamed from globalFilters
+        transformers:       []Transformer{}, // Renamed from globalTransformers
+    }
+    for _, opt := range opts {
+        opt(e)
+    }
+    return e
+}
+----
+
+*Renderer-Specific Functional Options (Example for `kustomize.ConcreteRenderer`):*
+These options are defined within the specific renderer's package and are used when constructing an instance of that renderer.
+
+[source,go]
+----
+// In pkg/renderer/kustomize/kustomize.go
+package kustomize
+
+import "k8s-manifests-lib/pkg/engine" // For engine.Filter, engine.Transformer types
+
+// Option defines a functional option for the Kustomize ConcreteRenderer.
+type Option func(*ConcreteRenderer)
+
+// WithBuildFlag adds a kustomize build flag.
+func WithBuildFlag(flag string) Option {
+    return func(r *ConcreteRenderer) {
+        // r.buildFlags = append(r.buildFlags, flag)
+    }
+}
+
+// WithFilter adds a renderer-specific filter function.
+// These filters will be applied by the Kustomize ConcreteRenderer internally.
+func WithFilter(f engine.Filter) Option {
+    return func(r *ConcreteRenderer) {
+        r.filters = append(r.filters, f)
+    }
+}
+
+// WithTransformer adds a renderer-specific transformer function.
+// These transformers will be applied by the Kustomize ConcreteRenderer internally.
+func WithTransformer(t engine.Transformer) Option {
+    return func(r *ConcreteRenderer) {
+        r.transformers = append(r.transformers, t)
+    }
+}
+----
+
+== 5. Renderer Implementations
+
+All renderers will reside in the `pkg/renderer` package, with each specific renderer having its own sub-package (e.g., `pkg/renderer/kustomize`, `pkg/renderer/helm`). Each renderer package will:
+. Define its specific input data struct (e.g., `kustomize.Data`).
+. Define its concrete renderer struct (e.g., `kustomize.ConcreteRenderer`). This struct will store its typed inputs, configuration derived from options, and renderer-specific filter/transformer functions.
+. Provide a constructor (e.g., `kustomize.New(inputs []kustomize.Data, opts ...kustomize.Option) *kustomize.ConcreteRenderer`). This constructor ensures compile-time type safety for the inputs.
+. The concrete renderer struct will implement the `engine.Renderer` interface. Its `Process` method will iterate over its stored typed inputs, call an internal method to render each one, and then apply its own stored filters and transformers to the rendered objects before returning them.
+
+NOTE: The responsibility for cleaning up temporary resources should be handled by each concrete renderer implementation, potentially via a `Cleanup` method if added to the `engine.Renderer` interface.
+
+=== 5.1. `pkg/renderer/kustomize`
+
+* *Internal Renderer Type Name:* `kustomize`
+* *Dependencies:* `sigs.k8s.io/kustomize/api/krusty`
+
+*`kustomize.Data` struct:*
+[source,go]
+----
+package kustomize
+
+// Data represents the input for a Kustomize rendering operation.
+type Data struct {
+    Path string
+    // Other Kustomize-specific input parameters for a single run can go here if needed
+}
+----
+
+*`kustomize.ConcreteRenderer` struct and methods:*
+[source,go]
+----
+package kustomize
+
+import (
+    "context"
+    "fmt"
+    "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+    // ... other necessary kustomize imports
+    "k8s-manifests-lib/pkg/engine" // For engine.Filter, engine.Transformer types, engine.Renderer (interface)
+)
+
+// ConcreteRenderer handles Kustomize rendering operations.
+type ConcreteRenderer struct {
+    // internalType string // Internal type identifier, if needed for logging/errors
+    inputs       []Data
+    // kustomize build options, configured via functional options
+    // buildFlags   []string
+    filters      []engine.Filter      // Now a slice of filter functions
+    transformers []engine.Transformer // Now a slice of transformer functions
+    // krusty       *kustomizeapi.Kustomizer // Initialized based on options
+}
+
+// New creates a new Kustomize ConcreteRenderer, configured with its inputs and options.
+func New(inputs []Data, opts ...Option) *ConcreteRenderer {
+    r := &ConcreteRenderer{
+        // internalType: "kustomize", // Can be set here if needed
+        inputs:       inputs,
+        filters:      []engine.Filter{},
+        transformers: []engine.Transformer{},
+    }
+    for _, opt := range opts {
+        opt(r)
+    }
+    // Initialize krusty instance here based on options
+    // r.krusty = kustomizeapi.NewKustomizer( /* configured options */ )
+    return r
+}
+
+// Implement engine.Renderer
+func (r *ConcreteRenderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+    var rawRenderedObjects []unstructured.Unstructured
+    for i, dataItem := range r.inputs { // dataItem is kustomize.Data
+        objs, err := r.renderSingle(ctx, dataItem)
+        if err != nil {
+            return nil, fmt.Errorf("error rendering kustomize input #%d (path: %s): %w", i, dataItem.Path, err)
+        }
+        rawRenderedObjects = append(rawRenderedObjects, objs...)
+    }
+
+    // Apply renderer-specific filters
+    // These helper functions would now typically reside in the engine package or a util package.
+    // They are called by the renderer itself.
+    filteredObjects, err := engine.ApplyFilters(ctx, rawRenderedObjects, r.filters) // Assumes ApplyFilters is in engine
+    if err != nil {
+        return nil, fmt.Errorf("error applying kustomize-specific filters: %w", err)
+    }
+
+    // Apply renderer-specific transformers
+    transformedObjects, err := engine.ApplyTransformers(ctx, filteredObjects, r.transformers) // Assumes ApplyTransformers is in engine
+    if err != nil {
+        return nil, fmt.Errorf("error applying kustomize-specific transformers: %w", err)
+    }
+
+    return transformedObjects, nil
+}
+
+// renderSingle performs the rendering for a single KustomizeData item.
+func (r *ConcreteRenderer) renderSingle(ctx context.Context, data Data) ([]unstructured.Unstructured, error) {
+    // Uses r.krusty (or similar configured kustomize instance) to build the kustomization at data.Path.
+    // Parses the output into unstructured.Unstructured objects.
+    // ... implementation ...
+    fmt.Printf("Simulating kustomize render for path: %s\n", data.Path) // Placeholder
+    // Example object
+    obj := unstructured.Unstructured{
+        Object: map[string]interface{}{
+            "apiVersion": "v1",
+            "kind":       "ConfigMap",
+            "metadata": map[string]interface{}{
+                "name": fmt.Sprintf("kustomize-cm-%s", data.Path[len(data.Path)-1:]),
+            },
+        },
+    }
+    return []unstructured.Unstructured{obj}, nil // Placeholder
+}
+
+// Optional:
+// func (r *ConcreteRenderer) Cleanup(ctx context.Context) error { ... }
+----
+
+=== 5.2. `pkg/renderer/gotemplate`
+* *Internal Renderer Type Name:* `go-template`
+* *`gotemplate.Data` struct:*
+[source,go]
+----
+package gotemplate
+import "io/fs"
+
+// Data represents the input for a GoTemplate rendering operation.
+type Data struct {
+    FS       fs.FS
+    BasePath string // Base path within the FS to start recursive traversal
+    Values   map[string]interface{}
+}
+----
+* *`gotemplate.ConcreteRenderer` struct:*
+** Constructor: `New(inputs []Data, opts ...Option) *ConcreteRenderer`
+** Implements `engine.Renderer`. Its `Process` method will apply its own stored `[]engine.Filter` and `[]engine.Transformer`.
+
+=== 5.3. `pkg/renderer/helm`
+* *Internal Renderer Type Name:* `helm`
+* *`helm.Data` struct:*
+[source,go]
+----
+package helm
+
+// Data represents the input for a Helm rendering operation.
+type Data struct {
+    PathOrOCIReference string
+    Values             map[string]interface{}
+    ReleaseName        string
+    Namespace          string
+}
+----
+* *`helm.ConcreteRenderer` struct:*
+** Constructor: `New(inputs []Data, opts ...Option) *ConcreteRenderer`
+** Implements `engine.Renderer`. Its `Process` method will apply its own stored `[]engine.Filter` and `[]engine.Transformer`.
+
+=== 5.4. `pkg/renderer/unstructured`
+* *Internal Renderer Type Name:* `unstructured`
+* *`unstructured_renderer.Data` struct:* (Package renamed to avoid conflict)
+[source,go]
+----
+package unstructured_renderer
+import "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+// Data represents the input for an UnstructuredRenderer.
+type Data struct {
+    Objects []unstructured.Unstructured
+}
+----
+* *`unstructured_renderer.ConcreteRenderer` struct:*
+** Constructor: `New(inputs []Data, opts ...Option) *ConcreteRenderer`
+** Implements `engine.Renderer`. Its `Process` method will apply its own stored `[]engine.Filter` and `[]engine.Transformer`.
+** Its `renderSingle` method would likely just return `data.Objects`. `Process` would concatenate all `data.Objects` from all `inputs` then apply F/T.
+
+== 6. Filtering and Transformation
+
+Filters and Transformers are now function types. Implementations for JQ, CEL, etc., will provide "constructor" functions that return these `engine.Filter` or `engine.Transformer` functions, often as closures capturing configuration.
+
+=== 6.1. `pkg/filter/jq`
+* *Type:* `jq`
+* *Dependencies:* `github.com/itchyny/gojq`
+* *Constructor Function:* `NewFilter(expression string) (engine.Filter, error)`
+** Parses and compiles the JQ expression.
+** Returns an `engine.Filter` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Marshals the object to JSON.
+*** Applies the pre-compiled JQ expression.
+*** Returns `true` if the expression evaluates to a truthy value, `false` otherwise, and any error.
+
+=== 6.2. `pkg/filter/cel`
+* *Type:* `cel`
+* *Dependencies:* `github.com/google/cel-go`
+* *Constructor Function:* `NewFilter(expression string) (engine.Filter, error)`
+** Compiles the CEL expression against an environment suitable for `unstructured.Unstructured`.
+** Returns an `engine.Filter` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Evaluates the pre-compiled CEL expression against the object.
+*** Returns `true` if the expression evaluates to true, `false` otherwise, and any error.
+
+=== 6.3. `pkg/filter/gvk` (Common Filter)
+* *Type:* `gvk`
+* *Dependencies:* `k8s.io/apimachinery/pkg/runtime/schema`
+* *Constructor Function:* `NewFilter(gvks ...schema.GroupVersionKind) engine.Filter`
+** Returns an `engine.Filter` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Compares the object's GVK with the configured `gvks`.
+*** Returns `true` if it matches, `false` otherwise, and `nil` error.
+
+=== 6.4. `pkg/transformer/jq`
+* *Type:* `jq`
+* *Dependencies:* `github.com/itchyny/gojq`
+* *Constructor Function:* `NewTransformer(expression string) (engine.Transformer, error)`
+** Parses and compiles the JQ expression.
+** Returns an `engine.Transformer` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Marshals the object to JSON.
+*** Applies the pre-compiled JQ expression to transform the JSON.
+*** Unmarshals the transformed JSON back into an `unstructured.Unstructured` object.
+*** Returns the transformed object and any error.
+
+=== 6.5. `pkg/transformer/cel`
+* *Type:* `cel`
+* *Dependencies:* `github.com/google/cel-go`
+* *Constructor Function:* `NewTransformer(expression string, fieldUpdates map[string]interface{}) (engine.Transformer, error)`
+** Compiles the CEL expression and prepares the update logic.
+** Returns an `engine.Transformer` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Evaluates the CEL expression.
+*** If true, applies the `fieldUpdates` to the object.
+*** Returns the (potentially) transformed object and any error.
+
+=== 6.6. `pkg/transformer/labels` (Common Transformer)
+* *Type:* `labels`
+* *Constructor Function:* `NewTransformer(labelsToApply map[string]string) engine.Transformer`
+** Returns an `engine.Transformer` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Merges `labelsToApply` into `object.GetLabels()`.
+*** Returns the modified object and `nil` error.
+
+=== 6.7. `pkg/transformer/annotations` (Common Transformer)
+* *Type:* `annotations`
+* *Constructor Function:* `NewTransformer(annotationsToApply map[string]string) engine.Transformer`
+** Returns an `engine.Transformer` function (a closure) that:
+*** Takes `ctx context.Context` and `object unstructured.Unstructured`.
+*** Merges `annotationsToApply` into `object.GetAnnotations()`.
+*** Returns the modified object and `nil` error.
+
+== 7. Extensibility Model
+
+The design remains extensible:
+
+* *New Renderers:*
+.  In a new package (e.g., `pkg/renderer/jsonnet`):
+.. Define a `jsonnet.Data` struct for its specific inputs.
+.. Create a `jsonnet.ConcreteRenderer` struct.
+.. Implement a constructor `jsonnet.New(inputs []jsonnet.Data, opts ...jsonnet.Option) *jsonnet.ConcreteRenderer`.
+.. Make `*jsonnet.ConcreteRenderer` implement the `engine.Renderer` interface.
+.  Users can then create `jsonnetRenderer := jsonnet.New([]jsonnet.Data{...}, ...)` and register it with the `Engine` via `engine.WithRenderer(jsonnetRenderer)`.
+* *New Filters/Transformers:*
+** Define a new function matching the `engine.Filter` or `engine.Transformer` signature.
+** Optionally, provide a "constructor" function if the filter/transformer needs pre-configuration (like a JQ expression). This constructor would return your filter/transformer function.
+** Add them via `engine.WithFilter`/`engine.WithTransformer` (for engine-level F/T) or via renderer-specific options (e.g., `kustomize.WithFilter(myNewFilterFunc)`).
+
+== 8. Package Structure (Updated)
+
+[listing]
+----
+k8s-manifests-lib/
+├── go.mod
+├── go.sum
+├── pkg/
+│   ├── engine/       // Core Engine logic
+│   │   └── engine.go // Engine, EngineOption, Renderer interface, Filter & Transformer func types
+│   ├── renderer/
+│   │   ├── kustomize/
+│   │   │   └── kustomize.go // kustomize.Data, kustomize.ConcreteRenderer, kustomize.New, kustomize.Option
+│   │   ├── helm/
+│   │   │   └── helm.go      // helm.Data, helm.ConcreteRenderer, helm.New, helm.Option
+│   │   ├── gotemplate/
+│   │   │   └── gotemplate.go // gotemplate.Data, gotemplate.ConcreteRenderer, gotemplate.New, gotemplate.Option
+│   │   └── unstructured_renderer/
+│   │       └── unstructured.go // unstructured_renderer.Data, unstructured_renderer.ConcreteRenderer, etc.
+│   ├── filter/
+│   │   ├── jq/
+│   │   │   └── jq.go // jq.NewFilter (returns engine.Filter)
+│   │   ├── cel/
+│   │   │   └── cel.go // cel.NewFilter (returns engine.Filter)
+│   │   └── gvk/
+│   │       └── gvk.go // gvk.NewFilter (returns engine.Filter)
+│   ├── transformer/
+│   │   ├── jq/
+│   │   │   └── jq.go // jq.NewTransformer (returns engine.Transformer)
+│   │   ├── cel/
+│   │   │   └── cel.go // cel.NewTransformer (returns engine.Transformer)
+│   │   ├── labels/
+│   │   │   └── labels.go // labels.NewTransformer (returns engine.Transformer)
+│   │   └── annotations/
+│   │       └── annotations.go // annotations.NewTransformer (returns engine.Transformer)
+│   └── util/
+│       └── ...
+└── tests/
+    └── engine_test.go
+----
+
+== 9. Tasks for AI Agent (Revised)
+
+. **Initialize Go Module.**
+. **Define Core Types in `pkg/engine/engine.go`:**
+** `Renderer` non-generic interface (Method: `Process`, Optional: `Cleanup`).
+** `Filter` function type: `func(context.Context, unstructured.Unstructured) (bool, error)`.
+** `Transformer` function type: `func(context.Context, unstructured.Unstructured) (unstructured.Unstructured, error)`.
+** `Engine` struct (using `renderers []Renderer`, `filters []Filter`, `transformers []Transformer`).
+** `RenderOptions` struct.
+** `EngineOption` type and `NewEngine`, `WithRenderer` (taking `Renderer`), `WithFilter` (taking `Filter`), `WithTransformer` (taking `Transformer`).
+. **Implement Engine Core Logic in `pkg/engine/engine.go`:**
+** Implement `Engine.Render` method:
+*** Initialize an empty slice `finalConsolidatedObjects []unstructured.Unstructured`.
+*** For each `r` in `e.renderers`:
+**** Call `processedObjects, err := r.Process(ctx)`. This `processedObjects` slice has already had renderer-specific F/T applied by the renderer itself.
+**** Handle errors. For example, `return nil, fmt.Errorf("error processing renderer (index %d): %w", i, err)`.
+**** Append `processedObjects` to `finalConsolidatedObjects`.
+*** Apply engine's `filters` to `finalConsolidatedObjects` using `applyFilters(ctx, finalConsolidatedObjects, e.filters)`. Handle errors.
+*** Apply engine's `transformers` to the result of engine filtering using `applyTransformers(ctx, ..., e.transformers)`. Handle errors.
+*** Return the final result.
+** Implement helper functions `applyFilters(ctx context.Context, objects []unstructured.Unstructured, filters []Filter)` and `applyTransformers(ctx context.Context, objects []unstructured.Unstructured, transformers []Transformer)`. These helpers will iterate over the `objects` slice, calling the respective filter/transformer function for each object, passing the `ctx`.
+. **Implement `pkg/renderer/kustomize`:**
+** Create `pkg/renderer/kustomize/kustomize.go`.
+** Define `kustomize.Data` struct.
+** Define `kustomize.Option` func type and options like `WithFilter(engine.Filter)`, `WithTransformer(engine.Transformer)`, `WithBuildFlag`.
+** Implement `kustomize.ConcreteRenderer` struct. It should store `[]kustomize.Data`, its configuration, and its specific `[]engine.Filter` / `[]engine.Transformer`. It may have an internal `type` field for logging/errors.
+** Implement constructor `kustomize.New(inputs []Data, opts ...Option) *ConcreteRenderer`.
+** Make `*kustomize.ConcreteRenderer` implement `engine.Renderer`.
+*** Its `Process` method will:
+**** Iterate its `inputs` and call an internal `renderSingle(ctx context.Context, dataItem Data)` method for each, aggregating the raw results.
+**** Apply its own stored `filters` to the aggregated raw results (e.g., using `engine.ApplyFilters`).
+**** Apply its own stored `transformers` to the filtered results (e.g., using `engine.ApplyTransformers`).
+**** Return the fully processed objects.
+. **Implement `pkg/renderer/gotemplate`:** (Similar structure to kustomize, applying its own F/T in `Process`)
+. **Implement `pkg/renderer/helm`:** (Similar structure, applying its own F/T in `Process`)
+. **Implement `pkg/renderer/unstructured_renderer`:** (Similar structure, applying its own F/T in `Process`)
+. **Implement Filter Provider Functions** (e.g., `pkg/filter/jq/jq.go` will have `jq.NewFilter(expression string) (engine.Filter, error)`).
+. **Implement Transformer Provider Functions** (e.g., `pkg/transformer/labels/labels.go` will have `labels.NewTransformer(labelsToApply map[string]string) engine.Transformer`).
+. **Add Utility Functions** (parsing, logging).
+
+== 10. Test Cases (Adjustments Needed)
+
+Tests will be written using vanilla `gomega` (i.e., no `ginkgo` or other BDD frameworks) and placed in the `tests/` directory for integration/e2e tests, and alongside the respective packages for unit tests. Subtests (`t.Run`) should be used where appropriate to organize related test cases within a single test function.
+
+Unit tests for renderers will test their `Process(ctx)` method, ensuring it correctly renders, filters (with its specific filters), and transforms (with its specific transformers).
+Tests for filter/transformer providers (e.g., `jq.NewFilter`) will check if they return a correctly behaving function.
+Integration tests will involve:
+* Creating typed input data.
+* Creating concrete renderer instances with typed inputs and options (including filter/transformer functions obtained from providers or defined directly).
+* Registering these renderers with the `Engine`.
+* Verifying that the `Engine.Render` output reflects both renderer-specific F/T and the engine's F/T.
+
+=== 10.1. Unit Tests (Per Component)
+* *`pkg/renderer/kustomize`:* Test `kustomize.New` for correct setup. Test `(*kustomize.ConcreteRenderer).Process(ctx)` to ensure it renders, applies its configured specific filters, and applies its configured specific transformers correctly.
+* *`pkg/filter/jq`:* Test `jq.NewFilter(expression)` returns a function that correctly filters objects based on the JQ expression.
+* ... (similar adjustments for other renderers and filter/transformer providers)
+
+=== 10.2. Integration Tests (`tests/engine_test.go`)
+* *End-to-End Rendering:* Test `Engine.Render` with various renderers, some configured with specific F/T and some without.
+* *Engine-Level Filtering/Transformation:* Ensure engine F/T are applied correctly after all renderer processing.
+
+== 11. Library Usage Examples (Revised)
+
+=== 11.1. Basic Usage: Rendering a Single Kustomize Path
+
+[source,go]
+----
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured" // For type in filter example
+	"k8s-manifests-lib/pkg/engine"
+	"k8s-manifests-lib/pkg/renderer/kustomize"
+)
+
+func main() {
+	ctx := context.Background()
+	tmpDir := "/path/to/kustomize-example"
+
+	kustInputs := []kustomize.Data{{Path: tmpDir}}
+	kustomizeRenderer := kustomize.New(kustInputs) // kustomize.New returns *kustomize.ConcreteRenderer
+
+	eng := engine.NewEngine(engine.WithRenderer(kustomizeRenderer)) // kustomizeRenderer implements engine.Renderer
+
+	renderedObjects, err := eng.Render(ctx)
+	if err != nil {
+		log.Fatalf("Error rendering manifests: %v", err)
+	}
+
+	fmt.Println("--- Basic Kustomize Rendering Example (Renderer-Specific F/T Only) ---")
+	for _, obj := range renderedObjects {
+		fmt.Printf("Kind: %s, Name: %s\n", obj.GetKind(), obj.GetName())
+	}
+}
+----
+
+=== 11.2. Using Renderer-Specific Filters and Transformers
+
+[source,go]
+----
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s-manifests-lib/pkg/engine"
+	"k8s-manifests-lib/pkg/filter/gvk" // For gvk.NewFilter
+	"k8s-manifests-lib/pkg/renderer/kustomize"
+	"k8s-manifests-lib/pkg/transformer/annotations" // For annotations.NewTransformer
+)
+
+func main() {
+	ctx := context.Background()
+	tmpDir := "/path/to/kustomize-filter-transform-example"
+
+	kInputs := []kustomize.Data{{Path: tmpDir}}
+
+	// Define a GVK filter function using the gvk package's constructor
+	deploymentGVK := schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}
+	gvkFilterFunc := gvk.NewFilter(deploymentGVK)
+
+	// Define an annotation transformer function using the annotations package's constructor
+	customAnnotationsToApply := map[string]string{"rendered-by": "k8s-manifests-lib", "environment": "dev"}
+	annotationTransformerFunc := annotations.NewTransformer(customAnnotationsToApply)
+
+	kustRenderer := kustomize.New(
+		kInputs,
+		kustomize.WithFilter(gvkFilterFunc),
+		kustomize.WithTransformer(annotationTransformerFunc),
+	)
+
+	eng := engine.NewEngine(engine.WithRenderer(kustRenderer))
+
+	renderedObjects, err := eng.Render(ctx)
+	if err != nil {
+		log.Fatalf("Error rendering manifests: %v", err)
+	}
+
+	fmt.Println("\n--- Renderer-Specific Filter/Transformer Example (Renderer-Specific F/T Only) ---")
+	for _, obj := range renderedObjects {
+		fmt.Printf("Kind: %s, Name: %s, Annotations: %v\n", obj.GetKind(), obj.GetName(), obj.GetAnnotations())
+	}
+}
+----
+
+=== 11.3. Using Engine-Level Filters and Transformers (with a custom defined filter)
+
+[source,go]
+----
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	// "strings" // Not used in this example after edit
+	"testing/fstest"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s-manifests-lib/pkg/engine"
+	// "k8s-manifests-lib/pkg/filter/jq" // Using custom filter instead for this example
+	"k8s-manifests-lib/pkg/renderer/gotemplate"
+	"k8s-manifests-lib/pkg/renderer/kustomize"
+	"k8s-manifests-lib/pkg/transformer/labels"
+)
+
+const tplContent = ` + "`" + `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Name }}-pod
+  labels:
+    component: {{ .Component }}
+` + "`" + `
+// Custom filter function to remove objects with 'component: backend' label
+func backendComponentFilter(ctx context.Context, obj unstructured.Unstructured) (bool, error) {
+	labelsMap := obj.GetLabels()
+	if component, ok := labelsMap["component"]; ok && component == "backend" {
+		return false, nil // Discard if component is backend
+	}
+	return true, nil // Keep otherwise
+}
+
+
+func main() {
+	ctx := context.Background()
+	kustTmpDir := "/path/to/kustomize-global-example"
+	templateFS := fstest.MapFS{"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(tplContent)}}
+
+	kustRenderer := kustomize.New([]kustomize.Data{{Path: kustTmpDir}})
+	goTplRenderer := gotemplate.New(
+		[]gotemplate.Data{{FS: templateFS, BasePath: "templates", Values: map[string]interface{}{"Name": "my-tpl-app", "Component": "frontend"}}},
+	)
+
+	// Engine-level transformer
+	engineLblT := labels.NewTransformer(map[string]string{"managed-by": "engine", "env": "prod"})
+
+	eng := engine.NewEngine(
+		engine.WithRenderer(kustRenderer),
+		engine.WithRenderer(goTplRenderer),
+		engine.WithFilter(backendComponentFilter), // Using custom filter function at engine level
+		engine.WithTransformer(engineLblT),       // Using engine-level transformer
+	)
+
+	renderedObjects, err := eng.Render(ctx)
+	if err != nil {
+		log.Fatalf("Error rendering manifests: %v", err)
+	}
+
+	fmt.Println("\n--- Engine-Level Filter/Transformer Example (Renderer-Specific F/T Only) ---")
+	for _, obj := range renderedObjects {
+		fmt.Printf("Kind: %s, Name: %s, Labels: %v\n", obj.GetKind(), obj.GetName(), obj.GetLabels())
+	}
+}
+----
+
+=== 11.4. Registering Multiple Renderers of the Same Concrete Type
+
+(This example remains largely the same as the structure of adding renderers to the engine has nt changed significantly, only how those renderers are internally configured with F/T)
+[source,go]
+----
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"k8s-manifests-lib/pkg/engine"
+	"k8s-manifests-lib/pkg/renderer/kustomize"
+	"k8s-manifests-lib/pkg/transformer/labels"
+)
+
+func main() {
+	ctx := context.Background()
+	tmpDir1 := "/path/to/kust-multi-1"
+	tmpDir2 := "/path/to/kust-multi-2"
+
+	transformer1 := labels.NewTransformer(map[string]string{"source": "kust1"})
+	kustRenderer1 := kustomize.New(
+		[]kustomize.Data{{Path: tmpDir1}},
+		kustomize.WithTransformer(transformer1),
+	)
+
+	transformer2 := labels.NewTransformer(map[string]string{"source": "kust2"})
+	kustRenderer2 := kustomize.New(
+		[]kustomize.Data{{Path: tmpDir2}},
+		kustomize.WithTransformer(transformer2),
+	)
+
+	eng := engine.NewEngine(
+		engine.WithRenderer(kustRenderer1),
+		engine.WithRenderer(kustRenderer2),
+	)
+
+	renderedObjects, err := eng.Render(ctx)
+	if err != nil {
+		log.Fatalf("Error rendering manifests: %v", err)
+	}
+
+	fmt.Println("\n--- Multiple Renderers of Same Concrete Type (Renderer-Specific F/T Only) ---")
+	for _, obj := range renderedObjects {
+		fmt.Printf("Kind: %s, Name: %s, Labels: %v\n", obj.GetKind(), obj.GetName(), obj.GetLabels())
+	}
+}
+----
+
+=== Developer Experience (DX) Evaluation (Revised)
+
+* *Clarity and Readability:* Configuration is explicit. Users construct specific renderers (e.g., `kustomize.New`) with typed inputs and their specific options. Filter/Transformer functions are clear in their intent.
+* *Type Safety:* Compile-time type safety for inputs is achieved at the point of constructing each specific renderer.
+* *Simplicity of F/T:* Defining filters and transformers as simple functions (especially for stateless operations) can be more straightforward for users.
+* *Flexibility:* The `Engine` still manages diverse renderers via the `Renderer` interface. Renderer-specific F/T are handled within the renderer, and the Engine supports its own separate chain of F/T.
+* *Extensibility:* Adding new renderer types is straightforward. Adding new filter/transformer logic involves writing a function and optionally a "constructor" for it.
+* *Setup:* Users create instances of concrete renderers, configuring them with typed inputs and options directly. These instances are then passed to the `Engine`.
+* *Overall:* The DX appears robust, type-safe at crucial points, and the function-based filters/transformers enhance simplicity for common use cases. The complexity of type management and F/T application is well-encapsulated.

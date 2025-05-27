@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+- Use Functional Options for Struct Initialization: When creating constructor functions for structs, use the functional options pattern to allow flexible configuration. This makes your API extensible without breaking changes.
+- Define Options as Interfaces: Create an interface for your options with a method like ApplyTo[StructName](mdc:s *StructName) that modifies the target struct.
+- Provide a Struct-Based Option: In addition to functional options, provide a struct (e.g., EngineOptions, RenderOptions) with fields for all configurable parameters. For fields that are slices or map, use the slice/map type directly (not a pointer to a slice/map). This struct should implement the option interface and set the fields on the target struct, allowing users to configure multiple parameters at once using struct literals.
+- Place the options and related methods in a _option.go file
