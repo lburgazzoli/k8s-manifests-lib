@@ -9,8 +9,6 @@ import (
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/dump"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
@@ -49,7 +47,6 @@ type Renderer struct {
 	inputs       []Source
 	filters      []types.Filter
 	transformers []types.Transformer
-	decoder      runtime.Decoder
 	cache        cache.Interface[[]unstructured.Unstructured]
 }
 
@@ -69,7 +66,6 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		inputs:       slices.Clone(inputs),
 		filters:      make([]types.Filter, 0),
 		transformers: make([]types.Transformer, 0),
-		decoder:      yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
 	}
 	for _, opt := range opts {
 		opt.ApplyTo(r)
@@ -166,7 +162,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructur
 		}
 
 		// Decode the rendered output into unstructured objects
-		objs, err := k8s.DecodeYAML(r.decoder, buf.Bytes())
+		objs, err := k8s.DecodeYAML(buf.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode YAML from template %s: %w", t.Name(), err)
 		}

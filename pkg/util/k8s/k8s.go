@@ -29,7 +29,7 @@ func DeepCloneUnstructuredSlice(objects []unstructured.Unstructured) []unstructu
 }
 
 // DecodeYAML decodes YAML content into a slice of unstructured objects.
-func DecodeYAML(decoder runtime.Decoder, content []byte) ([]unstructured.Unstructured, error) {
+func DecodeYAML(content []byte) ([]unstructured.Unstructured, error) {
 	results := make([]unstructured.Unstructured, 0)
 
 	r := bytes.NewReader(content)
@@ -54,18 +54,12 @@ func DecodeYAML(decoder runtime.Decoder, content []byte) ([]unstructured.Unstruc
 			continue
 		}
 
-		if out["kind"] == "" {
+		if v, ok := out["kind"]; !ok || v == "" {
 			continue
 		}
 
-		encoded, err := yaml.Marshal(out)
+		obj, err := ToUnstructured(&out)
 		if err != nil {
-			return nil, fmt.Errorf("unable to marshal YAML document[%d]: %w", docIndex-1, err)
-		}
-
-		var obj unstructured.Unstructured
-
-		if _, _, err = decoder.Decode(encoded, nil, &obj); err != nil {
 			if runtime.IsMissingKind(err) {
 				continue
 			}
@@ -73,8 +67,21 @@ func DecodeYAML(decoder runtime.Decoder, content []byte) ([]unstructured.Unstruc
 			return nil, fmt.Errorf("unable to decode YAML document[%d]: %w", docIndex-1, err)
 		}
 
-		results = append(results, obj)
+		results = append(results, *obj)
 	}
 
 	return results, nil
+}
+
+func ToUnstructured(obj any) (*unstructured.Unstructured, error) {
+	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert object %T to unstructured: %w", obj, err)
+	}
+
+	u := unstructured.Unstructured{
+		Object: data,
+	}
+
+	return &u, nil
 }

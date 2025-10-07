@@ -8,14 +8,11 @@ import (
 	"path/filepath"
 	"slices"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Source represents the input for a YAML rendering operation.
@@ -35,7 +32,6 @@ type Renderer struct {
 	inputs       []Source
 	filters      []types.Filter
 	transformers []types.Transformer
-	decoder      runtime.Decoder
 	cache        cache.Interface[[]unstructured.Unstructured]
 }
 
@@ -55,7 +51,6 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		inputs:       slices.Clone(inputs),
 		filters:      make([]types.Filter, 0),
 		transformers: make([]types.Transformer, 0),
-		decoder:      yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
 	}
 	for _, opt := range opts {
 		opt.ApplyTo(r)
@@ -170,7 +165,7 @@ func (r *Renderer) loadYAMLFile(fsys fs.FS, path string) ([]unstructured.Unstruc
 	}
 
 	// Decode YAML content
-	objects, err := k8s.DecodeYAML(r.decoder, content)
+	objects, err := k8s.DecodeYAML(content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode YAML: %w", err)
 	}

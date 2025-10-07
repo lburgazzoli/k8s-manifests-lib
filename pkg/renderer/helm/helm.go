@@ -15,8 +15,6 @@ import (
 	"helm.sh/helm/v3/pkg/registry"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/dump"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
@@ -71,7 +69,6 @@ type Renderer struct {
 	filters      []types.Filter
 	transformers []types.Transformer
 	helmEngine   engine.Engine
-	decoder      runtime.Serializer
 	cache        cache.Interface[[]unstructured.Unstructured]
 }
 
@@ -93,7 +90,6 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		filters:      make([]types.Filter, 0),
 		transformers: make([]types.Transformer, 0),
 		helmEngine:   engine.Engine{},
-		decoder:      yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
 	}
 
 	// Apply options
@@ -259,7 +255,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructur
 
 	// Process CRDs first
 	for _, crd := range input.chart.CRDObjects() {
-		objects, err := k8s.DecodeYAML(r.decoder, crd.File.Data)
+		objects, err := k8s.DecodeYAML(crd.File.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode CRD %s: %w", crd.Name, err)
 		}
@@ -273,7 +269,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructur
 			continue
 		}
 
-		objects, err := k8s.DecodeYAML(r.decoder, []byte(v))
+		objects, err := k8s.DecodeYAML([]byte(v))
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode %s: %w", k, err)
 		}
