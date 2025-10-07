@@ -60,15 +60,23 @@ k8s-manifests-lib/
 │   │   ├── gotemplate/
 │   │   ├── yaml/
 │   │   └── mem/
-│   ├── filter/          # Filter implementations
+│   ├── filter/          # Filter implementations and composition
+│   │   ├── compose.go   # Filter composition (Or, And, Not, If)
 │   │   ├── jq/
 │   │   └── meta/
-│   │       └── gvk/
-│   ├── transformer/     # Transformer implementations
+│   │       ├── annotations/  # Annotation filters
+│   │       ├── gvk/         # GroupVersionKind filters
+│   │       ├── labels/      # Label filters
+│   │       ├── name/        # Name filters
+│   │       └── namespace/   # Namespace filters
+│   ├── transformer/     # Transformer implementations and composition
+│   │   ├── compose.go   # Transformer composition (Chain, If, Switch)
 │   │   ├── jq/
 │   │   └── meta/
-│   │       ├── labels/
-│   │       └── annotations/
+│   │       ├── annotations/  # Annotation transformers
+│   │       ├── labels/       # Label transformers
+│   │       ├── name/         # Name transformers
+│   │       └── namespace/    # Namespace transformers
 │   └── util/           # Utility functions
 │       ├── filter.go
 │       ├── yaml.go
@@ -385,9 +393,198 @@ helmRenderer, _ := helm.New(
 
 ## 7. Filters and Transformers
 
-Filters and transformers are implemented as constructor functions that return `types.Filter` or `types.Transformer` closures.
+Filters and transformers are implemented as constructor functions that return `types.Filter` or `types.Transformer` closures. The library provides composition functions for combining filters and transformers, as well as built-in implementations for common metadata operations.
 
-### 7.1. JQ Filter (pkg/filter/jq)
+### 7.1. Filter Composition (pkg/filter)
+
+Combinators for building complex filter logic from simple filters.
+
+```go
+// Boolean Logic
+func Or(filters ...types.Filter) types.Filter   // Any filter must pass
+func And(filters ...types.Filter) types.Filter  // All filters must pass
+func Not(filter types.Filter) types.Filter      // Inverts filter result
+
+// Conditional
+func If(condition types.Filter, then types.Filter) types.Filter  // Apply 'then' only if condition passes
+
+// Usage: Complex namespace and kind filtering
+filter := filter.Or(
+    filter.And(
+        namespace.Filter("production"),
+        gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment")),
+    ),
+    filter.And(
+        namespace.Filter("staging"),
+        gvk.Filter(corev1.SchemeGroupVersion.WithKind("Service")),
+    ),
+)
+```
+
+**Composition Features:**
+* Short-circuit evaluation for performance
+* Arbitrary nesting depth
+* Clear, readable filter logic
+* Composable with all filter types
+
+### 7.2. Transformer Composition (pkg/transformer)
+
+Combinators for building complex transformation pipelines.
+
+```go
+// Sequential Execution
+func Chain(transformers ...types.Transformer) types.Transformer  // Apply transformers in sequence
+
+// Conditional Transformation
+func If(condition types.Filter, transformer types.Transformer) types.Transformer  // Apply only if condition passes
+
+// Multi-branch Logic
+type Case struct {
+    When types.Filter
+    Then types.Transformer
+}
+func Switch(cases []Case, defaultTransformer types.Transformer) types.Transformer  // First matching case wins
+
+// Usage: Environment-specific transformations
+transformer := transformer.Switch(
+    []transformer.Case{
+        {
+            When: namespace.Filter("production"),
+            Then: transformer.Chain(
+                labels.Set(map[string]string{"env": "prod"}),
+                annotations.Set(map[string]string{"tier": "critical"}),
+            ),
+        },
+        {
+            When: namespace.Filter("staging"),
+            Then: labels.Set(map[string]string{"env": "staging"}),
+        },
+    },
+    labels.Set(map[string]string{"env": "dev"}), // default
+)
+```
+
+**Composition Features:**
+* Lazy evaluation - transformers only execute when conditions match
+* Early exit in Switch - first matching case wins
+* Composable with all transformer types
+* Type-safe Case definitions
+
+### 7.3. Namespace Filters (pkg/filter/meta/namespace)
+
+```go
+// Constructors
+func Filter(namespaces ...string) types.Filter  // Include only these namespaces
+func Exclude(namespaces ...string) types.Filter // Exclude these namespaces
+
+// Usage
+includeFilter := namespace.Filter("production", "staging")
+excludeFilter := namespace.Exclude("kube-system", "kube-public")
+```
+
+### 7.4. Label Filters (pkg/filter/meta/labels)
+
+```go
+// Constructors
+func HasLabel(key string) types.Filter                          // Has specific label key
+func HasLabels(keys ...string) types.Filter                     // Has all specified keys
+func MatchLabels(matchLabels map[string]string) types.Filter    // All labels match exactly
+func Selector(selector string) (types.Filter, error)            // Kubernetes label selector syntax
+
+// Usage
+hasEnvLabel := labels.HasLabel("environment")
+matchProd := labels.MatchLabels(map[string]string{"env": "prod", "tier": "frontend"})
+selectorFilter, _ := labels.Selector("app=nginx,tier in (frontend,backend)")
+```
+
+### 7.5. Name Filters (pkg/filter/meta/name)
+
+```go
+// Constructors
+func Exact(names ...string) types.Filter        // Exact name match
+func Prefix(prefix string) types.Filter          // Name starts with prefix
+func Suffix(suffix string) types.Filter          // Name ends with suffix
+func Regex(pattern string) (types.Filter, error) // Name matches regex pattern
+
+// Usage
+exactFilter := name.Exact("nginx-deployment", "redis-service")
+prefixFilter := name.Prefix("app-")
+regexFilter, _ := name.Regex(`^(nginx|apache)-.*$`)
+```
+
+### 7.6. Annotation Filters (pkg/filter/meta/annotations)
+
+```go
+// Constructors
+func HasAnnotation(key string) types.Filter                             // Has specific annotation key
+func HasAnnotations(keys ...string) types.Filter                        // Has all specified keys
+func MatchAnnotations(matchAnnotations map[string]string) types.Filter  // All annotations match exactly
+
+// Usage
+hasOwner := annotations.HasAnnotation("owner")
+matchFilter := annotations.MatchAnnotations(map[string]string{
+    "managed-by": "k8s-manifests-lib",
+})
+```
+
+### 7.7. Namespace Transformers (pkg/transformer/meta/namespace)
+
+```go
+// Constructors
+func Set(namespace string) types.Transformer            // Set namespace unconditionally
+func EnsureDefault(namespace string) types.Transformer  // Set only if empty
+
+// Usage
+forceNamespace := namespacetrans.Set("production")
+defaultNamespace := namespacetrans.EnsureDefault("default")
+```
+
+### 7.8. Name Transformers (pkg/transformer/meta/name)
+
+```go
+// Constructors
+func SetPrefix(prefix string) types.Transformer             // Add prefix to name
+func SetSuffix(suffix string) types.Transformer             // Add suffix to name
+func Replace(from string, to string) types.Transformer      // Replace substring in name
+
+// Usage
+addPrefix := nametrans.SetPrefix("prod-")
+addSuffix := nametrans.SetSuffix("-v2")
+replaceEnv := nametrans.Replace("staging", "production")
+```
+
+### 7.9. Label Transformers (pkg/transformer/meta/labels)
+
+```go
+// Constructors
+func Transform(labels map[string]string) types.Transformer                        // Add/update labels
+func Remove(keys ...string) types.Transformer                                     // Remove specific labels
+func RemoveIf(predicate func(key string, value string) bool) types.Transformer    // Remove matching labels
+
+// Usage
+addLabels := labels.Set(map[string]string{"env": "prod", "team": "platform"})
+removeLabels := labels.Remove("temp", "debug")
+removePrefix := labels.RemoveIf(func(key, _ string) bool {
+    return strings.HasPrefix(key, "temp-")
+})
+```
+
+### 7.10. Annotation Transformers (pkg/transformer/meta/annotations)
+
+```go
+// Constructors
+func Transform(annotations map[string]string) types.Transformer                   // Add/update annotations
+func Remove(keys ...string) types.Transformer                                     // Remove specific annotations
+func RemoveIf(predicate func(key string, value string) bool) types.Transformer    // Remove matching annotations
+
+// Usage
+addAnnotations := annotations.Set(map[string]string{
+    "rendered-by": "k8s-manifests-lib",
+})
+removeAnnotations := annotations.Remove("temp-annotation")
+```
+
+### 7.11. JQ Filter (pkg/filter/jq)
 
 ```go
 // Constructor
@@ -403,7 +600,7 @@ filter, err := jq.Filter(
 )
 ```
 
-### 7.2. GVK Filter (pkg/filter/meta/gvk)
+### 7.12. GVK Filter (pkg/filter/meta/gvk)
 
 ```go
 // Constructor
@@ -416,7 +613,7 @@ filter := gvk.Filter(
 )
 ```
 
-### 7.3. JQ Transformer (pkg/transformer/jq)
+### 7.13. JQ Transformer (pkg/transformer/jq)
 
 ```go
 // Constructor
@@ -424,31 +621,6 @@ func Transform(expression string, opts ...Option) (types.Transformer, error)
 
 // Usage
 transformer, err := jq.Transform(`. + {"metadata": {"labels": {"new": "label"}}}`)
-```
-
-### 7.4. Labels Transformer (pkg/transformer/meta/labels)
-
-```go
-// Constructor
-func Transform(labels map[string]string) types.Transformer
-
-// Usage
-transformer := labels.Transform(map[string]string{
-    "app.kubernetes.io/managed-by": "k8s-manifests-lib",
-    "environment": "production",
-})
-```
-
-### 7.5. Annotations Transformer (pkg/transformer/meta/annotations)
-
-```go
-// Constructor
-func Transform(annotations map[string]string) types.Transformer
-
-// Usage
-transformer := annotations.Transform(map[string]string{
-    "rendered-by": "k8s-manifests-lib",
-})
 ```
 
 ## 8. Three-Level Filtering/Transformation
@@ -531,8 +703,8 @@ Transformers are applied **sequentially** - the output of one becomes the input 
 
 ```go
 engine.New(
-    engine.WithTransformer(labels.Transform(map[string]string{"env": "prod"})),
-    engine.WithTransformer(annotations.Transform(map[string]string{"version": "1.0"})),
+    engine.WithTransformer(labels.Set(map[string]string{"env": "prod"})),
+    engine.WithTransformer(annotations.Set(map[string]string{"version": "1.0"})),
 )
 ```
 
@@ -623,7 +795,7 @@ helmRenderer, _ := helm.New(
 )
 
 // 2. Engine-level: Add common labels to everything
-commonLabels := labels.Transform(map[string]string{"managed-by": "k8s-manifests-lib"})
+commonLabels := labels.Set(map[string]string{"managed-by": "k8s-manifests-lib"})
 e := engine.New(
     engine.WithRenderer(helmRenderer),
     engine.WithTransformer(commonLabels),

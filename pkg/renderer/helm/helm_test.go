@@ -135,7 +135,7 @@ func TestRenderer(t *testing.T) {
 					}),
 				},
 			},
-			helm.WithTransformer(labels.Transform(map[string]string{
+			helm.WithTransformer(labels.Set(map[string]string{
 				"managed-by": "helm-renderer",
 				"env":        "test",
 			})),
@@ -293,7 +293,7 @@ func TestRenderer(t *testing.T) {
 				},
 			},
 			helm.WithFilter(gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment"))),
-			helm.WithTransformer(labels.Transform(map[string]string{
+			helm.WithTransformer(labels.Set(map[string]string{
 				"test": "combined",
 			})),
 		)

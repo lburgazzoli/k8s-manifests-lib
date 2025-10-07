@@ -198,7 +198,7 @@ func TestRenderer(t *testing.T) {
 
 		renderer, err := kustomize.New(
 			[]kustomize.Source{{Path: dir}},
-			kustomize.WithTransformer(labels.Transform(map[string]string{
+			kustomize.WithTransformer(labels.Set(map[string]string{
 				"managed-by": "kustomize-renderer",
 			})),
 		)

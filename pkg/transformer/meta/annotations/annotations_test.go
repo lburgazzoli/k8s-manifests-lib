@@ -89,7 +89,7 @@ func TestTransform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer := annotations.Transform(tt.annotationsToApply)
+			transformer := annotations.Set(tt.annotationsToApply)
 			unstrObj := toUnstructured(t, tt.inputObject)
 			transformed, err := transformer(t.Context(), unstrObj)
 
@@ -97,4 +97,90 @@ func TestTransform(t *testing.T) {
 			g.Expect(transformed.Object).To(tt.expected)
 		})
 	}
+}
+
+func TestRemove(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should remove specific annotations", func(t *testing.T) {
+		transformer := annotations.Remove("ann1", "ann3")
+
+		obj := toUnstructured(t, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"ann1": "value1",
+					"ann2": "value2",
+					"ann3": "value3",
+				},
+			},
+		})
+
+		transformed, err := transformer(t.Context(), obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(transformed.GetAnnotations()).Should(Equal(map[string]string{"ann2": "value2"}))
+	})
+
+	t.Run("should handle removing non-existent annotations", func(t *testing.T) {
+		transformer := annotations.Remove("missing")
+
+		obj := toUnstructured(t, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{"ann1": "value1"},
+			},
+		})
+
+		transformed, err := transformer(t.Context(), obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(transformed.GetAnnotations()).Should(Equal(map[string]string{"ann1": "value1"}))
+	})
+
+	t.Run("should handle objects with no annotations", func(t *testing.T) {
+		transformer := annotations.Remove("any")
+
+		obj := toUnstructured(t, &corev1.ConfigMap{})
+
+		transformed, err := transformer(t.Context(), obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(transformed.GetAnnotations()).Should(BeNil())
+	})
+}
+
+func TestRemoveIf(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should remove annotations matching predicate", func(t *testing.T) {
+		transformer := annotations.RemoveIf(func(key string, value string) bool {
+			return key == "remove-me" || value == "delete"
+		})
+
+		obj := toUnstructured(t, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"remove-me": "anything",
+					"keep":      "delete",
+					"preserve":  "value",
+				},
+			},
+		})
+
+		transformed, err := transformer(t.Context(), obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(transformed.GetAnnotations()).Should(Equal(map[string]string{"preserve": "value"}))
+	})
+
+	t.Run("should handle no matches", func(t *testing.T) {
+		transformer := annotations.RemoveIf(func(key string, value string) bool {
+			return false
+		})
+
+		obj := toUnstructured(t, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{"key": "value"},
+			},
+		})
+
+		transformed, err := transformer(t.Context(), obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(transformed.GetAnnotations()).Should(Equal(map[string]string{"key": "value"}))
+	})
 }

@@ -116,7 +116,7 @@ func TestRenderer(t *testing.T) {
 			name:    "should apply transformers",
 			objects: []runtime.Object{pod},
 			opts: []mem.RendererOption{
-				mem.WithTransformer(labels.Transform(map[string]string{
+				mem.WithTransformer(labels.Set(map[string]string{
 					"managed-by": "mem-renderer",
 					"env":        "test",
 				})),

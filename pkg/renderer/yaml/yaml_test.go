@@ -142,7 +142,7 @@ func TestRenderer(t *testing.T) {
 
 		renderer, err := yaml.New(
 			[]yaml.Source{{FS: testFS, Path: "*.yaml"}},
-			yaml.WithTransformer(labels.Transform(map[string]string{
+			yaml.WithTransformer(labels.Set(map[string]string{
 				"managed-by": "yaml-renderer",
 				"env":        "test",
 			})),

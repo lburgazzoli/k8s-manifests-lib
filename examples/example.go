@@ -58,7 +58,7 @@ func main() {
 		// Engine-level filter: Only keep objects from apps/v1 API group
 		engine.WithFilter(appsV1Filter),
 		// Add a transformer to add a common label
-		engine.WithTransformer(labels.Transform(map[string]string{
+		engine.WithTransformer(labels.Set(map[string]string{
 			"app.kubernetes.io/managed-by": "k8s-manifests-lib",
 		})),
 	)
@@ -82,7 +82,7 @@ func main() {
 			},
 			// Add a render-time transformer to add an environment label
 			Transformers: []types.Transformer{
-				labels.Transform(map[string]string{
+				labels.Set(map[string]string{
 					"environment": "production",
 					"chart":       "dapr",
 				}),

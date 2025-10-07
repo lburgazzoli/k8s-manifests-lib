@@ -159,7 +159,7 @@ func TestRenderer(t *testing.T) {
 				}),
 			},
 			opts: []gotemplate.RendererOption{
-				gotemplate.WithTransformer(labels.Transform(map[string]string{
+				gotemplate.WithTransformer(labels.Set(map[string]string{
 					"managed-by": "gotemplate-renderer",
 					"env":        "test",
 				})),

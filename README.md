@@ -8,6 +8,10 @@ The Kubernetes Manifests Library is a Go-based toolkit designed to simplify the 
 
 * Manifest rendering from multiple sources (Helm, Kustomize, Go templates, YAML)
 * Resource transformation and filtering with JQ expressions
+* Filter composition with boolean logic (Or, And, Not) and conditionals
+* Transformer composition with chaining, conditionals, and multi-branch logic
+* Built-in metadata filters (namespace, labels, annotations, name)
+* Built-in metadata transformers (namespace, labels, annotations, name)
 * Type-safe Kubernetes resource definitions
 * Three-level filtering/transformation pipeline (renderer-specific, engine-level, render-time)
 * Extensible engine for custom processing
@@ -70,7 +74,7 @@ func main() {
         // Add a filter to only keep Deployments
         engine.WithFilter(deploymentFilter),
         // Add a transformer to add a common label
-        engine.WithTransformer(labels.Transform(map[string]string{
+        engine.WithTransformer(labels.Set(map[string]string{
             "app.kubernetes.io/managed-by": "my-operator",
         })),
     )
@@ -79,7 +83,7 @@ func main() {
     ctx := context.Background()
     objects, err := e.Render(ctx,
         // Add a render-time transformer to add an environment label
-        engine.WithRenderTransformer(labels.Transform(map[string]string{
+        engine.WithRenderTransformer(labels.Set(map[string]string{
             "environment": "production",
         })),
     )
@@ -214,6 +218,225 @@ e := engine.New(
 objects, _ := e.Render(ctx,
     engine.WithRenderFilter(kindFilter),               // Applied only to this render
     engine.WithRenderTransformer(envLabelTransformer), // Applied only to this render
+)
+```
+
+## Advanced Filtering and Transformation
+
+### Filter Composition
+
+Build complex filter logic from simple filters using boolean combinators:
+
+```go
+import (
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/annotations"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/namespace"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/labels"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/name"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
+    appsv1 "k8s.io/api/apps/v1"
+    corev1 "k8s.io/api/core/v1"
+)
+
+// Keep production Deployments OR staging Services
+complexFilter := filter.Or(
+    filter.And(
+        namespace.Filter("production"),
+        gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment")),
+    ),
+    filter.And(
+        namespace.Filter("staging"),
+        gvk.Filter(corev1.SchemeGroupVersion.WithKind("Service")),
+    ),
+)
+
+// Exclude system namespaces
+systemFilter := filter.Not(
+    namespace.Filter("kube-system", "kube-public", "kube-node-lease"),
+)
+
+// Conditional filtering: only apply label filter if in production
+productionFilter := filter.If(
+    namespace.Filter("production"),
+    labels.MatchLabels(map[string]string{"tier": "critical"}),
+)
+
+e := engine.New(
+    engine.WithRenderer(helmRenderer),
+    engine.WithFilter(complexFilter),
+    engine.WithFilter(systemFilter),
+)
+```
+
+### Built-in Metadata Filters
+
+```go
+// Namespace filters
+nsFilter := namespace.Filter("production", "staging")
+nsExclude := namespace.Exclude("kube-system", "default")
+
+// Label filters
+hasLabel := labels.HasLabel("environment")
+hasMultiple := labels.HasLabels("app", "version", "tier")
+matchLabels := labels.MatchLabels(map[string]string{
+    "app": "nginx",
+    "env": "prod",
+})
+selector, _ := labels.Selector("app=nginx,tier in (frontend,backend)")
+
+// Name filters
+exactName := name.Exact("nginx-deployment", "redis-service")
+prefixName := name.Prefix("app-")
+suffixName := name.Suffix("-prod")
+regexName, _ := name.Regex(`^(nginx|apache)-.*$`)
+
+// Annotation filters
+hasAnnotation := annotations.HasAnnotation("owner")
+matchAnnotations := annotations.MatchAnnotations(map[string]string{
+    "managed-by": "k8s-manifests-lib",
+})
+```
+
+### Transformer Composition
+
+Chain transformers and apply them conditionally:
+
+```go
+import (
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer"
+    nstrans "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/namespace"
+    nametrans "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/name"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/annotations"
+)
+
+// Chain multiple transformers in sequence
+chainedTransformer := transformer.Chain(
+    nstrans.EnsureDefault("default"),
+    labels.Set(map[string]string{
+        "app.kubernetes.io/managed-by": "k8s-manifests-lib",
+    }),
+    annotations.Set(map[string]string{
+        "rendered-at": time.Now().Format(time.RFC3339),
+    }),
+)
+
+// Apply transformer conditionally
+conditionalTransformer := transformer.If(
+    namespace.Filter("production"),
+    labels.Set(map[string]string{"tier": "critical"}),
+)
+
+// Multi-branch logic with Switch
+switchTransformer := transformer.Switch(
+    []transformer.Case{
+        {
+            When: namespace.Filter("production"),
+            Then: transformer.Chain(
+                labels.Set(map[string]string{"env": "prod", "monitoring": "enabled"}),
+                annotations.Set(map[string]string{"tier": "critical"}),
+            ),
+        },
+        {
+            When: namespace.Filter("staging"),
+            Then: labels.Set(map[string]string{"env": "staging"}),
+        },
+    },
+    // Default transformer when no cases match
+    labels.Set(map[string]string{"env": "dev"}),
+)
+
+e := engine.New(
+    engine.WithRenderer(helmRenderer),
+    engine.WithTransformer(chainedTransformer),
+    engine.WithTransformer(switchTransformer),
+)
+```
+
+### Built-in Metadata Transformers
+
+```go
+// Namespace transformers
+setNamespace := nstrans.Set("production")              // Force namespace
+ensureDefault := nstrans.EnsureDefault("default")      // Set only if empty
+
+// Name transformers
+addPrefix := nametrans.SetPrefix("prod-")
+addSuffix := nametrans.SetSuffix("-v2")
+replaceName := nametrans.Replace("staging", "production")
+
+// Label transformers
+addLabels := labels.Set(map[string]string{
+    "env": "prod",
+    "team": "platform",
+})
+removeLabels := labels.Remove("temp", "debug")
+removeByPrefix := labels.RemoveIf(func(key, _ string) bool {
+    return strings.HasPrefix(key, "temp-")
+})
+
+// Annotation transformers
+addAnnotations := annotations.Set(map[string]string{
+    "rendered-by": "k8s-manifests-lib",
+})
+removeAnnotations := annotations.Remove("temp-annotation")
+removeByValue := annotations.RemoveIf(func(_, value string) bool {
+    return value == "delete-me"
+})
+```
+
+### Real-World Example: Environment-Specific Processing
+
+```go
+// Different processing for each environment
+filter := filter.And(
+    // Exclude system namespaces
+    filter.Not(namespace.Filter("kube-system", "kube-public")),
+    // Include only Deployments and Services
+    filter.Or(
+        gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment")),
+        gvk.Filter(corev1.SchemeGroupVersion.WithKind("Service")),
+    ),
+)
+
+transformer := transformer.Switch(
+    []transformer.Case{
+        {
+            // Production: add critical labels and monitoring annotations
+            When: namespace.Filter("production"),
+            Then: transformer.Chain(
+                labels.Set(map[string]string{
+                    "env": "prod",
+                    "monitoring": "enabled",
+                    "backup": "enabled",
+                }),
+                annotations.Set(map[string]string{
+                    "alert-severity": "critical",
+                }),
+                nametrans.SetPrefix("prod-"),
+            ),
+        },
+        {
+            // Staging: basic labels
+            When: namespace.Filter("staging"),
+            Then: transformer.Chain(
+                labels.Set(map[string]string{"env": "staging"}),
+                nametrans.SetPrefix("stg-"),
+            ),
+        },
+    },
+    // Default for dev
+    transformer.Chain(
+        labels.Set(map[string]string{"env": "dev"}),
+        nametrans.SetPrefix("dev-"),
+    ),
+)
+
+e := engine.New(
+    engine.WithRenderer(helmRenderer),
+    engine.WithFilter(filter),
+    engine.WithTransformer(transformer),
 )
 ```
 
