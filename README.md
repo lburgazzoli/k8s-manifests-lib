@@ -4,6 +4,35 @@
 
 The Kubernetes Manifests Library is a Go-based toolkit designed to simplify the management, transformation, and rendering of Kubernetes manifests. It provides a robust set of utilities for working with Kubernetes resources programmatically, making it easier to generate, modify, and validate Kubernetes configurations.
 
+## Use Cases
+
+**This library is designed to be embedded in Go applications and libraries**, not as a replacement for kubectl, Helm, or Kustomize CLIs.
+
+### When to Use This Library
+
+Use k8s-manifests-lib when you need to **programmatically** work with Kubernetes manifests in your Go code:
+
+- **Kubernetes Operators/Controllers**: Deploy and manage components using Helm charts, Kustomize, or YAML templates
+- **GitOps Tools**: Process, transform, and validate manifests before applying them
+- **CI/CD Pipelines**: Customize manifests based on environment, inject labels/annotations, filter resources
+- **Multi-tenant Platforms**: Generate tenant-specific configurations from shared templates
+- **Custom Deployment Tools**: Build application-specific deployment logic with manifest rendering
+
+### When NOT to Use This Library
+
+- **Ad-hoc manifest operations**: Use `kubectl`, `helm`, or `kustomize` CLI directly
+- **Manual deployments**: Standard CLI tools are more appropriate
+- **Simple scripting**: Shell scripts with CLI tools may be simpler
+
+### Key Differentiator
+
+Unlike CLI tools, this library provides a **Go API** for manifest operations, enabling:
+- Type-safe configuration
+- Programmatic filtering and transformation
+- Integration into larger Go applications
+- Testable manifest rendering logic
+- Complex composition of multiple sources
+
 ## Features
 
 * Manifest rendering from multiple sources (Helm, Kustomize, Go templates, YAML)
