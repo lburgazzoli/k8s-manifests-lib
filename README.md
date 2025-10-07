@@ -26,7 +26,55 @@ go get github.com/lburgazzoli/k8s-manifests-lib
 
 ## Quick Start
 
-Here's a comprehensive example that demonstrates how to use the library to render Kubernetes manifests from a Helm chart, with filtering and transformation:
+### Simple Example (Convenience Function)
+
+For single-renderer scenarios, use the convenience functions for a simpler API:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
+)
+
+func main() {
+    // Create an Engine with Helm renderer in one step
+    e, err := engine.Helm(helm.Source{
+        Chart:       "oci://registry.example.com/my-chart:1.0.0",
+        ReleaseName: "my-release",
+        Values: helm.Values(map[string]any{
+            "replicaCount": 3,
+        }),
+    })
+    if err != nil {
+        log.Fatalf("Failed to create engine: %v", err)
+    }
+
+    // Render the manifests
+    objects, err := e.Render(context.Background())
+    if err != nil {
+        log.Fatalf("Failed to render: %v", err)
+    }
+
+    fmt.Printf("Rendered %d objects\n", len(objects))
+}
+```
+
+Convenience functions are available for all renderers:
+* `engine.Helm()` - For Helm charts
+* `engine.Kustomize()` - For Kustomize directories
+* `engine.Yaml()` - For YAML files
+* `engine.GoTemplate()` - For Go templates
+* `engine.Mem()` - For in-memory objects
+
+### Advanced Example (Full Engine API)
+
+For complex scenarios with multiple renderers, filters, and transformers:
 
 ```go
 package main
@@ -100,12 +148,11 @@ func main() {
 }
 ```
 
-This example demonstrates several key features of the library:
+These examples demonstrate several key features:
 
-* Rendering manifests from a Helm chart with custom values
-* Using JQ filters to select resources by kind
-* Adding labels to resources using transformers
-* Combining engine-level and render-time options
+* **Convenience functions**: Simple single-renderer setup with `engine.Helm()`, `engine.Kustomize()`, etc.
+* **Full Engine API**: Multiple renderers, engine-level filters/transformers
+* **Render-time options**: Additional filters/transformers per render call
 * Error handling and context support
 
 ## Using Cache for Performance
@@ -125,18 +172,16 @@ import (
 )
 
 func main() {
-    // Create a Helm renderer with caching enabled
-    helmRenderer, _ := helm.New(
-        []helm.Source{{
+    // Create an Engine with Helm renderer and caching enabled
+    e, _ := engine.Helm(
+        helm.Source{
             Chart:       "oci://registry.example.com/my-chart:1.0.0",
             ReleaseName: "my-release",
             Values: helm.Values(map[string]any{"replicaCount": 3}),
-        }},
+        },
         // Enable caching with 5-minute TTL
         helm.WithCache(cache.WithTTL(5 * time.Minute)),
     )
-
-    e := engine.New(engine.WithRenderer(helmRenderer))
 
     ctx := context.Background()
 
@@ -445,7 +490,7 @@ e := engine.New(
 Use dynamic value functions for runtime configuration:
 
 ```go
-helmRenderer, _ := helm.New([]helm.Source{{
+e, _ := engine.Helm(helm.Source{
     Chart:       "oci://registry.example.com/my-chart:1.0.0",
     ReleaseName: "dynamic-release",
     Values: func(ctx context.Context) (map[string]any, error) {
@@ -460,7 +505,7 @@ helmRenderer, _ := helm.New([]helm.Source{{
             "config":    config,
         }, nil
     },
-}})
+})
 ```
 
 ## Project Structure

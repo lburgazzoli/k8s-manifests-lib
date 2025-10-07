@@ -185,6 +185,30 @@ All renderers follow a consistent pattern:
 4. Support renderer-specific filters and transformers via options
 5. Optional caching support via `WithCache(opts...)`
 
+### 5.0. Engine Convenience Functions
+
+For single-renderer scenarios, the `engine` package provides convenience factory functions:
+
+```go
+// Instead of creating renderer then engine:
+helmRenderer, _ := helm.New([]helm.Source{{...}})
+e := engine.New(engine.WithRenderer(helmRenderer))
+
+// Use convenience function directly (takes single Source):
+e, _ := engine.Helm(helm.Source{...})
+```
+
+Available factory functions in `pkg/engine/engine_support.go`:
+* `engine.Helm(source, opts...)` - Creates Engine with single Helm renderer
+* `engine.Kustomize(source, opts...)` - Creates Engine with single Kustomize renderer
+* `engine.Yaml(source, opts...)` - Creates Engine with single YAML renderer
+* `engine.GoTemplate(source, opts...)` - Creates Engine with single Go template renderer
+* `engine.Mem(source, opts...)` - Creates Engine with single memory renderer
+
+**When to use:**
+* **Convenience functions**: Single renderer, simple use cases
+* **Full Engine API**: Multiple renderers, engine-level filters/transformers, complex pipelines
+
 ### 5.1. Helm (pkg/renderer/helm)
 
 Renders Helm charts from OCI registries, HTTP repositories, or local paths.
@@ -740,7 +764,36 @@ Handles multi-document YAML streams and skips empty documents.
 
 ## 12. Usage Examples
 
-### 12.1. Basic Helm Rendering
+### 12.1. Basic Rendering with Convenience Functions
+
+For single-renderer scenarios, use convenience factory functions:
+
+```go
+// Using convenience function - simplest approach
+e, err := engine.Helm(helm.Source{
+    Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+    ReleaseName: "my-release",
+    Values: helm.Values(map[string]any{
+        "shared": map[string]any{"appId": "test-app"},
+    }),
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+objects, err := e.Render(context.Background())
+```
+
+Available convenience functions:
+* `engine.Helm()` - For Helm charts
+* `engine.Kustomize()` - For Kustomize directories
+* `engine.Yaml()` - For YAML files
+* `engine.GoTemplate()` - For Go templates
+* `engine.Mem()` - For in-memory objects
+
+### 12.1b. Basic Rendering with Full Engine API
+
+For more control, use the full Engine API:
 
 ```go
 helmRenderer, err := helm.New([]helm.Source{
@@ -826,16 +879,14 @@ objects, err := e.Render(ctx)
 ### 12.5. Dynamic Values
 
 ```go
-helmRenderer, _ := helm.New([]helm.Source{
-    {
-        Chart:       "oci://registry/chart",
-        ReleaseName: "dynamic",
-        Values: func(ctx context.Context) (map[string]any, error) {
-            return map[string]any{
-                "appId": xid.New().String(),
-                "timestamp": time.Now().Unix(),
-            }, nil
-        },
+e, _ := engine.Helm(helm.Source{
+    Chart:       "oci://registry/chart",
+    ReleaseName: "dynamic",
+    Values: func(ctx context.Context) (map[string]any, error) {
+        return map[string]any{
+            "appId": xid.New().String(),
+            "timestamp": time.Now().Unix(),
+        }, nil
     },
 })
 ```
