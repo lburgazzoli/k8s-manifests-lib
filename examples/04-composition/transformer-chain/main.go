@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Transformer Chain Composition Example ===\n")
+	fmt.Println("=== Transformer Chain Composition Example ===")
 	fmt.Println("Demonstrates: transformer.Chain() for sequential transformations")
 	fmt.Println()
 

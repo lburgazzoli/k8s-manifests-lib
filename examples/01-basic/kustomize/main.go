@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Basic Kustomize Example ===\n")
+	fmt.Println("=== Basic Kustomize Example ===")
 	fmt.Println("Demonstrates: Simple Kustomize directory rendering using engine.Kustomize() convenience function")
 	fmt.Println()
 

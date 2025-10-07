@@ -17,7 +17,7 @@ func benchmarkRender(name string, e *engine.Engine, iterations int) {
 	ctx := context.Background()
 	var totalDuration time.Duration
 
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		start := time.Now()
 		objects, err := e.Render(ctx)
 		if err != nil {
@@ -34,7 +34,7 @@ func benchmarkRender(name string, e *engine.Engine, iterations int) {
 }
 
 func main() {
-	fmt.Println("=== Cache Performance Comparison ===\n")
+	fmt.Println("=== Cache Performance Comparison ===")
 	fmt.Println("Demonstrates: Performance benefits of caching")
 	fmt.Println()
 
@@ -70,7 +70,7 @@ func main() {
 				}),
 			},
 		},
-		helm.WithCache(cache.WithTTL(5 * time.Minute)),
+		helm.WithCache(cache.WithTTL(5*time.Minute)),
 	)
 	if err != nil {
 		log.Fatal(err)

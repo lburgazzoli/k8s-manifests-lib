@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Namespace Transformation Example ===\n")
+	fmt.Println("=== Namespace Transformation Example ===")
 	fmt.Println("Demonstrates: Setting and ensuring namespaces on objects")
 	fmt.Println()
 

@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Filter Boolean Composition Example ===\n")
+	fmt.Println("=== Filter Boolean Composition Example ===")
 	fmt.Println("Demonstrates: filter.And(), filter.Or(), filter.Not()")
 	fmt.Println()
 
@@ -62,7 +62,7 @@ func main() {
 	fmt.Printf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
 
 	// Show another example: production Deployments with specific labels OR staging Services
-	fmt.Println("\n=== Example 2: Complex OR Logic ===\n")
+	fmt.Println("\n=== Example 2: Complex OR Logic ===")
 
 	complexFilter := filter.Or(
 		filter.And(

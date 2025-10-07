@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Basic Helm Example ===\n")
+	fmt.Println("=== Basic Helm Example ===")
 	fmt.Println("Demonstrates: Simple Helm chart rendering using engine.Helm() convenience function")
 	fmt.Println()
 

@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Complex Nested Composition Example ===\n")
+	fmt.Println("=== Complex Nested Composition Example ===")
 	fmt.Println("Demonstrates: Deep nesting of filters and transformers")
 	fmt.Println()
 

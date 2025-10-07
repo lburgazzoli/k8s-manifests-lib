@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Dynamic Values Example ===\n")
+	fmt.Println("=== Dynamic Values Example ===")
 	fmt.Println("Demonstrates: Using dynamic values function for runtime configuration")
 	fmt.Println()
 

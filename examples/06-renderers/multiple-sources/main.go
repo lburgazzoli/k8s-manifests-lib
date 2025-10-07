@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Multiple Helm Sources Example ===\n")
+	fmt.Println("=== Multiple Helm Sources Example ===")
 	fmt.Println("Demonstrates: Rendering multiple Helm charts with a single renderer")
 	fmt.Println()
 

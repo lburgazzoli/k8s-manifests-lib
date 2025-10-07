@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Conditional Transformations Example ===\n")
+	fmt.Println("=== Conditional Transformations Example ===")
 	fmt.Println("Demonstrates: transformer.If() for applying transformations conditionally")
 	fmt.Println()
 

@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Multi-Environment Deployment Pipeline Example ===\n")
+	fmt.Println("=== Multi-Environment Deployment Pipeline Example ===")
 	fmt.Println("Demonstrates: Combined filtering and environment-specific transformations")
 	fmt.Println()
 

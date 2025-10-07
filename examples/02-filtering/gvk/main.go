@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== GVK (Group/Version/Kind) Filtering Example ===\n")
+	fmt.Println("=== GVK (Group/Version/Kind) Filtering Example ===")
 	fmt.Println("Demonstrates: Filtering objects by Kind and API version")
 	fmt.Println()
 

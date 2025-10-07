@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Name Transformation Example ===\n")
+	fmt.Println("=== Name Transformation Example ===")
 	fmt.Println("Demonstrates: Modifying object names with prefix, suffix, and replace")
 	fmt.Println()
 

@@ -14,7 +14,7 @@ import (
 var manifestsFS embed.FS
 
 func main() {
-	fmt.Println("=== Basic YAML Example ===\n")
+	fmt.Println("=== Basic YAML Example ===")
 	fmt.Println("Demonstrates: Simple YAML file loading using engine.Yaml() convenience function")
 	fmt.Println()
 

@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Filter Conditional Composition Example ===\n")
+	fmt.Println("=== Filter Conditional Composition Example ===")
 	fmt.Println("Demonstrates: filter.If() for conditional filtering")
 	fmt.Println()
 
@@ -55,7 +55,7 @@ func main() {
 	fmt.Println("(Production objects must have 'critical' label, others pass through)")
 
 	// Show another example: combine multiple conditional filters
-	fmt.Println("\n=== Example 2: Multiple Conditional Filters ===\n")
+	fmt.Println("\n=== Example 2: Multiple Conditional Filters ===")
 
 	multiFilter := filter.And(
 		// All objects must be Deployments

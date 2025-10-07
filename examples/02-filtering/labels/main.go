@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Label Filtering Example ===\n")
+	fmt.Println("=== Label Filtering Example ===")
 	fmt.Println("Demonstrates: Filtering objects by labels")
 	fmt.Println()
 

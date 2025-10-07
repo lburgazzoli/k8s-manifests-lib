@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Multiple Renderers Example ===\n")
+	fmt.Println("=== Multiple Renderers Example ===")
 	fmt.Println("Demonstrates: Combining Helm, Kustomize, and YAML renderers")
 	fmt.Println()
 

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Namespace Filtering Example ===\n")
+	fmt.Println("=== Namespace Filtering Example ===")
 	fmt.Println("Demonstrates: Filtering objects by namespace")
 	fmt.Println()
 

@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== JQ Filtering Example ===\n")
+	fmt.Println("=== JQ Filtering Example ===")
 	fmt.Println("Demonstrates: Filtering objects using JQ expressions")
 	fmt.Println()
 

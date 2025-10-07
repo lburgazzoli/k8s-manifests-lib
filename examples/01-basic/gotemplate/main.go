@@ -14,7 +14,7 @@ import (
 var templatesFS embed.FS
 
 func main() {
-	fmt.Println("=== Basic Go Template Example ===\n")
+	fmt.Println("=== Basic Go Template Example ===")
 	fmt.Println("Demonstrates: Simple Go template rendering using engine.GoTemplate() convenience function")
 	fmt.Println()
 

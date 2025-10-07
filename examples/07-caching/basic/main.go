@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Basic Caching Example ===\n")
+	fmt.Println("=== Basic Caching Example ===")
 	fmt.Println("Demonstrates: Enabling cache with TTL for improved performance")
 	fmt.Println()
 
@@ -28,7 +28,7 @@ func main() {
 			},
 		},
 		// Enable caching with 5-minute TTL
-		helm.WithCache(cache.WithTTL(5 * time.Minute)),
+		helm.WithCache(cache.WithTTL(5*time.Minute)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create Helm renderer: %v", err)

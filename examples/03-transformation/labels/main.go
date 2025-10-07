@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Label Transformation Example ===\n")
+	fmt.Println("=== Label Transformation Example ===")
 	fmt.Println("Demonstrates: Adding, updating, and removing labels")
 	fmt.Println()
 
@@ -29,10 +29,10 @@ func main() {
 	// Example 1: Add/Update labels
 	fmt.Println("1. Set - Add or update labels")
 	setTransformer := labels.Set(map[string]string{
-		"env":                              "production",
-		"tier":                             "frontend",
-		"app.kubernetes.io/managed-by":     "k8s-manifests-lib",
-		"app.kubernetes.io/part-of":        "nginx-stack",
+		"env":                          "production",
+		"tier":                         "frontend",
+		"app.kubernetes.io/managed-by": "k8s-manifests-lib",
+		"app.kubernetes.io/part-of":    "nginx-stack",
 	})
 
 	e1 := engine.New(

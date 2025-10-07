@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Annotation Transformation Example ===\n")
+	fmt.Println("=== Annotation Transformation Example ===")
 	fmt.Println("Demonstrates: Adding, updating, and removing annotations")
 	fmt.Println()
 
@@ -28,11 +28,11 @@ func main() {
 	// Example 1: Add/Update annotations
 	fmt.Println("1. Set - Add or update annotations")
 	setTransformer := annotations.Set(map[string]string{
-		"description":                "NGINX web server",
-		"contact":                    "team@example.com",
-		"deployed-by":                "k8s-manifests-lib",
-		"prometheus.io/scrape":       "true",
-		"prometheus.io/port":         "9113",
+		"description":          "NGINX web server",
+		"contact":              "team@example.com",
+		"deployed-by":          "k8s-manifests-lib",
+		"prometheus.io/scrape": "true",
+		"prometheus.io/port":   "9113",
 	})
 
 	e1 := engine.New(

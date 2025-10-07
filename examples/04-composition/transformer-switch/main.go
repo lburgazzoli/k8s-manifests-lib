@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Transformer Switch Composition Example ===\n")
+	fmt.Println("=== Transformer Switch Composition Example ===")
 	fmt.Println("Demonstrates: transformer.Switch() for multi-branch transformations")
 	fmt.Println()
 
