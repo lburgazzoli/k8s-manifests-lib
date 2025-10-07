@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 	"slices"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Source represents the input for a YAML rendering operation.

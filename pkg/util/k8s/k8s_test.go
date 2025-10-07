@@ -1,10 +1,13 @@
-package k8s
+package k8s_test
 
 import (
 	"testing"
 
-	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
+
+	. "github.com/onsi/gomega"
 )
 
 const singleDocumentYAML = `
@@ -106,7 +109,7 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 	t.Run("returns nil for nil input", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result := DeepCloneUnstructuredSlice(nil)
+		result := k8s.DeepCloneUnstructuredSlice(nil)
 
 		g.Expect(result).Should(BeNil())
 	})
@@ -114,7 +117,7 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 	t.Run("returns empty slice for empty input", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result := DeepCloneUnstructuredSlice([]unstructured.Unstructured{})
+		result := k8s.DeepCloneUnstructuredSlice([]unstructured.Unstructured{})
 
 		g.Expect(result).Should(BeEmpty())
 	})
@@ -137,7 +140,7 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 			},
 		}
 
-		cloned := DeepCloneUnstructuredSlice(original)
+		cloned := k8s.DeepCloneUnstructuredSlice(original)
 
 		g.Expect(cloned).Should(HaveLen(1))
 		g.Expect(cloned[0].GetName()).Should(Equal("test"))
@@ -175,7 +178,7 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 			},
 		}
 
-		cloned := DeepCloneUnstructuredSlice(original)
+		cloned := k8s.DeepCloneUnstructuredSlice(original)
 
 		g.Expect(cloned).Should(HaveLen(2))
 		g.Expect(cloned[0].GetKind()).Should(Equal("ConfigMap"))
@@ -187,7 +190,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("decodes single YAML document", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(singleDocumentYAML))
+		result, err := k8s.DecodeYAML([]byte(singleDocumentYAML))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(1))
@@ -198,7 +201,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("decodes multiple YAML documents", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(multipleDocumentsYAML))
+		result, err := k8s.DecodeYAML([]byte(multipleDocumentsYAML))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(3))
@@ -210,7 +213,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("skips empty documents", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(emptyDocumentsYAML))
+		result, err := k8s.DecodeYAML([]byte(emptyDocumentsYAML))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(2))
@@ -219,7 +222,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("skips documents without kind", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(missingKindYAML))
+		result, err := k8s.DecodeYAML([]byte(missingKindYAML))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(1))
@@ -229,7 +232,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("handles empty content", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte{})
+		result, err := k8s.DecodeYAML([]byte{})
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(BeEmpty())
@@ -238,7 +241,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("handles nil content", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML(nil)
+		result, err := k8s.DecodeYAML(nil)
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(BeEmpty())
@@ -247,7 +250,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("returns error for invalid YAML", func(t *testing.T) {
 		g := NewWithT(t)
 
-		_, err := DecodeYAML([]byte(invalidYAML))
+		_, err := k8s.DecodeYAML([]byte(invalidYAML))
 
 		g.Expect(err).Should(HaveOccurred())
 		g.Expect(err.Error()).Should(ContainSubstring("unable to decode YAML document"))
@@ -256,7 +259,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("handles YAML with comments", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(yamlWithComments))
+		result, err := k8s.DecodeYAML([]byte(yamlWithComments))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(1))
@@ -266,7 +269,7 @@ func TestDecodeYAML(t *testing.T) {
 	t.Run("decodes complex nested structures", func(t *testing.T) {
 		g := NewWithT(t)
 
-		result, err := DecodeYAML([]byte(complexNestedYAML))
+		result, err := k8s.DecodeYAML([]byte(complexNestedYAML))
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(1))
@@ -292,7 +295,7 @@ func TestToUnstructured(t *testing.T) {
 			},
 		}
 
-		result, err := ToUnstructured(&obj)
+		result, err := k8s.ToUnstructured(&obj)
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).ShouldNot(BeNil())
@@ -318,7 +321,7 @@ func TestToUnstructured(t *testing.T) {
 			},
 		}
 
-		result, err := ToUnstructured(&obj)
+		result, err := k8s.ToUnstructured(&obj)
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).ShouldNot(BeNil())
@@ -331,7 +334,7 @@ func TestToUnstructured(t *testing.T) {
 
 		obj := map[string]interface{}{}
 
-		result, err := ToUnstructured(&obj)
+		result, err := k8s.ToUnstructured(&obj)
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).ShouldNot(BeNil())
@@ -357,7 +360,7 @@ func TestToUnstructured(t *testing.T) {
 			},
 		}
 
-		result, err := ToUnstructured(&obj)
+		result, err := k8s.ToUnstructured(&obj)
 
 		g.Expect(err).ShouldNot(HaveOccurred())
 
