@@ -434,3 +434,146 @@ type mockRenderer struct {
 func (m *mockRenderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
 	return m.processFunc(ctx)
 }
+
+func TestParallelRendering(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should render with parallel enabled", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
+		renderer3 := newMockRenderer([]unstructured.Unstructured{makePod("pod3")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithRenderer(renderer3),
+			engine.WithParallel(true),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(3))
+
+		names := []string{objects[0].GetName(), objects[1].GetName(), objects[2].GetName()}
+		g.Expect(names).To(ContainElements("pod1", "pod2", "pod3"))
+	})
+
+	t.Run("should render sequentially with parallel disabled", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithParallel(false),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+		g.Expect(objects[0].GetName()).To(Equal("pod1"))
+		g.Expect(objects[1].GetName()).To(Equal("pod2"))
+	})
+
+	t.Run("should render sequentially by default", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+		g.Expect(objects[0].GetName()).To(Equal("pod1"))
+		g.Expect(objects[1].GetName()).To(Equal("pod2"))
+	})
+
+	t.Run("should handle error in parallel mode", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := &mockRenderer{
+			processFunc: func(_ context.Context) ([]unstructured.Unstructured, error) {
+				return nil, errors.New("renderer2 failed")
+			},
+		}
+		renderer3 := newMockRenderer([]unstructured.Unstructured{makePod("pod3")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithRenderer(renderer3),
+			engine.WithParallel(true),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("renderer2 failed"))
+		g.Expect(objects).To(BeNil())
+	})
+
+	t.Run("should apply filters after parallel rendering", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makeService()})
+		renderer3 := newMockRenderer([]unstructured.Unstructured{makePod("pod3")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithRenderer(renderer3),
+			engine.WithFilter(podFilter()),
+			engine.WithParallel(true),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+
+		for _, obj := range objects {
+			g.Expect(obj.GetKind()).To(Equal("Pod"))
+		}
+	})
+
+	t.Run("should apply transformers after parallel rendering", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithTransformer(addLabels(map[string]string{"parallel": "true"})),
+			engine.WithParallel(true),
+		)
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+
+		for _, obj := range objects {
+			g.Expect(obj.GetLabels()).To(HaveKeyWithValue("parallel", "true"))
+		}
+	})
+
+	t.Run("should handle empty renderers in parallel mode", func(t *testing.T) {
+		e := engine.New(engine.WithParallel(true))
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(BeEmpty())
+	})
+
+	t.Run("should support struct-based option for parallel", func(t *testing.T) {
+		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
+
+		e := engine.New(&engine.EngineOptions{
+			Renderers: []types.Renderer{renderer1, renderer2},
+			Parallel:  true,
+		})
+
+		objects, err := e.Render(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+	})
+}

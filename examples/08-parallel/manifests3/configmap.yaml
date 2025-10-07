@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app3-config
+  namespace: default
+data:
+  app.conf: |
+    server {
+      listen 8080;
+    }

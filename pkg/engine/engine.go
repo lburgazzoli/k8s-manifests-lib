@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -56,16 +57,18 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 		opt.ApplyTo(&renderOpts)
 	}
 
-	allObjects := make([]unstructured.Unstructured, 0)
+	var allObjects []unstructured.Unstructured
+	var err error
 
-	// Process each renderer
-	for i, renderer := range e.options.renderers {
-		objects, err := renderer.Process(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", i, renderer, err)
-		}
+	// Process renderers in parallel or sequentially
+	if e.options.parallel {
+		allObjects, err = e.renderParallel(ctx)
+	} else {
+		allObjects, err = e.renderSequential(ctx)
+	}
 
-		allObjects = append(allObjects, objects...)
+	if err != nil {
+		return nil, err
 	}
 
 	// Apply filters
@@ -81,4 +84,56 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	}
 
 	return transformed, nil
+}
+
+// renderSequential processes renderers sequentially in order.
+func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructured, error) {
+	allObjects := make([]unstructured.Unstructured, 0)
+
+	for i, renderer := range e.options.renderers {
+		objects, err := renderer.Process(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", i, renderer, err)
+		}
+
+		allObjects = append(allObjects, objects...)
+	}
+
+	return allObjects, nil
+}
+
+// renderParallel processes all renderers concurrently using goroutines.
+func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructured, error) {
+	type result struct {
+		objects []unstructured.Unstructured
+		err     error
+		index   int
+	}
+
+	results := make(chan result, len(e.options.renderers))
+	var wg sync.WaitGroup
+
+	for i, renderer := range e.options.renderers {
+		wg.Add(1)
+		go func(idx int, r types.Renderer) {
+			defer wg.Done()
+			objects, err := r.Process(ctx)
+			results <- result{objects: objects, err: err, index: idx}
+		}(i, renderer)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	allObjects := make([]unstructured.Unstructured, 0)
+	for res := range results {
+		if res.err != nil {
+			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", res.index, e.options.renderers[res.index], res.err)
+		}
+		allObjects = append(allObjects, res.objects...)
+	}
+
+	return allObjects, nil
 }

@@ -46,7 +46,7 @@ test:
 
 .PHONY: bench
 bench:
-	go test -bench=. -benchmem ./pkg/renderer/...
+	go test -bench=. -benchmem ./pkg/renderer/... ./pkg/engine/...
 
 .PHONY: bench/helm
 bench/helm:
@@ -63,6 +63,22 @@ bench/kustomize:
 .PHONY: bench/yaml
 bench/yaml:
 	go test -bench=. -benchmem ./pkg/renderer/yaml
+
+.PHONY: bench/engine
+bench/engine:
+	go test -bench=. -benchmem ./pkg/engine
+
+.PHONY: bench/engine/parallel
+bench/engine/parallel:
+	go test -bench=BenchmarkEngine.*Parallel -benchmem ./pkg/engine
+
+.PHONY: bench/engine/sequential
+bench/engine/sequential:
+	go test -bench=BenchmarkEngine.*Sequential -benchmem ./pkg/engine
+
+.PHONY: bench/engine/helm
+bench/engine/helm:
+	go test -bench=BenchmarkEngineHelm -benchmem -benchtime=10x ./pkg/engine
 
 .PHONY: bench/compare
 bench/compare:

@@ -164,3 +164,168 @@ func TestMem(t *testing.T) {
 		g.Expect(objects).Should(BeEmpty())
 	})
 }
+
+func benchmarkEngineRender(b *testing.B, parallel bool) {
+	b.Helper()
+	ctx := context.Background()
+
+	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+		},
+	}
+
+	renderer1 := mem.Source{
+		Objects: []unstructured.Unstructured{
+			{Object: map[string]any{
+				"apiVersion": pod.APIVersion,
+				"kind":       pod.Kind,
+				"metadata": map[string]any{
+					"name":      pod.Name,
+					"namespace": pod.Namespace,
+				},
+			}},
+		},
+	}
+	renderer2 := mem.Source{
+		Objects: []unstructured.Unstructured{
+			{Object: map[string]any{
+				"apiVersion": pod.APIVersion,
+				"kind":       pod.Kind,
+				"metadata": map[string]any{
+					"name":      "pod2",
+					"namespace": pod.Namespace,
+				},
+			}},
+		},
+	}
+	renderer3 := mem.Source{
+		Objects: []unstructured.Unstructured{
+			{Object: map[string]any{
+				"apiVersion": pod.APIVersion,
+				"kind":       pod.Kind,
+				"metadata": map[string]any{
+					"name":      "pod3",
+					"namespace": pod.Namespace,
+				},
+			}},
+		},
+	}
+
+	r1, _ := mem.New([]mem.Source{renderer1})
+	r2, _ := mem.New([]mem.Source{renderer2})
+	r3, _ := mem.New([]mem.Source{renderer3})
+
+	e := engine.New(
+		engine.WithRenderer(r1),
+		engine.WithRenderer(r2),
+		engine.WithRenderer(r3),
+		engine.WithParallel(parallel),
+	)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for range b.N {
+		_, err := e.Render(ctx)
+		if err != nil {
+			b.Fatalf("failed to render: %v", err)
+		}
+	}
+}
+
+func BenchmarkEngineRenderSequential(b *testing.B) {
+	benchmarkEngineRender(b, false)
+}
+
+func BenchmarkEngineRenderParallel(b *testing.B) {
+	benchmarkEngineRender(b, true)
+}
+
+func benchmarkEngineHelm(b *testing.B, parallel bool) {
+	b.Helper()
+	ctx := context.Background()
+
+	prefix := "bench-seq"
+	if parallel {
+		prefix = "bench-par"
+	}
+
+	helmRenderer1, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: prefix + "-1",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-1",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 1: %v", err)
+	}
+
+	helmRenderer2, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: prefix + "-2",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-2",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 2: %v", err)
+	}
+
+	helmRenderer3, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: prefix + "-3",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-3",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 3: %v", err)
+	}
+
+	e := engine.New(
+		engine.WithRenderer(helmRenderer1),
+		engine.WithRenderer(helmRenderer2),
+		engine.WithRenderer(helmRenderer3),
+		engine.WithParallel(parallel),
+	)
+
+	// Warm up cache
+	_, _ = e.Render(ctx)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for range b.N {
+		_, err := e.Render(ctx)
+		if err != nil {
+			b.Fatalf("failed to render: %v", err)
+		}
+	}
+}
+
+func BenchmarkEngineHelmSequential(b *testing.B) {
+	benchmarkEngineHelm(b, false)
+}
+
+func BenchmarkEngineHelmParallel(b *testing.B) {
+	benchmarkEngineHelm(b, true)
+}

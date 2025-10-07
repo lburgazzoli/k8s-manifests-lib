@@ -16,6 +16,7 @@ type engineOptions struct {
 	renderOptions
 
 	renderers []types.Renderer
+	parallel  bool
 }
 
 // renderOptions represents the processing options for rendering.
@@ -34,12 +35,16 @@ type EngineOptions struct {
 
 	// Transformers are engine-level transformers applied to all renders.
 	Transformers []types.Transformer
+
+	// Parallel enables parallel execution of renderers.
+	Parallel bool
 }
 
 func (opts EngineOptions) ApplyTo(target *engineOptions) {
 	target.renderers = opts.Renderers
 	target.filters = opts.Filters
 	target.transformers = opts.Transformers
+	target.parallel = opts.Parallel
 }
 
 // RenderOptions is a struct-based option that can set multiple render options at once.
@@ -147,4 +152,14 @@ type RenderTransformerOption struct {
 
 func (rto RenderTransformerOption) ApplyToRenderOptions(o *renderOptions) {
 	o.transformers = append(o.transformers, rto.Transformer)
+}
+
+// WithParallel enables or disables parallel execution of renderers.
+// When enabled, all renderers execute concurrently using goroutines.
+// When disabled (default), renderers execute sequentially.
+// Parallel execution is beneficial for I/O-bound renderers (Helm OCI fetch, file reads).
+func WithParallel(enabled bool) EngineOption {
+	return util.FunctionalOption[engineOptions](func(o *engineOptions) {
+		o.parallel = enabled
+	})
 }

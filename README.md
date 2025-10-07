@@ -45,6 +45,7 @@ Unlike CLI tools, this library provides a **Go API** for manifest operations, en
 * Three-level filtering/transformation pipeline (renderer-specific, engine-level, render-time)
 * Extensible engine for custom processing
 * Built-in caching with TTL support and automatic deep cloning
+* Parallel rendering for I/O-bound renderers
 * Functional options pattern for flexible configuration
 
 ## Installation
@@ -144,6 +145,7 @@ For specific use cases and patterns, see the [examples directory](examples/):
 - **[05-advanced/](examples/05-advanced/)** - [Three-level pipeline](examples/05-advanced/three-level-pipeline/main.go), [multi-environment](examples/05-advanced/multi-environment/main.go), [conditional transformations](examples/05-advanced/conditional-transformations/main.go), [complex nested](examples/05-advanced/complex-nested/main.go)
 - **[06-renderers/](examples/06-renderers/)** - [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go)
 - **[07-caching/](examples/07-caching/)** - [Basic cache](examples/07-caching/basic/main.go), [performance benchmarks](examples/07-caching/performance/main.go)
+- **[08-parallel/](examples/08-parallel/)** - [Parallel rendering](examples/08-parallel/main.go) for improved performance with I/O-bound renderers
 
 See the [Examples README](examples/README.md) for a complete catalog with a recommended learning path.
 
