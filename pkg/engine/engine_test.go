@@ -9,8 +9,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
+)
+
+const (
+	defaultNamespace = "default"
+	systemNamespace  = "kube-system"
 )
 
 func TestNew(t *testing.T) {
@@ -141,8 +147,8 @@ func TestEngineRender(t *testing.T) {
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePod("pod1"),
 			makeService(),
-			makePodWithNamespace("pod2", "default"),
-			makePodWithNamespace("pod3", "kube-system"),
+			makePodWithNamespace("pod2", defaultNamespace),
+			makePodWithNamespace("pod3", systemNamespace),
 		})
 
 		// Engine-level: only Pods
@@ -154,7 +160,7 @@ func TestEngineRender(t *testing.T) {
 
 		// Render-time: only default namespace
 		renderFilter := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
-			return obj.GetNamespace() == "default" || obj.GetNamespace() == "", nil
+			return obj.GetNamespace() == defaultNamespace || obj.GetNamespace() == "", nil
 		}
 
 		objects, err := e.Render(t.Context(), engine.WithRenderFilter(renderFilter))
@@ -257,14 +263,14 @@ func TestEngineRender(t *testing.T) {
 
 	t.Run("should apply multiple filters in sequence", func(t *testing.T) {
 		renderer := newMockRenderer([]unstructured.Unstructured{
-			makePodWithNamespace("pod1", "default"),
-			makePodWithNamespace("pod2", "kube-system"),
+			makePodWithNamespace("pod1", defaultNamespace),
+			makePodWithNamespace("pod2", systemNamespace),
 			makeService(),
 		})
 
 		filter1 := podFilter()
 		filter2 := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
-			return obj.GetNamespace() == "default", nil
+			return obj.GetNamespace() == defaultNamespace, nil
 		}
 
 		e := engine.New(
@@ -296,6 +302,51 @@ func TestEngineRender(t *testing.T) {
 		g.Expect(objects).To(HaveLen(1))
 		g.Expect(objects[0].GetLabels()).To(HaveKeyWithValue("label1", "value1"))
 		g.Expect(objects[0].GetLabels()).To(HaveKeyWithValue("label2", "value2"))
+	})
+
+	t.Run("should append struct-based RenderOptions filters to engine-level filters", func(t *testing.T) {
+		renderer := newMockRenderer([]unstructured.Unstructured{
+			makePodWithNamespace("pod1", defaultNamespace),
+			makePodWithNamespace("pod2", systemNamespace),
+			makeService(),
+		})
+
+		engineFilter := podFilter()
+		e := engine.New(
+			engine.WithRenderer(renderer),
+			engine.WithFilter(engineFilter),
+		)
+
+		renderFilter := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
+			return obj.GetNamespace() == defaultNamespace, nil
+		}
+
+		objects, err := e.Render(t.Context(), engine.RenderOptions{
+			Filters: []types.Filter{renderFilter},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(1))
+		g.Expect(objects[0].GetName()).To(Equal("pod1"))
+	})
+
+	t.Run("should append struct-based RenderOptions transformers to engine-level transformers", func(t *testing.T) {
+		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
+
+		engineTransformer := addLabels(map[string]string{"engine": "level"})
+		e := engine.New(
+			engine.WithRenderer(renderer),
+			engine.WithTransformer(engineTransformer),
+		)
+
+		renderTransformer := addLabels(map[string]string{"render": "time"})
+
+		objects, err := e.Render(t.Context(), engine.RenderOptions{
+			Transformers: []types.Transformer{renderTransformer},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(1))
+		g.Expect(objects[0].GetLabels()).To(HaveKeyWithValue("engine", "level"))
+		g.Expect(objects[0].GetLabels()).To(HaveKeyWithValue("render", "time"))
 	})
 }
 

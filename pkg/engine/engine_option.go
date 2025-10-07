@@ -54,8 +54,8 @@ type RenderOptions struct {
 }
 
 func (opts RenderOptions) ApplyTo(target *renderOptions) {
-	target.filters = opts.Filters
-	target.transformers = opts.Transformers
+	target.filters = append(target.filters, opts.Filters...)
+	target.transformers = append(target.transformers, opts.Transformers...)
 }
 
 // WithRenderer adds a configured renderer to the engine.
