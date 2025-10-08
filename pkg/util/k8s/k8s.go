@@ -54,7 +54,15 @@ func DecodeYAML(content []byte) ([]unstructured.Unstructured, error) {
 			continue
 		}
 
-		if v, ok := out["kind"]; !ok || v == "" {
+		// Validate kind field exists and is a non-empty string
+		kind, ok := out["kind"].(string)
+		if !ok || kind == "" {
+			continue
+		}
+
+		// Validate apiVersion field exists and is a non-empty string
+		apiVersion, ok := out["apiVersion"].(string)
+		if !ok || apiVersion == "" {
 			continue
 		}
 

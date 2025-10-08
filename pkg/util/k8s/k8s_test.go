@@ -62,6 +62,46 @@ metadata:
   name: with-kind
 `
 
+const missingAPIVersionYAML = `
+kind: ConfigMap
+metadata:
+  name: no-apiversion
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: with-apiversion
+`
+
+const emptyAPIVersionYAML = `
+apiVersion: ""
+kind: ConfigMap
+metadata:
+  name: empty-apiversion
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valid
+`
+
+const nonStringFieldsYAML = `
+apiVersion: 123
+kind: ConfigMap
+metadata:
+  name: numeric-apiversion
+---
+apiVersion: v1
+kind: 456
+metadata:
+  name: numeric-kind
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valid
+`
+
 const invalidYAML = `
 apiVersion: v1
 kind: ConfigMap
@@ -227,6 +267,36 @@ func TestDecodeYAML(t *testing.T) {
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(result).Should(HaveLen(1))
 		g.Expect(result[0].GetName()).Should(Equal("with-kind"))
+	})
+
+	t.Run("skips documents without apiVersion", func(t *testing.T) {
+		g := NewWithT(t)
+
+		result, err := k8s.DecodeYAML([]byte(missingAPIVersionYAML))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(result).Should(HaveLen(1))
+		g.Expect(result[0].GetName()).Should(Equal("with-apiversion"))
+	})
+
+	t.Run("skips documents with empty apiVersion", func(t *testing.T) {
+		g := NewWithT(t)
+
+		result, err := k8s.DecodeYAML([]byte(emptyAPIVersionYAML))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(result).Should(HaveLen(1))
+		g.Expect(result[0].GetName()).Should(Equal("valid"))
+	})
+
+	t.Run("skips documents with non-string kind or apiVersion", func(t *testing.T) {
+		g := NewWithT(t)
+
+		result, err := k8s.DecodeYAML([]byte(nonStringFieldsYAML))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(result).Should(HaveLen(1))
+		g.Expect(result[0].GetName()).Should(Equal("valid"))
 	})
 
 	t.Run("handles empty content", func(t *testing.T) {
