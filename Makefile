@@ -6,9 +6,8 @@ LINT_GOGC := 10
 LINT_TIMEOUT := 10m
 
 ## Tools
-GOLANGCI ?= $(LOCALBIN)/golangci-lint
 GOLANGCI_VERSION ?= v2.5.0
-KUBECTL ?= kubectl
+GOLANGCI ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -36,7 +35,7 @@ clean:
 	go clean -x -testcache
 
 .PHONY: fmt
-fmt: golangci-lint
+fmt:
 	@$(GOLANGCI) fmt --config .golangci.yml
 	go fmt ./...
 
@@ -89,20 +88,15 @@ deps:
 	go mod tidy
 
 .PHONY: lint
-lint: golangci-lint
+lint:
 	@$(GOLANGCI) run --config .golangci.yml --timeout $(LINT_TIMEOUT)
 
 .PHONY: lint/fix
-lint/fix: golangci-lint
+lint/fix:
 	@$(GOLANGCI) run --config .golangci.yml --timeout $(LINT_TIMEOUT) --fix
 
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	@mkdir -p $(LOCALBIN)
 
-.PHONY: golangci-lint
-golangci-lint: $(GOLANGCI)
-$(GOLANGCI): $(LOCALBIN)
-	@test -s $(GOLANGCI) || \
-	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
