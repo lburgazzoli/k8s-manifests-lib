@@ -347,23 +347,31 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should return error for non-existent chart", func(t *testing.T) {
-		_, err := helm.New([]helm.Source{
+		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/non-existent/chart",
 				ReleaseName: "test",
 			},
 		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(renderer).ToNot(BeNil())
+
+		_, err = renderer.Process(t.Context())
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("unable to load chart"))
+		g.Expect(err.Error()).To(ContainSubstring("unable to locate chart"))
 	})
 
 	t.Run("should return error for invalid chart path", func(t *testing.T) {
-		_, err := helm.New([]helm.Source{
+		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "/non/existent/path",
 				ReleaseName: "test",
 			},
 		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(renderer).ToNot(BeNil())
+
+		_, err = renderer.Process(t.Context())
 		g.Expect(err).To(HaveOccurred())
 	})
 }

@@ -110,31 +110,6 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		RegistryClient: c,
 	})
 
-	// Load charts
-	for i, input := range r.inputs {
-		opt := r.install.ChartPathOptions
-		opt.RepoURL = input.Repo
-		opt.Version = input.ReleaseVersion
-
-		path, err := opt.LocateChart(input.Chart, r.settings)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to load chart (repo: %s, name: %s, version: %s): %w",
-				input.Repo,
-				input.Chart,
-				input.ReleaseVersion,
-				err)
-		}
-
-		// Load the chart
-		c, err := loader.Load(path)
-		if err != nil {
-			return nil, fmt.Errorf("input[%d]: failed to load chart: %w", i, err)
-		}
-
-		r.inputs[i].chart = c
-	}
-
 	return r, nil
 }
 
@@ -143,14 +118,46 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input)
+	for i := range r.inputs {
+		// Load chart if not already loaded (lazy loading for retry support)
+		if r.inputs[i].chart == nil {
+			opt := r.install.ChartPathOptions
+			opt.RepoURL = r.inputs[i].Repo
+			opt.Version = r.inputs[i].ReleaseVersion
+
+			path, err := opt.LocateChart(r.inputs[i].Chart, r.settings)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"input[%d]: unable to locate chart (repo: %s, name: %s, version: %s): %w",
+					i,
+					r.inputs[i].Repo,
+					r.inputs[i].Chart,
+					r.inputs[i].ReleaseVersion,
+					err)
+			}
+
+			c, err := loader.Load(path)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"input[%d]: failed to load chart (repo: %s, name: %s, version: %s): %w",
+					i,
+					r.inputs[i].Repo,
+					r.inputs[i].Chart,
+					r.inputs[i].ReleaseVersion,
+					err,
+				)
+			}
+
+			r.inputs[i].chart = c
+		}
+
+		objects, err := r.renderSingle(ctx, r.inputs[i])
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error rendering helm chart[%d] %s (release: %s): %w",
 				i,
-				input.Chart,
-				input.ReleaseName,
+				r.inputs[i].Chart,
+				r.inputs[i].ReleaseName,
 				err,
 			)
 		}
