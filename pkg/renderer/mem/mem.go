@@ -13,6 +13,8 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 )
 
+const rendererType = "mem"
+
 // Source represents the input for a memory-based rendering operation.
 type Source struct {
 	// Objects contains pre-constructed Kubernetes manifests to pass through.
@@ -66,4 +68,9 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 	}
 
 	return transformed, nil
+}
+
+// Name returns the renderer type identifier.
+func (r *Renderer) Name() string {
+	return rendererType
 }

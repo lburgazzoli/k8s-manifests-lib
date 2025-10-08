@@ -158,3 +158,40 @@ func TestRenderer(t *testing.T) {
 		})
 	}
 }
+
+func TestMetricsIntegration(t *testing.T) {
+	g := NewWithT(t)
+
+	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "metrics-pod",
+		},
+	}
+
+	// Metrics are now observed at the engine level, not in the renderer
+	// This test verifies that renderers work without metrics in context
+	t.Run("should work without metrics context", func(t *testing.T) {
+		unstrPod, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
+
+		renderer, err := mem.New([]mem.Source{{
+			Objects: []unstructured.Unstructured{
+				{Object: unstrPod},
+			},
+		}})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(1))
+	})
+
+	t.Run("should implement Name() method", func(t *testing.T) {
+		renderer, err := mem.New([]mem.Source{{}})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(renderer.Name()).To(Equal("mem"))
+	})
+}

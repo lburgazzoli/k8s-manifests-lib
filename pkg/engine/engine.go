@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/metrics"
 )
 
 // Engine represents the core manifest rendering and processing engine.
@@ -46,6 +48,8 @@ func New(opts ...EngineOption) *Engine {
 //
 // Render-time options are additive - they append to engine-level options.
 func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructured.Unstructured, error) {
+	startTime := time.Now()
+
 	// Initialize render options by cloning the engine's options
 	renderOpts := renderOptions{
 		filters:      slices.Clone(e.options.filters),
@@ -83,6 +87,8 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 		return nil, fmt.Errorf("engine transformer error: %w", err)
 	}
 
+	metrics.ObserveRender(ctx, time.Since(startTime), len(transformed))
+
 	return transformed, nil
 }
 
@@ -91,7 +97,11 @@ func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructu
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i, renderer := range e.options.renderers {
+		startTime := time.Now()
 		objects, err := renderer.Process(ctx)
+
+		metrics.ObserveRenderer(ctx, renderer.Name(), time.Since(startTime), len(objects), err)
+
 		if err != nil {
 			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", i, renderer, err)
 		}
@@ -105,9 +115,11 @@ func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructu
 // renderParallel processes all renderers concurrently using goroutines.
 func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructured, error) {
 	type result struct {
-		objects []unstructured.Unstructured
-		err     error
-		index   int
+		objects      []unstructured.Unstructured
+		err          error
+		index        int
+		rendererName string
+		duration     time.Duration
 	}
 
 	results := make(chan result, len(e.options.renderers))
@@ -117,8 +129,17 @@ func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructure
 		wg.Add(1)
 		go func(idx int, r types.Renderer) {
 			defer wg.Done()
+			startTime := time.Now()
 			objects, err := r.Process(ctx)
-			results <- result{objects: objects, err: err, index: idx}
+			duration := time.Since(startTime)
+
+			results <- result{
+				objects:      objects,
+				err:          err,
+				index:        idx,
+				rendererName: r.Name(),
+				duration:     duration,
+			}
 		}(i, renderer)
 	}
 
@@ -129,9 +150,12 @@ func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructure
 
 	allObjects := make([]unstructured.Unstructured, 0)
 	for res := range results {
+		metrics.ObserveRenderer(ctx, res.rendererName, res.duration, len(res.objects), res.err)
+
 		if res.err != nil {
 			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", res.index, e.options.renderers[res.index], res.err)
 		}
+
 		allObjects = append(allObjects, res.objects...)
 	}
 

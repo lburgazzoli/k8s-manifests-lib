@@ -429,10 +429,18 @@ func addLabels(labels map[string]string) func(context.Context, unstructured.Unst
 // mockRenderer is a mock implementation of types.Renderer for testing.
 type mockRenderer struct {
 	processFunc func(context.Context) ([]unstructured.Unstructured, error)
+	name        string
 }
 
 func (m *mockRenderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
 	return m.processFunc(ctx)
+}
+
+func (m *mockRenderer) Name() string {
+	if m.name != "" {
+		return m.name
+	}
+	return "mock"
 }
 
 func TestParallelRendering(t *testing.T) {

@@ -16,6 +16,8 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
+const rendererType = "yaml"
+
 // Source represents the input for a YAML rendering operation.
 type Source struct {
 	// FS is the filesystem containing YAML manifest files.
@@ -86,6 +88,11 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 	}
 
 	return transformed, nil
+}
+
+// Name returns the renderer type identifier.
+func (r *Renderer) Name() string {
+	return rendererType
 }
 
 // renderSingle performs the rendering for a single YAML input.

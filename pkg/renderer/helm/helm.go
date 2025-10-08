@@ -23,6 +23,8 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
+const rendererType = "helm"
+
 type Source struct {
 	// Repo is the repository URL for chart lookup. Optional for local or OCI charts.
 	Repo string
@@ -178,6 +180,11 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 	}
 
 	return transformed, nil
+}
+
+// Name returns the renderer type identifier.
+func (r *Renderer) Name() string {
+	return rendererType
 }
 
 func (r *Renderer) values(ctx context.Context, input Source) (map[string]any, error) {

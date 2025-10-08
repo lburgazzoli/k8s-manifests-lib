@@ -628,3 +628,44 @@ func BenchmarkHelmRenderCacheMiss(b *testing.B) {
 		}
 	}
 }
+
+func TestMetricsIntegration(t *testing.T) {
+	g := NewWithT(t)
+
+	// Metrics are now observed at the engine level, not in the renderer
+	// This test verifies that renderers work without metrics in context
+	t.Run("should work without metrics context", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+				ReleaseName: "metrics-test",
+				Values: helm.Values(map[string]any{
+					"shared": map[string]any{
+						"appId": "metrics-app",
+					},
+				}),
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context())
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+	})
+
+	t.Run("should implement Name() method", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+				ReleaseName: "name-test",
+				Values: helm.Values(map[string]any{
+					"shared": map[string]any{
+						"appId": "name-app",
+					},
+				}),
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(renderer.Name()).To(Equal("helm"))
+	})
+}

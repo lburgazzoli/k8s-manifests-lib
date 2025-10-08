@@ -19,4 +19,8 @@ type Transformer func(ctx context.Context, object unstructured.Unstructured) (un
 type Renderer interface {
 	// Process executes the rendering logic for all configured inputs of this renderer.
 	Process(ctx context.Context) ([]unstructured.Unstructured, error)
+
+	// Name returns the renderer type identifier for metrics and logging.
+	// Examples: "helm", "kustomize", "gotemplate", "yaml", "mem"
+	Name() string
 }
