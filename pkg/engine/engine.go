@@ -92,18 +92,28 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	return transformed, nil
 }
 
+// processRenderer executes a single renderer with timing, metrics, and error handling.
+func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer) ([]unstructured.Unstructured, error) {
+	startTime := time.Now()
+	objects, err := renderer.Process(ctx)
+
+	metrics.ObserveRenderer(ctx, renderer.Name(), time.Since(startTime), len(objects), err)
+
+	if err != nil {
+		return nil, fmt.Errorf("error processing renderer %q (%T): %w", renderer.Name(), renderer, err)
+	}
+
+	return objects, nil
+}
+
 // renderSequential processes renderers sequentially in order.
 func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for i, renderer := range e.options.renderers {
-		startTime := time.Now()
-		objects, err := renderer.Process(ctx)
-
-		metrics.ObserveRenderer(ctx, renderer.Name(), time.Since(startTime), len(objects), err)
-
+	for _, renderer := range e.options.renderers {
+		objects, err := e.processRenderer(ctx, renderer)
 		if err != nil {
-			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", i, renderer, err)
+			return nil, err
 		}
 
 		allObjects = append(allObjects, objects...)
@@ -115,32 +125,23 @@ func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructu
 // renderParallel processes all renderers concurrently using goroutines.
 func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructured, error) {
 	type result struct {
-		objects      []unstructured.Unstructured
-		err          error
-		index        int
-		rendererName string
-		duration     time.Duration
+		objects []unstructured.Unstructured
+		err     error
 	}
 
 	results := make(chan result, len(e.options.renderers))
 	var wg sync.WaitGroup
 
-	for i, renderer := range e.options.renderers {
+	for _, renderer := range e.options.renderers {
 		wg.Add(1)
-		go func(idx int, r types.Renderer) {
+		go func(r types.Renderer) {
 			defer wg.Done()
-			startTime := time.Now()
-			objects, err := r.Process(ctx)
-			duration := time.Since(startTime)
-
+			objects, err := e.processRenderer(ctx, r)
 			results <- result{
-				objects:      objects,
-				err:          err,
-				index:        idx,
-				rendererName: r.Name(),
-				duration:     duration,
+				objects: objects,
+				err:     err,
 			}
-		}(i, renderer)
+		}(renderer)
 	}
 
 	go func() {
@@ -150,10 +151,8 @@ func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructure
 
 	allObjects := make([]unstructured.Unstructured, 0)
 	for res := range results {
-		metrics.ObserveRenderer(ctx, res.rendererName, res.duration, len(res.objects), res.err)
-
 		if res.err != nil {
-			return nil, fmt.Errorf("error processing renderer[%d] (%T): %w", res.index, e.options.renderers[res.index], res.err)
+			return nil, res.err
 		}
 
 		allObjects = append(allObjects, res.objects...)
