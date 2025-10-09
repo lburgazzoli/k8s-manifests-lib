@@ -62,6 +62,7 @@ k8s-manifests-lib/
 │   │   └── mem/
 │   ├── filter/          # Filter implementations and composition
 │   │   ├── compose.go   # Filter composition (Or, And, Not, If)
+│   │   ├── error.go     # FilterError type
 │   │   ├── jq/
 │   │   └── meta/
 │   │       ├── annotations/  # Annotation filters
@@ -71,14 +72,17 @@ k8s-manifests-lib/
 │   │       └── namespace/   # Namespace filters
 │   ├── transformer/     # Transformer implementations and composition
 │   │   ├── compose.go   # Transformer composition (Chain, If, Switch)
+│   │   ├── error.go     # TransformerError type
 │   │   ├── jq/
 │   │   └── meta/
 │   │       ├── annotations/  # Annotation transformers
 │   │       ├── labels/       # Label transformers
 │   │       ├── name/         # Name transformers
 │   │       └── namespace/    # Namespace transformers
+│   ├── pipeline/        # Pipeline execution
+│   │   ├── apply.go     # ApplyFilters, ApplyTransformers, Apply
+│   │   └── apply_test.go
 │   └── util/           # Utility functions
-│       ├── filter.go
 │       ├── yaml.go
 │       ├── option.go
 │       └── cache/      # Caching implementation
@@ -732,9 +736,9 @@ engine.New(
 )
 ```
 
-**Order matters!** Implementation in `util.ApplyTransformers()` processes transformers in sequence.
+**Order matters!** Implementation in `pipeline.ApplyTransformers()` processes transformers in sequence.
 
-## 10. Utility Functions (pkg/util)
+## 10. Pipeline Execution (pkg/pipeline)
 
 ### 10.1. Filter/Transformer Application
 
@@ -744,9 +748,14 @@ func ApplyFilters(ctx context.Context, objects []unstructured.Unstructured, filt
 
 // Apply transformers in sequence
 func ApplyTransformers(ctx context.Context, objects []unstructured.Unstructured, transformers []types.Transformer) ([]unstructured.Unstructured, error)
+
+// Apply both filters and transformers
+func Apply(ctx context.Context, objects []unstructured.Unstructured, filters []types.Filter, transformers []types.Transformer) ([]unstructured.Unstructured, error)
 ```
 
-### 10.2. YAML Decoding
+## 11. Utility Functions (pkg/util)
+
+### 11.1. YAML Decoding
 
 ```go
 // Decode multi-document YAML into unstructured objects
@@ -755,16 +764,58 @@ func DecodeYAML(decoder runtime.Decoder, content []byte) ([]unstructured.Unstruc
 
 Handles multi-document YAML streams and skips empty documents.
 
-## 11. Error Handling
+## 12. Error Handling
+
+### 12.1. Typed Errors
+
+The library provides typed errors for filter and transformer failures, allowing filters and transformers to return rich error context:
+
+**FilterError (pkg/filter/error.go):**
+```go
+type FilterError struct {
+    Object unstructured.Unstructured  // The object that failed filtering
+    Err    error                       // The underlying error
+}
+```
+
+**TransformerError (pkg/transformer/error.go):**
+```go
+type TransformerError struct {
+    Object unstructured.Unstructured  // The object that failed transformation
+    Err    error                       // The underlying error
+}
+```
+
+**Usage in filters/transformers:**
+```go
+// Filter can return FilterError directly for rich context
+func MyFilter() types.Filter {
+    return func(ctx context.Context, obj unstructured.Unstructured) (bool, error) {
+        if err := validateObject(obj); err != nil {
+            return false, &filter.FilterError{
+                Object: obj,
+                Err:    fmt.Errorf("validation failed: %w", err),
+            }
+        }
+        return true, nil
+    }
+}
+```
+
+The pipeline functions (`ApplyFilters`, `ApplyTransformers`) automatically wrap errors in these types if the filter/transformer returns a plain error.
+
+### 13.2. Error Handling Conventions
 
 * Errors are wrapped using `fmt.Errorf` with `%w` for proper error chain propagation
 * Context is passed through the entire pipeline for cancellation support
 * First error encountered stops processing and is returned immediately
 * All renderer constructors validate inputs and return errors
+* Use `errors.As()` to extract typed errors from error chains
+* Use `errors.Is()` to check for specific underlying errors
 
-## 12. Usage Examples
+## 13. Usage Examples
 
-### 12.1. Basic Rendering with Convenience Functions
+### 13.1. Basic Rendering with Convenience Functions
 
 For single-renderer scenarios, use convenience factory functions:
 
@@ -813,7 +864,7 @@ e := engine.New(engine.WithRenderer(helmRenderer))
 objects, err := e.Render(context.Background())
 ```
 
-### 12.2. Rendering with Cache
+### 13.2. Rendering with Cache
 
 ```go
 helmRenderer, err := helm.New(
@@ -837,7 +888,7 @@ objects2, _ := e.Render(context.Background())
 objects2[0].SetName("modified")
 ```
 
-### 12.3. Three-Level Filtering Example
+### 13.3. Three-Level Filtering Example
 
 ```go
 // 1. Renderer-specific: Only Deployments from Helm
@@ -861,7 +912,7 @@ objects, err := e.Render(ctx,
 )
 ```
 
-### 12.4. Multiple Renderers
+### 13.4. Multiple Renderers
 
 ```go
 helmRenderer, _ := helm.New([]helm.Source{...})
@@ -876,7 +927,7 @@ objects, err := e.Render(ctx)
 // Contains objects from both Helm and Kustomize
 ```
 
-### 12.5. Dynamic Values
+### 13.5. Dynamic Values
 
 ```go
 e, _ := engine.Helm(helm.Source{
@@ -891,18 +942,18 @@ e, _ := engine.Helm(helm.Source{
 })
 ```
 
-## 13. Extensibility
+## 14. Extensibility
 
-### 13.1. Adding a New Renderer
+### 14.1. Adding a New Renderer
 
 1. Create package in `pkg/renderer/yourrenderer/`
 2. Define `Source` struct with renderer-specific fields
 3. Create constructor: `func New(inputs []Source, opts ...RendererOption) (*Renderer, error)`
 4. Implement `types.Renderer` interface with `Process(ctx)` method
 5. Create `yourrenderer_option.go` following the pattern in `pkg/util/option.go`
-6. In `Process()`, iterate inputs, render each, apply renderer-specific F/T using `util.ApplyFilters()` and `util.ApplyTransformers()`
+6. In `Process()`, iterate inputs, render each, apply renderer-specific F/T using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
 
-### 13.2. Adding New Filter/Transformer
+### 14.2. Adding New Filter/Transformer
 
 1. Define a constructor function that returns `types.Filter` or `types.Transformer`
 2. If configuration is needed, accept parameters and return a closure
@@ -924,7 +975,7 @@ filter := custom.MyCustomFilter(10)
 e := engine.New(engine.WithFilter(filter))
 ```
 
-## 14. Testing Strategy
+## 15. Testing Strategy
 
 * **Unit Tests**: Test each component in isolation
   - Renderers: Test `Process()` with various inputs
@@ -949,9 +1000,9 @@ e := engine.New(engine.WithFilter(filter))
   - Use `t.Context()` instead of `context.Background()`
   - Mock renderers for engine tests to avoid external dependencies
 
-## 15. Coding Conventions
+## 16. Coding Conventions
 
-### 15.1. Functional Options Pattern
+### 16.1. Functional Options Pattern
 
 All struct initialization uses the functional options pattern for flexible, extensible configuration:
 
@@ -1005,7 +1056,7 @@ engine.New(&engine.EngineOptions{
 })
 ```
 
-### 15.2. Testing Conventions
+### 16.2. Testing Conventions
 
 **Framework:**
 - Use vanilla Gomega (not Ginkgo)
@@ -1042,7 +1093,7 @@ func TestRenderer(t *testing.T) {
 }
 ```
 
-## 16. Design Principles
+## 17. Design Principles
 
 1. **Type Safety**: Compile-time type safety for renderer inputs via typed `Source` structs
 2. **Modularity**: Each renderer is independent and self-contained

@@ -121,7 +121,7 @@ See [README.md](README.md) for complete examples including:
 3. Create `yourrenderer.go` with constructor: `func New(inputs []Source, opts ...RendererOption) *Renderer`
 4. Implement `Renderer` interface with `Process(ctx) ([]unstructured.Unstructured, error)` method
 5. Create `yourrenderer_option.go` with functional options following the pattern in `pkg/util/option.go`
-6. In `Process()`, apply renderer-specific filters/transformers using `util.ApplyFilters()` and `util.ApplyTransformers()`
+6. In `Process()`, apply renderer-specific filters/transformers using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
 
 All renderers follow the consistent `[]Source` pattern for type-safe, flexible input handling.
 

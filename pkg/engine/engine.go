@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/metrics"
 )
 
@@ -76,13 +76,13 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	}
 
 	// Apply filters
-	filtered, err := util.ApplyFilters(ctx, allObjects, renderOpts.filters)
+	filtered, err := pipeline.ApplyFilters(ctx, allObjects, renderOpts.filters)
 	if err != nil {
 		return nil, fmt.Errorf("engine filter error: %w", err)
 	}
 
 	// Apply transformers
-	transformed, err := util.ApplyTransformers(ctx, filtered, renderOpts.transformers)
+	transformed, err := pipeline.ApplyTransformers(ctx, filtered, renderOpts.transformers)
 	if err != nil {
 		return nil, fmt.Errorf("engine transformer error: %w", err)
 	}

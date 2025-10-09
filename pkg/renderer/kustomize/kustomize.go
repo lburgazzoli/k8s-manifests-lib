@@ -17,8 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/dump"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 )
 
@@ -110,16 +110,9 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 		allObjects = append(allObjects, objects...)
 	}
 
-	// Apply filters (these still work on unstructured objects)
-	filtered, err := util.ApplyFilters(ctx, allObjects, r.filters)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
 	if err != nil {
-		return nil, fmt.Errorf("kustomize renderer filter error: %w", err)
-	}
-
-	// Apply post-processing transformers
-	transformed, err := util.ApplyTransformers(ctx, filtered, r.transformers)
-	if err != nil {
-		return nil, fmt.Errorf("kustomize renderer transformer error: %w", err)
+		return nil, fmt.Errorf("kustomize renderer: %w", err)
 	}
 
 	return transformed, nil

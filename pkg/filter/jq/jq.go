@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/jq"
 )
@@ -22,7 +23,10 @@ func Filter(expression string, opts ...jq.EngineOption) (types.Filter, error) {
 		// Run the JQ program and get a single value
 		v, err := engine.Run(obj.Object)
 		if err != nil {
-			return false, fmt.Errorf("error executing jq expression: %w", err)
+			return false, &filter.FilterError{
+				Object: obj,
+				Err:    fmt.Errorf("error executing jq expression: %w", err),
+			}
 		}
 
 		// Convert the result to a boolean
@@ -30,6 +34,9 @@ func Filter(expression string, opts ...jq.EngineOption) (types.Filter, error) {
 			return b, nil
 		}
 
-		return false, fmt.Errorf("jq expression must return a boolean, got %T", v)
+		return false, &filter.FilterError{
+			Object: obj,
+			Err:    fmt.Errorf("jq expression must return a boolean, got %T", v),
+		}
 	}, nil
 }

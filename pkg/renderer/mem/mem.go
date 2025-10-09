@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 )
 
 const rendererType = "mem"
@@ -55,16 +55,9 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 		}
 	}
 
-	// Apply filters
-	filtered, err := util.ApplyFilters(ctx, allObjects, r.filters)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
 	if err != nil {
-		return nil, fmt.Errorf("mem renderer filter error: %w", err)
-	}
-
-	// Apply transformers
-	transformed, err := util.ApplyTransformers(ctx, filtered, r.transformers)
-	if err != nil {
-		return nil, fmt.Errorf("mem renderer transformer error: %w", err)
+		return nil, fmt.Errorf("mem renderer: %w", err)
 	}
 
 	return transformed, nil
