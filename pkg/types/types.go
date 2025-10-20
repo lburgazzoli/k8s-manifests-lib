@@ -18,7 +18,10 @@ type Transformer func(ctx context.Context, object unstructured.Unstructured) (un
 // This allows the Engine to manage them heterogeneously.
 type Renderer interface {
 	// Process executes the rendering logic for all configured inputs of this renderer.
-	Process(ctx context.Context) ([]unstructured.Unstructured, error)
+	// The values parameter contains render-time values from engine.Render(ctx, engine.WithValues(...)).
+	// Renderers that support dynamic values (Helm, Kustomize, GoTemplate) should deep merge
+	// these values with Source-level values, with render-time values taking precedence.
+	Process(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error)
 
 	// Name returns the renderer type identifier for metrics and logging.
 	// Examples: "helm", "kustomize", "gotemplate", "yaml", "mem"

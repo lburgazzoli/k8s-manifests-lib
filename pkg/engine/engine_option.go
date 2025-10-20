@@ -23,6 +23,7 @@ type engineOptions struct {
 type renderOptions struct {
 	filters      []types.Filter
 	transformers []types.Transformer
+	values       map[string]any
 }
 
 // EngineOptions is a struct-based option that can set multiple engine options at once.
@@ -56,11 +57,18 @@ type RenderOptions struct {
 	// Transformers are render-time transformers applied only to this specific Render() call.
 	// These are merged with (appended to) engine-level transformers.
 	Transformers []types.Transformer
+
+	// Values are render-time values passed to all renderers during this specific Render() call.
+	// These values are deep merged with Source-level values, with render-time values taking precedence.
+	Values map[string]any
 }
 
 func (opts RenderOptions) ApplyTo(target *renderOptions) {
 	target.filters = append(target.filters, opts.Filters...)
 	target.transformers = append(target.transformers, opts.Transformers...)
+	if opts.Values != nil {
+		target.values = opts.Values
+	}
 }
 
 // WithRenderer adds a configured renderer to the engine.
@@ -162,4 +170,24 @@ func WithParallel(enabled bool) EngineOption {
 	return util.FunctionalOption[engineOptions](func(o *engineOptions) {
 		o.parallel = enabled
 	})
+}
+
+// WithValues adds render-time values for a single Render() call.
+// These values are passed to all renderers and deep merged with Source-level values,
+// with render-time values taking precedence for conflicting keys.
+// Renderers that support dynamic values (Helm, Kustomize, GoTemplate) will use these values.
+// Renderers that don't support values (YAML, Mem) will ignore them.
+func WithValues(values map[string]any) RenderOption {
+	return util.FunctionalOption[renderOptions](func(o *renderOptions) {
+		o.values = values
+	})
+}
+
+// RenderValuesOption is a struct-based RenderOption for values.
+type RenderValuesOption struct {
+	Values map[string]any
+}
+
+func (rvo RenderValuesOption) ApplyToRenderOptions(o *renderOptions) {
+	o.values = rvo.Values
 }

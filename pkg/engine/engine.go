@@ -47,6 +47,7 @@ func New(opts ...EngineOption) *Engine {
 //  3. render-time: Filters/transformers passed via opts are merged with engine-level ones
 //
 // Render-time options are additive - they append to engine-level options.
+// Render-time values are passed to all renderers and deep merged with Source-level values.
 func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructured.Unstructured, error) {
 	startTime := time.Now()
 
@@ -54,6 +55,7 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	renderOpts := renderOptions{
 		filters:      slices.Clone(e.options.filters),
 		transformers: slices.Clone(e.options.transformers),
+		values:       make(map[string]any),
 	}
 
 	// Apply render options
@@ -66,9 +68,9 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 
 	// Process renderers in parallel or sequentially
 	if e.options.parallel {
-		allObjects, err = e.renderParallel(ctx)
+		allObjects, err = e.renderParallel(ctx, renderOpts.values)
 	} else {
-		allObjects, err = e.renderSequential(ctx)
+		allObjects, err = e.renderSequential(ctx, renderOpts.values)
 	}
 
 	if err != nil {
@@ -93,9 +95,9 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 }
 
 // processRenderer executes a single renderer with timing, metrics, and error handling.
-func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer) ([]unstructured.Unstructured, error) {
+func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer, values map[string]any) ([]unstructured.Unstructured, error) {
 	startTime := time.Now()
-	objects, err := renderer.Process(ctx)
+	objects, err := renderer.Process(ctx, values)
 
 	metrics.ObserveRenderer(ctx, renderer.Name(), time.Since(startTime), len(objects), err)
 
@@ -107,11 +109,11 @@ func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer) (
 }
 
 // renderSequential processes renderers sequentially in order.
-func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructured, error) {
+func (e *Engine) renderSequential(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for _, renderer := range e.options.renderers {
-		objects, err := e.processRenderer(ctx, renderer)
+		objects, err := e.processRenderer(ctx, renderer, values)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +125,7 @@ func (e *Engine) renderSequential(ctx context.Context) ([]unstructured.Unstructu
 }
 
 // renderParallel processes all renderers concurrently using goroutines.
-func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructured, error) {
+func (e *Engine) renderParallel(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 	type result struct {
 		objects []unstructured.Unstructured
 		err     error
@@ -136,7 +138,7 @@ func (e *Engine) renderParallel(ctx context.Context) ([]unstructured.Unstructure
 		wg.Add(1)
 		go func(r types.Renderer) {
 			defer wg.Done()
-			objects, err := e.processRenderer(ctx, r)
+			objects, err := e.processRenderer(ctx, r, values)
 			results <- result{
 				objects: objects,
 				err:     err,

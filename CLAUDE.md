@@ -48,7 +48,7 @@ go test -v ./pkg/renderer/... -run=^$ -bench=.
 
 ### Core Types
 
-- `Renderer`: Interface with `Process(ctx) ([]unstructured.Unstructured, error)` method
+- `Renderer`: Interface with `Process(ctx, values map[string]any) ([]unstructured.Unstructured, error)` method
 - `Filter`: Function signature `func(ctx, object) (keep bool, err error)`
 - `Transformer`: Function signature `func(ctx, object) (transformed object, err error)`
 
@@ -81,6 +81,25 @@ See [docs/design.md#151-functional-options-pattern](docs/design.md#151-functiona
 3. **Render-time**: Filters/transformers applied to a single `Render()` call
 
 See [docs/design.md#8-three-level-filteringtransformation](docs/design.md#8-three-level-filteringtransformation) for details.
+
+### Render-Time Values
+
+Pass dynamic values at render-time to override configuration-time values:
+
+```go
+// Render with values that override Source.Values()
+objects, err := e.Render(ctx, engine.WithValues(map[string]any{
+    "replicaCount": 5,
+    "image": map[string]any{"tag": "v2.0"},
+}))
+```
+
+- **Deep merging**: Render-time values are recursively merged with Source values
+- **Precedence**: Render-time values override Source.Values() for conflicting keys
+- **Supported renderers**: Helm, Kustomize, GoTemplate (YAML and Mem ignore values)
+- **Cache keys**: Include render-time values for correct cache behavior
+
+See Quick Start in [README.md](README.md) for complete example.
 
 ### Caching
 
@@ -119,9 +138,10 @@ See [README.md](README.md) for complete examples including:
 1. Create package in `pkg/renderer/yourrenderer/`
 2. Define a `Source` struct with renderer-specific fields
 3. Create `yourrenderer.go` with constructor: `func New(inputs []Source, opts ...RendererOption) *Renderer`
-4. Implement `Renderer` interface with `Process(ctx) ([]unstructured.Unstructured, error)` method
+4. Implement `Renderer` interface with `Process(ctx, values map[string]any) ([]unstructured.Unstructured, error)` method
 5. Create `yourrenderer_option.go` with functional options following the pattern in `pkg/util/option.go`
-6. In `Process()`, apply renderer-specific filters/transformers using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
+6. In `Process()`, deep merge render-time `values` with Source.Values() using `util.DeepMerge()`
+7. Apply renderer-specific filters/transformers using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
 
 All renderers follow the consistent `[]Source` pattern for type-safe, flexible input handling.
 

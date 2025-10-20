@@ -74,7 +74,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 		g.Expect(objects[0].Object).To(And(
@@ -95,7 +95,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 	})
@@ -110,7 +110,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 		g.Expect(objects[0].GetKind()).To(Equal("Service"))
@@ -129,7 +129,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 		g.Expect(objects[0].GetKind()).To(Equal("Pod"))
@@ -149,7 +149,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 		g.Expect(objects[0].Object).To(And(
@@ -169,7 +169,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 	})
@@ -184,7 +184,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(ctx)
+		_, err = renderer.Process(ctx, nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("no files matched pattern"))
 	})
@@ -203,7 +203,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(ctx)
+		objects, err := renderer.Process(ctx, nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 	})
@@ -226,12 +226,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render - cache miss
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - cache hit (should be identical)
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 
@@ -255,7 +255,7 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render with pod.yaml
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).To(HaveLen(1))
 		g.Expect(result1[0].GetKind()).To(Equal("Pod"))
@@ -268,7 +268,7 @@ func TestCacheIntegration(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		result2, err := renderer2.Process(t.Context())
+		result2, err := renderer2.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(1))
 		g.Expect(result2[0].GetKind()).To(Equal("ConfigMap"))
@@ -287,12 +287,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - should work even without cache
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 	})
@@ -310,7 +310,7 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
@@ -320,7 +320,7 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		// Second render - should not be affected by modification
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -348,7 +348,7 @@ func BenchmarkYamlRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -376,7 +376,7 @@ func BenchmarkYamlRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -404,7 +404,7 @@ func BenchmarkYamlRenderCacheMiss(b *testing.B) {
 			b.Fatalf("failed to create renderer: %v", err)
 		}
 
-		_, err = renderer.Process(context.Background())
+		_, err = renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}

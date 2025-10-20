@@ -19,6 +19,7 @@ import (
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 )
 
@@ -98,11 +99,11 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 }
 
 // Process implements types.Renderer by rendering the kustomize resources and applying filters and transformers.
-func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input)
+		objects, err := r.renderSingle(ctx, input, renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering kustomize[%d] path %s: %w", i, input.Path, err)
 		}
@@ -159,23 +160,36 @@ func (r *Renderer) writeValuesConfigMap(path string, values map[string]string) (
 	return valuesPath, nil
 }
 
-func (r *Renderer) values(ctx context.Context, input Source) (map[string]string, error) {
-	if input.Values == nil {
-		return map[string]string{}, nil
+func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (map[string]string, error) {
+	sourceValues := map[string]any{}
+
+	if input.Values != nil {
+		v, err := input.Values(ctx)
+		if err != nil {
+			return nil, err
+		}
+		// Convert map[string]string to map[string]any for merging
+		for k, v := range v {
+			sourceValues[k] = v
+		}
 	}
 
-	v, err := input.Values(ctx)
-	if err != nil {
-		return nil, err
+	// Deep merge with render-time values taking precedence
+	merged := util.DeepMerge(sourceValues, renderTimeValues)
+
+	// Convert back to map[string]string
+	result := make(map[string]string, len(merged))
+	for k, v := range merged {
+		result[k] = fmt.Sprintf("%v", v)
 	}
 
-	return v, nil
+	return result, nil
 }
 
 // renderSingle performs the rendering for a single kustomize path.
-func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructured.Unstructured, error) {
-	// Get values dynamically
-	values, err := r.values(ctx, input)
+func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+	// Get values dynamically (includes render-time values)
+	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values: %w", err)
 	}

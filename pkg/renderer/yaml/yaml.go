@@ -63,7 +63,8 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 }
 
 // Process executes the rendering logic for all configured inputs.
-func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+// Render-time values are ignored by the YAML renderer as it does not support templates.
+func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i, input := range r.inputs {

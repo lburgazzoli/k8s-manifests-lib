@@ -46,7 +46,8 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 }
 
 // Process implements types.Renderer by returning the objects that were provided during construction.
-func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+// Render-time values are ignored by the memory renderer as objects are already constructed.
+func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 	// Make deep copies of all objects from all inputs
 	allObjects := make([]unstructured.Unstructured, 0)
 	for _, input := range r.inputs {

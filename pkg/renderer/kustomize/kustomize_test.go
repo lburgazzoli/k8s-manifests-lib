@@ -147,7 +147,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 
@@ -167,7 +167,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 
@@ -187,7 +187,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 		g.Expect(objects[0].GetKind()).To(Equal("ConfigMap"))
@@ -204,7 +204,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 
@@ -223,7 +223,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(3))
 	})
@@ -234,7 +234,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("failed to run kustomize"))
 	})
@@ -247,7 +247,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 
@@ -365,7 +365,7 @@ func TestValuesConfigMap(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// Render should create values.yaml
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// values.yaml should be cleaned up after render
@@ -389,7 +389,7 @@ func TestValuesConfigMap(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("values.yaml already exists"))
 	})
@@ -407,7 +407,7 @@ func TestValuesConfigMap(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// Verify cleanup
@@ -431,7 +431,7 @@ func TestValuesConfigMap(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).To(HaveOccurred())
 
 		// Verify cleanup even on error
@@ -447,7 +447,7 @@ func TestValuesConfigMap(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
 
@@ -476,12 +476,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render - cache miss
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - cache hit (should be identical)
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 
@@ -513,12 +513,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render with different values - cache miss
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -542,12 +542,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - should work even without cache
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 	})
@@ -568,7 +568,7 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
@@ -578,7 +578,7 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		// Second render - should not be affected by modification
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -612,7 +612,7 @@ func BenchmarkKustomizeRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -646,7 +646,7 @@ func BenchmarkKustomizeRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -681,7 +681,7 @@ func BenchmarkKustomizeRenderCacheMiss(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}

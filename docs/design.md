@@ -95,7 +95,7 @@ k8s-manifests-lib/
 ```go
 // Renderer is the interface that all concrete renderers implement.
 type Renderer interface {
-    Process(ctx context.Context) ([]unstructured.Unstructured, error)
+    Process(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error)
 }
 
 // Filter is a function that decides whether to keep an object.
@@ -123,12 +123,17 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 
 **Rendering Pipeline:**
 
-1. Process each renderer sequentially via `renderer.Process(ctx)`
-2. Aggregate all objects from all renderers
-3. Apply engine-level filters (configured via `New()`)
-4. Apply engine-level transformers (configured via `New()`)
-5. Apply render-time filters (passed to `Render()`)
-6. Apply render-time transformers (passed to `Render()`)
+1. Collect render-time values from `Render()` options
+2. Process each renderer sequentially via `renderer.Process(ctx, values)`
+3. Aggregate all objects from all renderers
+4. Apply engine-level filters (configured via `New()`)
+5. Apply engine-level transformers (configured via `New()`)
+6. Apply render-time filters (passed to `Render()`)
+7. Apply render-time transformers (passed to `Render()`)
+
+**Render-Time Values:**
+
+Render-time values are passed to all renderers via the `values` parameter in `Process()`. Renderers that support dynamic values (Helm, Kustomize, GoTemplate) deep merge these values with Source-level values, with render-time values taking precedence.
 
 ## 4. Configuration Pattern
 
@@ -170,13 +175,61 @@ e := engine.New(&engine.EngineOptions{
 objects, err := e.Render(ctx,
     engine.WithRenderFilter(namespaceFilter),
     engine.WithRenderTransformer(annotationTransformer),
+    engine.WithValues(map[string]any{
+        "replicaCount": 3,
+        "image": map[string]any{
+            "tag": "v2.0",
+        },
+    }),
 )
 
 // Struct-based
 objects, err := e.Render(ctx, engine.RenderOptions{
     Filters: []types.Filter{namespaceFilter},
     Transformers: []types.Transformer{annotationTransformer},
+    Values: map[string]any{
+        "replicaCount": 3,
+        "image": map[string]any{
+            "tag": "v2.0",
+        },
+    },
 })
+```
+
+**Render-Time Values Behavior:**
+
+Render-time values are passed to all renderers via the `values` parameter in `Process()`. Renderers that support dynamic values deep merge these with Source-level values:
+
+* **Helm, Kustomize, GoTemplate**: Deep merge with render-time precedence
+* **YAML, Mem**: Ignore render-time values (no template support)
+
+Deep merge example:
+```go
+// Source values (configured at renderer creation)
+sourceValues := map[string]any{
+    "replicaCount": 1,
+    "image": map[string]any{
+        "repository": "nginx",
+        "tag": "v1.0",
+    },
+}
+
+// Render-time values (passed to Render())
+renderValues := map[string]any{
+    "replicaCount": 3,
+    "image": map[string]any{
+        "tag": "v2.0",
+    },
+}
+
+// Merged result used by renderer
+// {
+//     "replicaCount": 3,           // from render-time
+//     "image": {
+//         "repository": "nginx",   // from source (preserved)
+//         "tag": "v2.0",           // from render-time (overridden)
+//     },
+// }
 ```
 
 ## 5. Renderer Implementations
@@ -243,6 +296,43 @@ helm.WithCache(cache.WithTTL(5 * time.Minute))  // Enable caching
 * Dynamic values via `ValuesFunc`
 * Specific chart versions via `ReleaseVersion`
 * Optional caching for improved performance
+* **Render-time values**: Supports deep merging with Source values
+
+**Render-Time Values Handling:**
+
+The Helm renderer deep merges render-time values with Source-level values:
+
+```go
+// Source values (from Values function)
+source := helm.Source{
+    Values: helm.Values(map[string]any{
+        "replicaCount": 1,
+        "image": map[string]any{
+            "repository": "nginx",
+            "tag": "v1.0",
+        },
+    }),
+}
+
+// Render with override values
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{
+    "replicaCount": 3,           // Override
+    "image": map[string]any{
+        "tag": "v2.0",           // Override tag only
+    },
+}))
+
+// Helm receives merged values:
+// {
+//     "replicaCount": 3,
+//     "image": {
+//         "repository": "nginx",  // Preserved from source
+//         "tag": "v2.0",          // Overridden
+//     },
+// }
+```
+
+Cache keys include render-time values, ensuring different values produce different cache entries.
 
 ### 5.2. Kustomize (pkg/renderer/kustomize)
 
@@ -256,6 +346,36 @@ type Source struct {
 
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error)
 ```
+
+**Render-Time Values Handling:**
+
+The Kustomize renderer deep merges render-time values with Source-level values, then converts to `map[string]string` for Kustomize ConfigMap generation:
+
+```go
+// Source values
+source := kustomize.Source{
+    Path: "/path/to/overlay",
+    Values: kustomize.Values(map[string]string{
+        "APP_NAME": "myapp",
+        "VERSION": "v1.0",
+    }),
+}
+
+// Render with override values (as map[string]any)
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{
+    "VERSION": "v2.0",      // Override
+    "REPLICAS": 3,          // New value (converted to "3")
+}))
+
+// Kustomize receives merged and stringified values:
+// map[string]string{
+//     "APP_NAME": "myapp",    // Preserved from source
+//     "VERSION": "v2.0",      // Overridden
+//     "REPLICAS": "3",        // Added and stringified
+// }
+```
+
+Values are stringified using `fmt.Sprintf("%v", v)` before passing to Kustomize.
 
 ### 5.3. Go Template (pkg/renderer/gotemplate)
 
@@ -277,6 +397,43 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error)
 * Glob pattern matching for templates
 * Dynamic values via `ValuesFunc`
 * Optional caching based on values hash
+* **Render-time values**: Supports deep merging when Source values are a map
+
+**Render-Time Values Handling:**
+
+The GoTemplate renderer supports flexible value types. When Source values are a map, it deep merges with render-time values:
+
+```go
+// Source values as map
+source := gotemplate.Source{
+    FS: templateFS,
+    Path: "*.yaml",
+    Values: gotemplate.Values(map[string]any{
+        "appName": "myapp",
+        "config": map[string]any{
+            "port": 8080,
+        },
+    }),
+}
+
+// Render with override values
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{
+    "config": map[string]any{
+        "replicas": 3,      // Add new field
+    },
+}))
+
+// Template receives merged values:
+// {
+//     "appName": "myapp",
+//     "config": {
+//         "port": 8080,       // Preserved from source
+//         "replicas": 3,      // Added from render-time
+//     },
+// }
+```
+
+If Source values are not a map (e.g., a string or struct), render-time values are ignored to preserve the Source value type.
 
 ### 5.4. YAML (pkg/renderer/yaml)
 
@@ -297,6 +454,9 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error)
 * Glob pattern matching
 * Both `.yaml` and `.yml` extensions
 * Optional caching based on file path
+* **Render-time values**: Not supported (ignores values parameter)
+
+**Note:** The YAML renderer does not support render-time values as it loads static YAML files without template processing. The `values` parameter in `Process()` is accepted but ignored.
 
 ### 5.5. Memory (pkg/renderer/mem)
 
@@ -309,6 +469,15 @@ type Source struct {
 
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error)
 ```
+
+**Features:**
+
+* Direct passthrough of pre-constructed objects
+* No external dependencies or I/O operations
+* Useful for testing and mocking
+* **Render-time values**: Not supported (ignores values parameter)
+
+**Note:** The Memory renderer does not support render-time values as objects are already fully constructed. The `values` parameter in `Process()` is accepted but ignored.
 
 ## 6. Caching Architecture
 
@@ -685,18 +854,28 @@ e := engine.New(
 
 ### 8.3. Render-Time (Latest)
 
-Applied to a single `Render()` call, merged with engine-level filters/transformers.
+Applied to a single `Render()` call, merged with engine-level filters/transformers. Render-time values are also passed to renderers at this stage.
 
 ```go
 objects, err := e.Render(ctx,
     engine.WithRenderFilter(kindFilter),               // Applied only to this render
     engine.WithRenderTransformer(envLabelTransformer), // Applied only to this render
+    engine.WithValues(map[string]any{                  // Passed to renderers for this render
+        "replicaCount": 3,
+        "image": map[string]any{
+            "tag": "v2.0",
+        },
+    }),
 )
 ```
 
-**Use when**: You need one-off filtering/transformation for a specific operation.
+**Use when**:
+- You need one-off filtering/transformation for a specific operation
+- You need to override renderer values for a specific render call
 
-**Important**: Render-time options are *additive* - they append to engine-level options.
+**Important**:
+- Render-time filters/transformers are *additive* - they append to engine-level options
+- Render-time values deep merge with Source-level values (where supported by renderer)
 
 ### 8.4. Execution Order
 
@@ -942,6 +1121,63 @@ e, _ := engine.Helm(helm.Source{
 })
 ```
 
+### 13.6. Render-Time Values with Deep Merge
+
+Override or extend configured values at render-time using deep merge:
+
+```go
+// Configure renderer with base values
+helmRenderer, _ := helm.New([]helm.Source{
+    {
+        Chart:       "oci://registry-1.docker.io/my-chart",
+        ReleaseName: "my-app",
+        Values: helm.Values(map[string]any{
+            "replicaCount": 1,
+            "image": map[string]any{
+                "repository": "nginx",
+                "tag":        "v1.0",
+                "pullPolicy": "IfNotPresent",
+            },
+            "service": map[string]any{
+                "type": "ClusterIP",
+                "port": 80,
+            },
+        }),
+    },
+})
+
+e := engine.New(engine.WithRenderer(helmRenderer))
+
+// Development render - override specific values
+devObjects, _ := e.Render(ctx, engine.WithValues(map[string]any{
+    "replicaCount": 1,
+    "image": map[string]any{
+        "tag": "dev-latest",  // Override tag only
+    },
+}))
+// Helm receives: replicaCount=1, image.repository=nginx, image.tag=dev-latest,
+//                image.pullPolicy=IfNotPresent, service.type=ClusterIP, service.port=80
+
+// Production render - different overrides
+prodObjects, _ := e.Render(ctx, engine.WithValues(map[string]any{
+    "replicaCount": 3,
+    "image": map[string]any{
+        "tag": "v2.0",
+    },
+    "service": map[string]any{
+        "type": "LoadBalancer",  // Override service type
+    },
+}))
+// Helm receives: replicaCount=3, image.repository=nginx, image.tag=v2.0,
+//                image.pullPolicy=IfNotPresent, service.type=LoadBalancer, service.port=80
+```
+
+**Key Benefits:**
+* Same renderer configuration, different runtime behavior
+* Nested values are deep merged - only specified fields are overridden
+* No need to duplicate entire configuration for environment-specific variations
+* Each `Render()` call can produce different manifests from the same renderer
+
 ## 14. Extensibility
 
 ### 14.1. Adding a New Renderer
@@ -949,9 +1185,10 @@ e, _ := engine.Helm(helm.Source{
 1. Create package in `pkg/renderer/yourrenderer/`
 2. Define `Source` struct with renderer-specific fields
 3. Create constructor: `func New(inputs []Source, opts ...RendererOption) (*Renderer, error)`
-4. Implement `types.Renderer` interface with `Process(ctx)` method
+4. Implement `types.Renderer` interface with `Process(ctx context.Context, values map[string]any)` method
 5. Create `yourrenderer_option.go` following the pattern in `pkg/util/option.go`
 6. In `Process()`, iterate inputs, render each, apply renderer-specific F/T using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
+7. If renderer supports templates/values, implement deep merge of `values` parameter with Source-level values using `util.DeepMerge()`
 
 ### 14.2. Adding New Filter/Transformer
 

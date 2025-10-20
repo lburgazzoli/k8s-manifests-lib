@@ -32,7 +32,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -64,7 +64,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 	})
@@ -87,7 +87,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 	})
@@ -112,7 +112,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -142,7 +142,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -176,7 +176,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -208,7 +208,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -243,7 +243,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 	})
@@ -271,7 +271,7 @@ func TestRenderer(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err = renderer.Process(ctx)
+		_, err = renderer.Process(ctx, nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("context canceled"))
 	})
@@ -299,7 +299,7 @@ func TestRenderer(t *testing.T) {
 		)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 
@@ -356,7 +356,7 @@ func TestNew(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(renderer).ToNot(BeNil())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("unable to locate chart"))
 	})
@@ -371,7 +371,7 @@ func TestNew(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(renderer).ToNot(BeNil())
 
-		_, err = renderer.Process(t.Context())
+		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).To(HaveOccurred())
 	})
 }
@@ -429,12 +429,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render - cache miss
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - cache hit (should be identical)
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 
@@ -465,12 +465,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render with different values - cache miss
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -495,12 +495,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - should work even without cache
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 	})
@@ -520,7 +520,7 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
@@ -530,7 +530,7 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		// Second render - should not be affected by modification
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -560,7 +560,7 @@ func BenchmarkHelmRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -590,7 +590,7 @@ func BenchmarkHelmRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -622,7 +622,7 @@ func BenchmarkHelmRenderCacheMiss(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -648,7 +648,7 @@ func TestMetricsIntegration(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).ToNot(BeEmpty())
 	})

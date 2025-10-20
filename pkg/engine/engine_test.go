@@ -212,7 +212,7 @@ func TestEngineRender(t *testing.T) {
 
 	t.Run("should return error from failing renderer", func(t *testing.T) {
 		failingRenderer := &mockRenderer{
-			processFunc: func(_ context.Context) ([]unstructured.Unstructured, error) {
+			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 				return nil, errors.New("renderer failed")
 			},
 		}
@@ -398,7 +398,7 @@ func makeService() unstructured.Unstructured {
 // newMockRenderer creates a mock renderer that returns the given objects.
 func newMockRenderer(objects []unstructured.Unstructured) *mockRenderer {
 	return &mockRenderer{
-		processFunc: func(_ context.Context) ([]unstructured.Unstructured, error) {
+		processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 			return objects, nil
 		},
 	}
@@ -428,12 +428,12 @@ func addLabels(labels map[string]string) func(context.Context, unstructured.Unst
 
 // mockRenderer is a mock implementation of types.Renderer for testing.
 type mockRenderer struct {
-	processFunc func(context.Context) ([]unstructured.Unstructured, error)
+	processFunc func(context.Context, map[string]any) ([]unstructured.Unstructured, error)
 	name        string
 }
 
-func (m *mockRenderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
-	return m.processFunc(ctx)
+func (m *mockRenderer) Process(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+	return m.processFunc(ctx, values)
 }
 
 func (m *mockRenderer) Name() string {
@@ -502,7 +502,7 @@ func TestParallelRendering(t *testing.T) {
 	t.Run("should handle error in parallel mode", func(t *testing.T) {
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := &mockRenderer{
-			processFunc: func(_ context.Context) ([]unstructured.Unstructured, error) {
+			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 				return nil, errors.New("renderer2 failed")
 			},
 		}
@@ -583,5 +583,149 @@ func TestParallelRendering(t *testing.T) {
 		objects, err := e.Render(t.Context())
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(2))
+	})
+}
+
+func TestRenderTimeValues(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should pass render-time values to renderer", func(t *testing.T) {
+		var capturedValues map[string]any
+		renderer := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues = values
+				return []unstructured.Unstructured{makePod("test-pod")}, nil
+			},
+		}
+
+		e := engine.New(engine.WithRenderer(renderer))
+
+		renderValues := map[string]any{
+			"replicaCount": 3,
+			"image": map[string]any{
+				"tag": "v2.0",
+			},
+		}
+
+		objects, err := e.Render(t.Context(), engine.WithValues(renderValues))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+		g.Expect(capturedValues).Should(Equal(renderValues))
+	})
+
+	t.Run("should pass empty map when no values provided", func(t *testing.T) {
+		var capturedValues map[string]any
+		renderer := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues = values
+				return []unstructured.Unstructured{makePod("test-pod")}, nil
+			},
+		}
+
+		e := engine.New(engine.WithRenderer(renderer))
+
+		objects, err := e.Render(t.Context())
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+		g.Expect(capturedValues).Should(BeEmpty())
+	})
+
+	t.Run("should pass same values to multiple renderers", func(t *testing.T) {
+		var capturedValues1, capturedValues2 map[string]any
+
+		renderer1 := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues1 = values
+				return []unstructured.Unstructured{makePod("pod1")}, nil
+			},
+			name: "renderer1",
+		}
+
+		renderer2 := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues2 = values
+				return []unstructured.Unstructured{makePod("pod2")}, nil
+			},
+			name: "renderer2",
+		}
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+		)
+
+		renderValues := map[string]any{
+			"env": "production",
+		}
+
+		objects, err := e.Render(t.Context(), engine.WithValues(renderValues))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+		g.Expect(capturedValues1).Should(Equal(renderValues))
+		g.Expect(capturedValues2).Should(Equal(renderValues))
+	})
+
+	t.Run("should work with struct-based RenderOptions", func(t *testing.T) {
+		var capturedValues map[string]any
+		renderer := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues = values
+				return []unstructured.Unstructured{makePod("test-pod")}, nil
+			},
+		}
+
+		e := engine.New(engine.WithRenderer(renderer))
+
+		renderValues := map[string]any{
+			"key": "value",
+		}
+
+		objects, err := e.Render(t.Context(), engine.RenderOptions{
+			Values: renderValues,
+		})
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+		g.Expect(capturedValues).Should(Equal(renderValues))
+	})
+
+	t.Run("should pass values in parallel mode", func(t *testing.T) {
+		var capturedValues1, capturedValues2 map[string]any
+
+		renderer1 := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues1 = values
+				return []unstructured.Unstructured{makePod("pod1")}, nil
+			},
+			name: "renderer1",
+		}
+
+		renderer2 := &mockRenderer{
+			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
+				capturedValues2 = values
+				return []unstructured.Unstructured{makePod("pod2")}, nil
+			},
+			name: "renderer2",
+		}
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+			engine.WithParallel(true),
+		)
+
+		renderValues := map[string]any{
+			"parallel": true,
+		}
+
+		objects, err := e.Render(t.Context(), engine.WithValues(renderValues))
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+		g.Expect(capturedValues1).Should(Equal(renderValues))
+		g.Expect(capturedValues2).Should(Equal(renderValues))
 	})
 }

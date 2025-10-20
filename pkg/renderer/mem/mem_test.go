@@ -145,7 +145,7 @@ func TestRenderer(t *testing.T) {
 			renderer, err := mem.New([]mem.Source{{Objects: unstructuredObjects}}, tt.opts...)
 			g.Expect(err).ToNot(HaveOccurred())
 
-			objects, err := renderer.Process(t.Context())
+			objects, err := renderer.Process(t.Context(), nil)
 
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(objects).To(HaveLen(tt.expectedCount))
@@ -184,7 +184,7 @@ func TestMetricsIntegration(t *testing.T) {
 		}})
 		g.Expect(err).ToNot(HaveOccurred())
 
-		objects, err := renderer.Process(t.Context())
+		objects, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(objects).To(HaveLen(1))
 	})

@@ -19,6 +19,7 @@ import (
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
@@ -117,7 +118,7 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 
 // Process executes the rendering logic for all configured inputs.
 // It implements the types.Renderer interface.
-func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i := range r.inputs {
@@ -153,7 +154,7 @@ func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, er
 			r.inputs[i].chart = c
 		}
 
-		objects, err := r.renderSingle(ctx, r.inputs[i])
+		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error rendering helm chart[%d] %s (release: %s): %w",
@@ -180,24 +181,26 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, input Source) (map[string]any, error) {
-	if input.Values == nil {
-		return map[string]any{}, nil
+func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (map[string]any, error) {
+	sourceValues := map[string]any{}
+
+	if input.Values != nil {
+		v, err := input.Values(ctx)
+		if err != nil {
+			return nil, err
+		}
+		sourceValues = v
 	}
 
-	v, err := input.Values(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return v, nil
+	// Deep merge with render-time values taking precedence
+	return util.DeepMerge(sourceValues, renderTimeValues), nil
 }
 
 // prepareRenderValues gets values from the Values function, processes dependencies,
 // and prepares render values using chartutil.ToRenderValues.
-func (r *Renderer) prepareRenderValues(ctx context.Context, input Source) (chartutil.Values, error) {
-	// Get values dynamically
-	values, err := r.values(ctx, input)
+func (r *Renderer) prepareRenderValues(ctx context.Context, input Source, renderTimeValues map[string]any) (chartutil.Values, error) {
+	// Get values dynamically (includes render-time values)
+	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values: %w", err)
 	}
@@ -230,9 +233,9 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, input Source) (chart
 // renderSingle performs the rendering for a single Helm chart.
 // It processes dependencies, prepares render values, renders the templates,
 // and converts the output to unstructured objects.
-func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructured.Unstructured, error) {
-	// Prepare render values
-	renderValues, err := r.prepareRenderValues(ctx, input)
+func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+	// Prepare render values (includes render-time values)
+	renderValues, err := r.prepareRenderValues(ctx, input, renderTimeValues)
 	if err != nil {
 		return nil, err
 	}

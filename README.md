@@ -114,6 +114,13 @@ func main() {
         engine.WithRenderTransformer(labels.Set(map[string]string{
             "environment": "production",
         })),
+        // Override Helm values at render-time
+        engine.WithValues(map[string]any{
+            "replicaCount": 5,  // Override configured value
+            "image": map[string]any{
+                "tag": "v2.0",  // Override tag, keep repository from config
+            },
+        }),
     )
     if err != nil {
         log.Fatalf("Failed to render: %v", err)
@@ -133,6 +140,7 @@ This example demonstrates:
 * Filtering objects with JQ expressions
 * Transforming objects with label additions
 * Three-level filtering/transformation pipeline (renderer → engine → render-time)
+* **Render-time values**: Override Helm values at render-time with deep merging
 
 ## Examples
 

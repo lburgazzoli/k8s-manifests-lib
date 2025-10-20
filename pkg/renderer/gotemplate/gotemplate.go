@@ -13,6 +13,7 @@ import (
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
@@ -77,11 +78,11 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 }
 
 // Process executes the rendering logic for all configured inputs.
-func (r *Renderer) Process(ctx context.Context) ([]unstructured.Unstructured, error) {
+func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input)
+		objects, err := r.renderSingle(ctx, input, renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, input.Path, err)
 		}
@@ -102,23 +103,33 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, input Source) (any, error) {
-	if input.Values == nil {
-		return map[string]any{}, nil
+func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (any, error) {
+	sourceValues := map[string]any{}
+
+	if input.Values != nil {
+		v, err := input.Values(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// If source values are a map, convert to map[string]any for merging
+		if vMap, ok := v.(map[string]any); ok {
+			sourceValues = vMap
+		} else {
+			// If not a map, return as-is (can't merge with render-time values)
+			// Render-time values would be ignored in this case
+			return v, nil
+		}
 	}
 
-	v, err := input.Values(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return v, nil
+	// Deep merge with render-time values taking precedence
+	return util.DeepMerge(sourceValues, renderTimeValues), nil
 }
 
 // renderSingle performs the rendering for a single template input.
-func (r *Renderer) renderSingle(ctx context.Context, input Source) ([]unstructured.Unstructured, error) {
-	// Get values dynamically
-	values, err := r.values(ctx, input)
+func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+	// Get values dynamically (includes render-time values)
+	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values: %w", err)
 	}

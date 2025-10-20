@@ -10,6 +10,7 @@ import (
 	"github.com/rs/xid"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/gotemplate"
@@ -205,7 +206,7 @@ func TestRenderer(t *testing.T) {
 			renderer, err := gotemplate.New([]gotemplate.Source{tt.data}, tt.opts...)
 			g.Expect(err).ToNot(HaveOccurred())
 
-			objects, err := renderer.Process(t.Context())
+			objects, err := renderer.Process(t.Context(), nil)
 
 			if tt.validation == nil {
 				g.Expect(err).To(HaveOccurred())
@@ -291,12 +292,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render - cache miss
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - cache hit (should be identical)
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 
@@ -330,12 +331,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render with different values - cache miss
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -361,12 +362,12 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
 		// Second render - should work even without cache
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).To(HaveLen(len(result1)))
 	})
@@ -389,7 +390,7 @@ func TestCacheIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// First render
-		result1, err := renderer.Process(t.Context())
+		result1, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result1).ToNot(BeEmpty())
 
@@ -399,7 +400,7 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		// Second render - should not be affected by modification
-		result2, err := renderer.Process(t.Context())
+		result2, err := renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result2).ToNot(BeEmpty())
 
@@ -432,7 +433,7 @@ func BenchmarkGoTemplateRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -465,7 +466,7 @@ func BenchmarkGoTemplateRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -500,9 +501,228 @@ func BenchmarkGoTemplateRenderCacheMiss(b *testing.B) {
 	b.ReportAllocs()
 
 	for range b.N {
-		_, err := renderer.Process(context.Background())
+		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
 	}
+}
+
+func TestRenderTimeValues(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should merge render-time values with source values", func(t *testing.T) {
+		templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  replicas: "{{ .replicaCount }}"
+  tag: "{{ .image.tag }}"
+  repository: "{{ .image.repository }}"`
+
+		fs := fstest.MapFS{
+			"template.yaml": &fstest.MapFile{
+				Data: []byte(templateContent),
+			},
+		}
+
+		renderer, err := gotemplate.New([]gotemplate.Source{
+			{
+				FS:   fs,
+				Path: "*.yaml",
+				Values: gotemplate.Values(map[string]any{
+					"replicaCount": 1,
+					"image": map[string]any{
+						"tag": "v1.0",
+					},
+				}),
+			},
+		})
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		// Render-time values should override source values
+		renderTimeValues := map[string]any{
+			"replicaCount": 3,
+			"image": map[string]any{
+				"repository": "nginx",
+			},
+		}
+
+		objects, err := renderer.Process(t.Context(), renderTimeValues)
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		// Check merged values
+		data, found, err := unstructured.NestedStringMap(objects[0].Object, "data")
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(found).Should(BeTrue())
+		g.Expect(data["replicas"]).Should(Equal("3"))       // From render-time
+		g.Expect(data["tag"]).Should(Equal("v1.0"))         // From source (deep merge)
+		g.Expect(data["repository"]).Should(Equal("nginx")) // From render-time
+	})
+
+	t.Run("should work with nil source values", func(t *testing.T) {
+		templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  env: "{{ .environment }}"`
+
+		fs := fstest.MapFS{
+			"template.yaml": &fstest.MapFile{
+				Data: []byte(templateContent),
+			},
+		}
+
+		renderer, err := gotemplate.New([]gotemplate.Source{
+			{
+				FS:   fs,
+				Path: "*.yaml",
+			},
+		})
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		renderTimeValues := map[string]any{
+			"environment": "production",
+		}
+
+		objects, err := renderer.Process(t.Context(), renderTimeValues)
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		data, found, err := unstructured.NestedStringMap(objects[0].Object, "data")
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(found).Should(BeTrue())
+		g.Expect(data["env"]).Should(Equal("production"))
+	})
+
+	t.Run("should work with empty render-time values", func(t *testing.T) {
+		templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  value: "{{ .key }}"`
+
+		fs := fstest.MapFS{
+			"template.yaml": &fstest.MapFile{
+				Data: []byte(templateContent),
+			},
+		}
+
+		renderer, err := gotemplate.New([]gotemplate.Source{
+			{
+				FS:   fs,
+				Path: "*.yaml",
+				Values: gotemplate.Values(map[string]any{
+					"key": "source-value",
+				}),
+			},
+		})
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		data, found, err := unstructured.NestedStringMap(objects[0].Object, "data")
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(found).Should(BeTrue())
+		g.Expect(data["value"]).Should(Equal("source-value"))
+	})
+
+	t.Run("should handle non-map source values", func(t *testing.T) {
+		templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  value: "{{ . }}"`
+
+		fs := fstest.MapFS{
+			"template.yaml": &fstest.MapFile{
+				Data: []byte(templateContent),
+			},
+		}
+
+		renderer, err := gotemplate.New([]gotemplate.Source{
+			{
+				FS:     fs,
+				Path:   "*.yaml",
+				Values: gotemplate.Values("simple-string"),
+			},
+		})
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		// When source values are not a map, render-time values are ignored
+		renderTimeValues := map[string]any{
+			"ignored": "value",
+		}
+
+		objects, err := renderer.Process(t.Context(), renderTimeValues)
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		data, found, err := unstructured.NestedStringMap(objects[0].Object, "data")
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(found).Should(BeTrue())
+		g.Expect(data["value"]).Should(Equal("simple-string"))
+	})
+
+	t.Run("should update cache key with render-time values", func(t *testing.T) {
+		templateContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  value: "{{ .key }}"`
+
+		fs := fstest.MapFS{
+			"template.yaml": &fstest.MapFile{
+				Data: []byte(templateContent),
+			},
+		}
+
+		renderer, err := gotemplate.New(
+			[]gotemplate.Source{
+				{
+					FS:   fs,
+					Path: "*.yaml",
+					Values: gotemplate.Values(map[string]any{
+						"key": "base",
+					}),
+				},
+			},
+			gotemplate.WithCache(),
+		)
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		// First render with render-time values
+		renderValues1 := map[string]any{
+			"key": "value1",
+		}
+		objects1, err := renderer.Process(t.Context(), renderValues1)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects1).Should(HaveLen(1))
+
+		data1, _, _ := unstructured.NestedStringMap(objects1[0].Object, "data")
+		g.Expect(data1["value"]).Should(Equal("value1"))
+
+		// Second render with different render-time values should not use cache
+		renderValues2 := map[string]any{
+			"key": "value2",
+		}
+		objects2, err := renderer.Process(t.Context(), renderValues2)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects2).Should(HaveLen(1))
+
+		data2, _, _ := unstructured.NestedStringMap(objects2[0].Object, "data")
+		g.Expect(data2["value"]).Should(Equal("value2"))
+	})
 }
