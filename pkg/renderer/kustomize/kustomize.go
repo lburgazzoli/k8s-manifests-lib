@@ -3,24 +3,16 @@ package kustomize
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"slices"
 
-	goyaml "gopkg.in/yaml.v3"
-	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
-	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/dump"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 )
 
 const rendererType = "kustomize"
@@ -56,15 +48,10 @@ func Values(values map[string]string) func(context.Context) (map[string]string, 
 
 // Renderer is a renderer that uses kustomize to render resources.
 type Renderer struct {
-	inputs        []Source
-	kustomizeOpts krusty.Options
-	kustomizer    *krusty.Kustomizer
-	filters       []types.Filter
-	transformers  []types.Transformer  // for post-processing
-	plugins       []resmap.Transformer // for kustomize-native/plugin transformers
-	fs            filesys.FileSystem
-	decoder       runtime.Decoder
-	cache         cache.Interface[[]unstructured.Unstructured]
+	inputs []Source
+	fs     filesys.FileSystem
+	engine *Engine
+	opts   RendererOptions
 }
 
 // New creates a new kustomize renderer.
@@ -76,26 +63,32 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		}
 	}
 
+	// Initialize renderer options
+	rendererOpts := RendererOptions{
+		Filters:      make([]types.Filter, 0),
+		Transformers: make([]types.Transformer, 0),
+		Plugins:      make([]resmap.Transformer, 0),
+	}
+
+	// Apply all options to RendererOptions
+	for _, opt := range opts {
+		opt.ApplyTo(&rendererOpts)
+	}
+
+	fs := filesys.MakeFsOnDisk()
 	r := &Renderer{
 		inputs: slices.Clone(inputs),
-		kustomizeOpts: krusty.Options{
-			LoadRestrictions: kustomizetypes.LoadRestrictionsRootOnly,
-			PluginConfig:     &kustomizetypes.PluginConfig{},
-		},
-		fs:           filesys.MakeFsOnDisk(),
-		decoder:      yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme),
-		filters:      make([]types.Filter, 0),
-		transformers: make([]types.Transformer, 0),
-		plugins:      make([]resmap.Transformer, 0),
+		fs:     fs,
+		engine: NewEngine(fs, rendererOpts.SourceAnnotations, rendererOpts.Plugins),
+		opts:   rendererOpts,
 	}
-
-	for _, opt := range opts {
-		opt.ApplyTo(r)
-	}
-
-	r.kustomizer = krusty.MakeKustomizer(&r.kustomizeOpts)
 
 	return r, nil
+}
+
+// Name returns the renderer type identifier.
+func (r *Renderer) Name() string {
+	return rendererType
 }
 
 // Process implements types.Renderer by rendering the kustomize resources and applying filters and transformers.
@@ -111,7 +104,7 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 		allObjects = append(allObjects, objects...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
 	if err != nil {
 		return nil, fmt.Errorf("kustomize renderer: %w", err)
 	}
@@ -119,77 +112,10 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 	return transformed, nil
 }
 
-// Name returns the renderer type identifier.
-func (r *Renderer) Name() string {
-	return rendererType
-}
-
-// writeValuesConfigMap writes values as a ConfigMap YAML file using the renderer's filesystem.
-// Returns the path to the written file, or empty string if no values.
-func (r *Renderer) writeValuesConfigMap(path string, values map[string]string) (string, error) {
-	if len(values) == 0 {
-		return "", nil
-	}
-
-	valuesPath := filepath.Join(path, "values.yaml")
-
-	// Check if file exists
-	if r.fs.Exists(valuesPath) {
-		return "", fmt.Errorf("values.yaml already exists at %s, refusing to overwrite", valuesPath)
-	}
-
-	// Create ConfigMap structure
-	configMap := map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata": map[string]string{
-			"name": "values",
-		},
-		"data": values,
-	}
-
-	data, err := goyaml.Marshal(configMap)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal values ConfigMap: %w", err)
-	}
-
-	if err := r.fs.WriteFile(valuesPath, data); err != nil {
-		return "", fmt.Errorf("failed to write values.yaml: %w", err)
-	}
-
-	return valuesPath, nil
-}
-
-func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (map[string]string, error) {
-	sourceValues := map[string]any{}
-
-	if input.Values != nil {
-		v, err := input.Values(ctx)
-		if err != nil {
-			return nil, err
-		}
-		// Convert map[string]string to map[string]any for merging
-		for k, v := range v {
-			sourceValues[k] = v
-		}
-	}
-
-	// Deep merge with render-time values taking precedence
-	merged := util.DeepMerge(sourceValues, renderTimeValues)
-
-	// Convert back to map[string]string
-	result := make(map[string]string, len(merged))
-	for k, v := range merged {
-		result[k] = fmt.Sprintf("%v", v)
-	}
-
-	return result, nil
-}
-
 // renderSingle performs the rendering for a single kustomize path.
 func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	// Get values dynamically (includes render-time values)
-	values, err := r.values(ctx, input, renderTimeValues)
+	values, err := computeValues(ctx, input, renderTimeValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values: %w", err)
 	}
@@ -203,22 +129,22 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	var cacheKey string
 
 	// Check cache (if enabled)
-	if r.cache != nil {
+	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(cacheKeyData{
 			Path:   input.Path,
 			Values: values,
 		})
 
 		// ensure objects are evicted
-		r.cache.Sync()
+		r.opts.Cache.Sync()
 
-		if cached, found := r.cache.Get(cacheKey); found {
+		if cached, found := r.opts.Cache.Get(cacheKey); found {
 			return cached, nil
 		}
 	}
 
 	// Write values ConfigMap if provided
-	valuesPath, err := r.writeValuesConfigMap(input.Path, values)
+	valuesPath, err := writeValuesConfigMap(r.fs, input.Path, values)
 	if err != nil {
 		return nil, err
 	}
@@ -230,40 +156,14 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 		}()
 	}
 
-	resMap, err := r.kustomizer.Run(r.fs, input.Path)
+	result, err := r.engine.Run(input.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run kustomize: %w", err)
 	}
 
-	// Apply kustomize-native/plugin transformers
-	for _, t := range r.plugins {
-		err := t.Transform(resMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to apply kustomize plugin transformer: %w", err)
-		}
-	}
-
-	// Convert resources directly to unstructured objects
-	renderedRes := resMap.Resources()
-
-	result := make([]unstructured.Unstructured, len(renderedRes))
-
-	for i, res := range renderedRes {
-		m, err := res.Map()
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert resource to map: %w", err)
-		}
-
-		result[i] = unstructured.Unstructured{}
-
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(m, &result[i]); err != nil {
-			return nil, fmt.Errorf("failed to convert map to unstructured: %w", err)
-		}
-	}
-
 	// Cache result (if enabled)
-	if r.cache != nil {
-		r.cache.Set(cacheKey, result)
+	if r.opts.Cache != nil {
+		r.opts.Cache.Set(cacheKey, result)
 	}
 
 	return result, nil

@@ -6,10 +6,13 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/mem"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 
 	. "github.com/onsi/gomega"
 )
@@ -727,5 +730,149 @@ func TestRenderTimeValues(t *testing.T) {
 		g.Expect(objects).Should(HaveLen(2))
 		g.Expect(capturedValues1).Should(Equal(renderValues))
 		g.Expect(capturedValues2).Should(Equal(renderValues))
+	})
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should render objects with source annotations when renderer has them enabled", func(t *testing.T) {
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-pod",
+			},
+		}
+
+		unstrPod, err := k8s.ToUnstructured(pod)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		renderer, err := mem.New(
+			[]mem.Source{{
+				Objects: []unstructured.Unstructured{
+					*unstrPod,
+				},
+			}},
+			mem.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		e := engine.New(
+			engine.WithRenderer(renderer),
+		)
+
+		objects, err := e.Render(t.Context())
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		// Verify source annotations are present
+		annotations := objects[0].GetAnnotations()
+		g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "mem"))
+	})
+
+	t.Run("should not have source annotations when renderer has them disabled", func(t *testing.T) {
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-pod",
+			},
+		}
+
+		unstrPod, err := k8s.ToUnstructured(pod)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		renderer, err := mem.New([]mem.Source{{
+			Objects: []unstructured.Unstructured{
+				*unstrPod,
+			},
+		}})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		e := engine.New(
+			engine.WithRenderer(renderer),
+		)
+
+		objects, err := e.Render(t.Context())
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		// Verify no source annotations are present
+		annotations := objects[0].GetAnnotations()
+		g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceType))
+	})
+
+	t.Run("should work with multiple renderers with different annotation settings", func(t *testing.T) {
+		pod1 := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod-with-annotations",
+			},
+		}
+
+		pod2 := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod-without-annotations",
+			},
+		}
+
+		unstrPod1, err := k8s.ToUnstructured(pod1)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		unstrPod2, err := k8s.ToUnstructured(pod2)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Renderer with annotations enabled
+		renderer1, err := mem.New(
+			[]mem.Source{{
+				Objects: []unstructured.Unstructured{
+					*unstrPod1,
+				},
+			}},
+			mem.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Renderer with annotations disabled
+		renderer2, err := mem.New([]mem.Source{{
+			Objects: []unstructured.Unstructured{
+				*unstrPod2,
+			},
+		}})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		e := engine.New(
+			engine.WithRenderer(renderer1),
+			engine.WithRenderer(renderer2),
+		)
+
+		objects, err := e.Render(t.Context())
+
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+
+		// Find objects by name and verify annotations
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			if obj.GetName() == "pod-with-annotations" {
+				g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "mem"))
+			} else if obj.GetName() == "pod-without-annotations" {
+				g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceType))
+			}
+		}
 	})
 }

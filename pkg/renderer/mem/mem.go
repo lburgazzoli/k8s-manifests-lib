@@ -25,21 +25,24 @@ type Source struct {
 // Renderer handles memory-based rendering operations.
 // It implements types.Renderer for objects that are already in memory.
 type Renderer struct {
-	inputs       []Source
-	filters      []types.Filter
-	transformers []types.Transformer
+	inputs []Source
+	opts   RendererOptions
 }
 
 // New creates a new memory-based renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	r := &Renderer{
-		inputs:       slices.Clone(inputs),
-		filters:      make([]types.Filter, 0),
-		transformers: make([]types.Transformer, 0),
+	rendererOpts := RendererOptions{
+		Filters:      make([]types.Filter, 0),
+		Transformers: make([]types.Transformer, 0),
 	}
 
 	for _, opt := range opts {
-		opt.ApplyTo(r)
+		opt.ApplyTo(&rendererOpts)
+	}
+
+	r := &Renderer{
+		inputs: slices.Clone(inputs),
+		opts:   rendererOpts,
 	}
 
 	return r, nil
@@ -52,11 +55,25 @@ func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructure
 	allObjects := make([]unstructured.Unstructured, 0)
 	for _, input := range r.inputs {
 		for _, obj := range input.Objects {
-			allObjects = append(allObjects, *obj.DeepCopy())
+			objCopy := obj.DeepCopy()
+
+			// Add source annotations if enabled
+			if r.opts.SourceAnnotations {
+				annotations := objCopy.GetAnnotations()
+				if annotations == nil {
+					annotations = make(map[string]string)
+				}
+
+				annotations[types.AnnotationSourceType] = rendererType
+
+				objCopy.SetAnnotations(annotations)
+			}
+
+			allObjects = append(allObjects, *objCopy)
 		}
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
 	if err != nil {
 		return nil, fmt.Errorf("mem renderer: %w", err)
 	}

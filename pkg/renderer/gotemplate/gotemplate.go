@@ -14,7 +14,6 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
@@ -47,10 +46,8 @@ func Values(values any) func(context.Context) (any, error) {
 // Renderer handles Go template rendering operations.
 // It implements types.Renderer.
 type Renderer struct {
-	inputs       []Source
-	filters      []types.Filter
-	transformers []types.Transformer
-	cache        cache.Interface[[]unstructured.Unstructured]
+	inputs []Source
+	opts   RendererOptions
 }
 
 // New creates a new GoTemplate Renderer with the given inputs and options.
@@ -65,13 +62,18 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		}
 	}
 
-	r := &Renderer{
-		inputs:       slices.Clone(inputs),
-		filters:      make([]types.Filter, 0),
-		transformers: make([]types.Transformer, 0),
+	rendererOpts := RendererOptions{
+		Filters:      make([]types.Filter, 0),
+		Transformers: make([]types.Transformer, 0),
 	}
+
 	for _, opt := range opts {
-		opt.ApplyTo(r)
+		opt.ApplyTo(&rendererOpts)
+	}
+
+	r := &Renderer{
+		inputs: slices.Clone(inputs),
+		opts:   rendererOpts,
 	}
 
 	return r, nil
@@ -90,7 +92,7 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 		allObjects = append(allObjects, objects...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
 	if err != nil {
 		return nil, fmt.Errorf("gotemplate renderer: %w", err)
 	}
@@ -138,13 +140,13 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	var cacheKey string
 
 	// Check cache (if enabled)
-	if r.cache != nil {
+	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(values)
 
 		// ensure objects are evicted
-		r.cache.Sync()
+		r.opts.Cache.Sync()
 
-		if cached, found := r.cache.Get(cacheKey); found {
+		if cached, found := r.opts.Cache.Get(cacheKey); found {
 			return cached, nil
 		}
 	}
@@ -178,12 +180,28 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 			return nil, fmt.Errorf("failed to decode YAML from template %s: %w", t.Name(), err)
 		}
 
+		// Add source annotations if enabled
+		if r.opts.SourceAnnotations {
+			for i := range objs {
+				annotations := objs[i].GetAnnotations()
+				if annotations == nil {
+					annotations = make(map[string]string)
+				}
+
+				annotations[types.AnnotationSourceType] = rendererType
+				annotations[types.AnnotationSourcePath] = input.Path
+				annotations[types.AnnotationSourceFile] = t.Name()
+
+				objs[i].SetAnnotations(annotations)
+			}
+		}
+
 		result = append(result, objs...)
 	}
 
 	// Cache result (if enabled)
-	if r.cache != nil {
-		r.cache.Set(cacheKey, result)
+	if r.opts.Cache != nil {
+		r.opts.Cache.Set(cacheKey, result)
 	}
 
 	return result, nil

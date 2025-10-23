@@ -8,8 +8,8 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 )
 
-// RendererOption is an option for the YAML renderer.
-type RendererOption = util.Option[Renderer]
+// RendererOption is a generic option for RendererOptions.
+type RendererOption = util.Option[RendererOptions]
 
 // RendererOptions is a struct-based option that can set multiple renderer options at once.
 type RendererOptions struct {
@@ -21,23 +21,28 @@ type RendererOptions struct {
 
 	// Cache is a custom cache implementation for render results.
 	Cache cache.Interface[[]unstructured.Unstructured]
+
+	// SourceAnnotations enables automatic addition of source tracking annotations.
+	SourceAnnotations bool
 }
 
-func (opts RendererOptions) ApplyTo(target *Renderer) {
-	target.filters = opts.Filters
-	target.transformers = opts.Transformers
+func (opts RendererOptions) ApplyTo(target *RendererOptions) {
+	target.Filters = opts.Filters
+	target.Transformers = opts.Transformers
 
 	if opts.Cache != nil {
-		target.cache = opts.Cache
+		target.Cache = opts.Cache
 	}
+
+	target.SourceAnnotations = opts.SourceAnnotations
 }
 
 // WithFilter adds a renderer-specific filter to this YAML renderer's processing chain.
 // Renderer-specific filters are applied during Process(), before results are returned to the engine.
 // For engine-level filtering applied to all renderers, use engine.WithFilter.
 func WithFilter(filter types.Filter) RendererOption {
-	return util.FunctionalOption[Renderer](func(r *Renderer) {
-		r.filters = append(r.filters, filter)
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.Filters = append(opts.Filters, filter)
 	})
 }
 
@@ -45,8 +50,8 @@ func WithFilter(filter types.Filter) RendererOption {
 // Renderer-specific transformers are applied during Process(), before results are returned to the engine.
 // For engine-level transformation applied to all renderers, use engine.WithTransformer.
 func WithTransformer(transformer types.Transformer) RendererOption {
-	return util.FunctionalOption[Renderer](func(r *Renderer) {
-		r.transformers = append(r.transformers, transformer)
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.Transformers = append(opts.Transformers, transformer)
 	})
 }
 
@@ -54,7 +59,17 @@ func WithTransformer(transformer types.Transformer) RendererOption {
 // If no options are provided, uses default TTL of 5 minutes.
 // By default, caching is NOT enabled.
 func WithCache(opts ...cache.Option) RendererOption {
-	return util.FunctionalOption[Renderer](func(r *Renderer) {
-		r.cache = cache.NewRenderCache(opts...)
+	return util.FunctionalOption[RendererOptions](func(rendererOpts *RendererOptions) {
+		rendererOpts.Cache = cache.NewRenderCache(opts...)
+	})
+}
+
+// WithSourceAnnotations enables or disables automatic addition of source tracking annotations.
+// When enabled, the renderer adds metadata annotations to track the source type and file path.
+// Annotations added: manifests.k8s-manifests-lib/source.type, source.file.
+// Default: false (disabled).
+func WithSourceAnnotations(enabled bool) RendererOption {
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.SourceAnnotations = enabled
 	})
 }

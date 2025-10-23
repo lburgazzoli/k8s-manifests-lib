@@ -1330,7 +1330,149 @@ func TestRenderer(t *testing.T) {
 }
 ```
 
-## 17. Design Principles
+## 17. Source Annotations
+
+The library provides automatic source tracking annotations that can be added to rendered objects. This feature helps track which renderer, source, and file produced each Kubernetes object.
+
+### 17.1. Annotation Keys
+
+Source annotations use the `manifests.k8s-manifests-lib/source.*` prefix:
+
+- `manifests.k8s-manifests-lib/source.type` - Renderer type (helm, kustomize, gotemplate, yaml, mem)
+- `manifests.k8s-manifests-lib/source.path` - Source path or chart identifier
+- `manifests.k8s-manifests-lib/source.file` - Specific template file (where applicable)
+
+### 17.2. Enabling Source Annotations
+
+Source annotations are **disabled by default** and can be enabled at two levels:
+
+**Renderer-level** (per renderer):
+```go
+helmRenderer, _ := helm.New(
+    []helm.Source{{...}},
+    helm.WithSourceAnnotations(true),
+)
+
+kustomizeRenderer, _ := kustomize.New(
+    []kustomize.Source{{...}},
+    kustomize.WithSourceAnnotations(true),
+)
+```
+
+**Engine-level** (all renderers):
+```go
+e := engine.New(
+    engine.WithRenderer(helmRenderer),
+    engine.WithRenderer(kustomizeRenderer),
+    engine.WithSourceAnnotations(true),  // Not yet implemented - use renderer-level for now
+)
+```
+
+**Render-time** (single render call):
+```go
+objects, _ := e.Render(ctx,
+    engine.WithRenderSourceAnnotations(true),  // Not yet implemented - use renderer-level for now
+)
+```
+
+### 17.3. Annotation Values by Renderer
+
+Each renderer adds source annotations with renderer-specific values:
+
+**Helm**:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  annotations:
+    manifests.k8s-manifests-lib/source.type: "helm"
+    manifests.k8s-manifests-lib/source.path: "oci://registry-1.docker.io/my-chart"
+    manifests.k8s-manifests-lib/source.file: "my-chart/templates/service.yaml"
+```
+
+**Kustomize**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+  annotations:
+    manifests.k8s-manifests-lib/source.type: "kustomize"
+    manifests.k8s-manifests-lib/source.path: "/path/to/kustomization"
+```
+
+**GoTemplate**:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+  annotations:
+    manifests.k8s-manifests-lib/source.type: "gotemplate"
+    manifests.k8s-manifests-lib/source.path: "templates/*.yaml"
+    manifests.k8s-manifests-lib/source.file: "config.yaml"
+```
+
+**YAML**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  annotations:
+    manifests.k8s-manifests-lib/source.type: "yaml"
+    manifests.k8s-manifests-lib/source.file: "manifests/pod.yaml"
+```
+
+**Mem**:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  annotations:
+    manifests.k8s-manifests-lib/source.type: "mem"
+```
+
+### 17.4. Use Cases
+
+Source annotations enable several useful scenarios:
+
+1. **Debugging**: Quickly identify which source file or template produced a specific object
+2. **Auditing**: Track the origin of deployed resources for compliance and governance
+3. **Filtering**: Filter objects based on their source renderer or path
+4. **Monitoring**: Group and monitor resources by their source origin
+5. **Rollback**: Identify all resources from a specific source for targeted rollback
+
+### 17.5. Implementation Notes
+
+- Annotations are added **after** decoding but **before** renderer-specific filters/transformers
+- Empty values are omitted (e.g., Mem renderer doesn't have path or file)
+- Source annotations do not affect caching behavior
+- Annotations can be removed using the annotations transformer if needed
+
+Example of filtering by source annotations:
+
+```go
+import (
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/annotations"
+    "github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+)
+
+// Filter only Helm-rendered objects
+helmFilter := annotations.MatchAnnotations(map[string]string{
+    types.AnnotationSourceType: "helm",
+})
+
+e := engine.New(
+    engine.WithRenderer(helmRenderer),
+    engine.WithRenderer(kustomizeRenderer),
+    engine.WithFilter(helmFilter),
+)
+```
+
+## 18. Design Principles
 
 1. **Type Safety**: Compile-time type safety for renderer inputs via typed `Source` structs
 2. **Modularity**: Each renderer is independent and self-contained

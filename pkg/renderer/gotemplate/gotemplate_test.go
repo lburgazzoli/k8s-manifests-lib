@@ -15,6 +15,7 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/gotemplate"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+	pkgtypes "github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -724,5 +725,83 @@ data:
 
 		data2, _, _ := unstructured.NestedStringMap(objects2[0].Object, "data")
 		g.Expect(data2["value"]).Should(Equal("value2"))
+	})
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		fs := fstest.MapFS{
+			"templates/pod.yaml.tpl":       &fstest.MapFile{Data: []byte(podTemplate)},
+			"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
+		}
+
+		renderer, err := gotemplate.New(
+			[]gotemplate.Source{
+				{
+					FS:   fs,
+					Path: "templates/*.tpl",
+					Values: gotemplate.Values(map[string]interface{}{
+						"Repo":      "test-app",
+						"Component": "frontend",
+						"Port":      8080,
+					}),
+				},
+			},
+			gotemplate.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+
+		// Verify all objects have source annotations
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(pkgtypes.AnnotationSourceType, "gotemplate"))
+			g.Expect(annotations).Should(HaveKeyWithValue(pkgtypes.AnnotationSourcePath, "templates/*.tpl"))
+			g.Expect(annotations).Should(HaveKey(pkgtypes.AnnotationSourceFile))
+			// File should be one of the template names (without directory path)
+			g.Expect(annotations[pkgtypes.AnnotationSourceFile]).Should(
+				Or(
+					Equal("pod.yaml.tpl"),
+					Equal("configmap.yaml.tpl"),
+				),
+			)
+		}
+	})
+
+	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		fs := fstest.MapFS{
+			"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
+		}
+
+		renderer, err := gotemplate.New(
+			[]gotemplate.Source{
+				{
+					FS:   fs,
+					Path: "templates/*.tpl",
+					Values: gotemplate.Values(map[string]interface{}{
+						"Repo":      "test-app",
+						"Component": "frontend",
+					}),
+				},
+			},
+		)
+		g.Expect(err).ShouldNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(objects).ShouldNot(BeEmpty())
+
+		// Verify no source annotations are present
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourceType))
+			g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourcePath))
+			g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourceFile))
+		}
 	})
 }

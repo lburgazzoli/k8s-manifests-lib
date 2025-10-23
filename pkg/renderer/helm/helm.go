@@ -20,7 +20,6 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/cache"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
@@ -66,13 +65,11 @@ func Values(values map[string]any) func(context.Context) (map[string]any, error)
 // Renderer handles Helm rendering operations.
 // It implements types.Renderer.
 type Renderer struct {
-	settings     *cli.EnvSettings
-	install      *action.Install
-	inputs       []Source
-	filters      []types.Filter
-	transformers []types.Transformer
-	helmEngine   engine.Engine
-	cache        cache.Interface[[]unstructured.Unstructured]
+	settings   *cli.EnvSettings
+	install    *action.Install
+	inputs     []Source
+	helmEngine engine.Engine
+	opts       RendererOptions
 }
 
 // New creates a new Helm Renderer with the given inputs and options.
@@ -87,21 +84,19 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		}
 	}
 
-	r := &Renderer{
-		settings:     nil,
-		inputs:       slices.Clone(inputs),
-		filters:      make([]types.Filter, 0),
-		transformers: make([]types.Transformer, 0),
-		helmEngine:   engine.Engine{},
+	rendererOpts := RendererOptions{
+		Filters:      make([]types.Filter, 0),
+		Transformers: make([]types.Transformer, 0),
 	}
 
 	// Apply options
 	for _, opt := range opts {
-		opt.ApplyTo(r)
+		opt.ApplyTo(&rendererOpts)
 	}
 
-	if r.settings == nil {
-		r.settings = cli.New()
+	settings := rendererOpts.Settings
+	if settings == nil {
+		settings = cli.New()
 	}
 
 	c, err := registry.NewClient()
@@ -109,9 +104,15 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		return nil, fmt.Errorf("unable to create a registry client: %w", err)
 	}
 
-	r.install = action.NewInstall(&action.Configuration{
-		RegistryClient: c,
-	})
+	r := &Renderer{
+		settings:   settings,
+		inputs:     slices.Clone(inputs),
+		helmEngine: engine.Engine{},
+		opts:       rendererOpts,
+		install: action.NewInstall(&action.Configuration{
+			RegistryClient: c,
+		}),
+	}
 
 	return r, nil
 }
@@ -168,7 +169,7 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 		allObjects = append(allObjects, objects...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.filters, r.transformers)
+	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
 	if err != nil {
 		return nil, fmt.Errorf("helm renderer: %w", err)
 	}
@@ -244,13 +245,13 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	var cacheKey string
 
 	// Check cache (if enabled)
-	if r.cache != nil {
+	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(renderValues)
 
 		// ensure objects are evicted
-		r.cache.Sync()
+		r.opts.Cache.Sync()
 
-		if cached, found := r.cache.Get(cacheKey); found {
+		if cached, found := r.opts.Cache.Get(cacheKey); found {
 			return cached, nil
 		}
 	}
@@ -270,6 +271,22 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 			return nil, fmt.Errorf("failed to decode CRD %s: %w", crd.Name, err)
 		}
 
+		// Add source annotations if enabled
+		if r.opts.SourceAnnotations {
+			for i := range objects {
+				annotations := objects[i].GetAnnotations()
+				if annotations == nil {
+					annotations = make(map[string]string)
+				}
+
+				annotations[types.AnnotationSourceType] = rendererType
+				annotations[types.AnnotationSourcePath] = input.Chart
+				annotations[types.AnnotationSourceFile] = crd.Name
+
+				objects[i].SetAnnotations(annotations)
+			}
+		}
+
 		result = append(result, objects...)
 	}
 
@@ -284,12 +301,28 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 			return nil, fmt.Errorf("failed to decode %s: %w", k, err)
 		}
 
+		// Add source annotations if enabled
+		if r.opts.SourceAnnotations {
+			for i := range objects {
+				annotations := objects[i].GetAnnotations()
+				if annotations == nil {
+					annotations = make(map[string]string)
+				}
+
+				annotations[types.AnnotationSourceType] = rendererType
+				annotations[types.AnnotationSourcePath] = input.Chart
+				annotations[types.AnnotationSourceFile] = k
+
+				objects[i].SetAnnotations(annotations)
+			}
+		}
+
 		result = append(result, objects...)
 	}
 
 	// Cache result (if enabled)
-	if r.cache != nil {
-		r.cache.Set(cacheKey, result)
+	if r.opts.Cache != nil {
+		r.opts.Cache.Set(cacheKey, result)
 	}
 
 	return result, nil

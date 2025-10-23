@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/yaml"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -409,4 +410,66 @@ func BenchmarkYamlRenderCacheMiss(b *testing.B) {
 			b.Fatalf("failed to render: %v", err)
 		}
 	}
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		testFS := fstest.MapFS{
+			"manifests/pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
+			"manifests/configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
+		}
+
+		renderer, err := yaml.New(
+			[]yaml.Source{
+				{FS: testFS, Path: "manifests/*.yaml"},
+			},
+			yaml.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).To(HaveLen(2))
+
+		// Verify all objects have source annotations
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "yaml"))
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+			// File should be one of the yaml files
+			g.Expect(annotations[types.AnnotationSourceFile]).Should(
+				Or(
+					Equal("manifests/pod.yaml"),
+					Equal("manifests/configmap.yaml"),
+				),
+			)
+			// YAML renderer should not have path annotation (only file)
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourcePath))
+		}
+	})
+
+	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		testFS := fstest.MapFS{
+			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
+		}
+
+		renderer, err := yaml.New([]yaml.Source{
+			{FS: testFS, Path: "*.yaml"},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+
+		// Verify no source annotations are present
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceType))
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourcePath))
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceFile))
+		}
+	})
 }

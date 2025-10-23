@@ -14,6 +14,7 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -696,4 +697,70 @@ func writeFileB(b *testing.B, dir string, name string, content string) {
 	if err != nil {
 		b.Fatal(err)
 	}
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writeFile(t, dir, "kustomization.yaml", basicKustomization)
+		writeFile(t, dir, "configmap.yaml", basicConfigMap)
+		writeFile(t, dir, "pod.yaml", basicPod)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{
+				{Path: dir},
+			},
+			kustomize.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+
+		// Verify all objects have source annotations
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "kustomize"))
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, dir))
+			// Kustomize renderer should have file annotation with relative path
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+			g.Expect(annotations[types.AnnotationSourceFile]).ShouldNot(BeEmpty())
+			// File should be one of: configmap.yaml or pod.yaml
+			g.Expect(annotations[types.AnnotationSourceFile]).Should(
+				Or(
+					Equal("configmap.yaml"),
+					Equal("pod.yaml"),
+				),
+			)
+		}
+	})
+
+	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writeFile(t, dir, "kustomization.yaml", basicKustomization)
+		writeFile(t, dir, "configmap.yaml", basicConfigMap)
+		writeFile(t, dir, "pod.yaml", basicPod)
+
+		renderer, err := kustomize.New([]kustomize.Source{
+			{Path: dir},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+
+		// Verify no source annotations are present
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceType))
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourcePath))
+			// g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceFile))
+		}
+	})
 }

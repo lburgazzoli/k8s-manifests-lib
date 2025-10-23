@@ -11,6 +11,7 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -667,5 +668,68 @@ func TestMetricsIntegration(t *testing.T) {
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(renderer.Name()).To(Equal("helm"))
+	})
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		renderer, err := helm.New(
+			[]helm.Source{
+				{
+					Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+					ReleaseName: "annotations-test",
+					Values: helm.Values(map[string]any{
+						"shared": map[string]any{
+							"appId": "annotations-app",
+						},
+					}),
+				},
+			},
+			helm.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+
+		// Verify all objects have source annotations
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "helm"))
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, "oci://registry-1.docker.io/daprio/dapr-shared-chart"))
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+			// File should be a template path
+			g.Expect(annotations[types.AnnotationSourceFile]).ShouldNot(BeEmpty())
+		}
+	})
+
+	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+				ReleaseName: "no-annotations-test",
+				Values: helm.Values(map[string]any{
+					"shared": map[string]any{
+						"appId": "no-annotations-app",
+					},
+				}),
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).ToNot(BeEmpty())
+
+		// Verify no source annotations are present
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceType))
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourcePath))
+			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceFile))
+		}
 	})
 }

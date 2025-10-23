@@ -14,6 +14,7 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/mem"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/labels"
+	pkgtypes "github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -193,5 +194,75 @@ func TestMetricsIntegration(t *testing.T) {
 		renderer, err := mem.New([]mem.Source{{}})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(renderer.Name()).To(Equal("mem"))
+	})
+}
+
+func TestSourceAnnotations(t *testing.T) {
+	g := NewWithT(t)
+
+	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pod",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "nginx",
+					Image: "nginx:latest",
+				},
+			},
+		},
+	}
+
+	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		unstrPod, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		renderer, err := mem.New(
+			[]mem.Source{{
+				Objects: []unstructured.Unstructured{
+					{Object: unstrPod},
+				},
+			}},
+			mem.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		// Verify source annotations are present
+		annotations := objects[0].GetAnnotations()
+		g.Expect(annotations).Should(HaveKeyWithValue(pkgtypes.AnnotationSourceType, "mem"))
+		// Mem renderer should not have path or file annotations
+		g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourcePath))
+		g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourceFile))
+	})
+
+	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		unstrPod, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		renderer, err := mem.New([]mem.Source{{
+			Objects: []unstructured.Unstructured{
+				{Object: unstrPod},
+			},
+		}})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+
+		// Verify no source annotations are present
+		annotations := objects[0].GetAnnotations()
+		g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourceType))
+		g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourcePath))
+		g.Expect(annotations).ShouldNot(HaveKey(pkgtypes.AnnotationSourceFile))
 	})
 }
