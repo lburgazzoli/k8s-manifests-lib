@@ -1178,163 +1178,21 @@ prodObjects, _ := e.Render(ctx, engine.WithValues(map[string]any{
 * No need to duplicate entire configuration for environment-specific variations
 * Each `Render()` call can produce different manifests from the same renderer
 
-## 14. Extensibility
+## 14. Development
 
-### 14.1. Adding a New Renderer
+For implementation guidelines, coding conventions, testing practices, and contribution guidelines, see [development.md](development.md).
 
-1. Create package in `pkg/renderer/yourrenderer/`
-2. Define `Source` struct with renderer-specific fields
-3. Create constructor: `func New(inputs []Source, opts ...RendererOption) (*Renderer, error)`
-4. Implement `types.Renderer` interface with `Process(ctx context.Context, values map[string]any)` method
-5. Create `yourrenderer_option.go` following the pattern in `pkg/util/option.go`
-6. In `Process()`, iterate inputs, render each, apply renderer-specific F/T using `pipeline.ApplyFilters()` and `pipeline.ApplyTransformers()`
-7. If renderer supports templates/values, implement deep merge of `values` parameter with Source-level values using `util.DeepMerge()`
+Topics covered in the development guide:
+- Coding conventions (functional options pattern, error handling, etc.)
+- Testing guidelines (framework, data organization, benchmarks)
+- Extensibility (adding renderers, filters, transformers)
+- Code review guidelines
 
-### 14.2. Adding New Filter/Transformer
-
-1. Define a constructor function that returns `types.Filter` or `types.Transformer`
-2. If configuration is needed, accept parameters and return a closure
-3. Add via `engine.WithFilter`/`engine.WithTransformer` for engine-level or via renderer options
-
-Example:
-
-```go
-// pkg/filter/custom/custom.go
-func MyCustomFilter(threshold int) types.Filter {
-    return func(ctx context.Context, obj unstructured.Unstructured) (bool, error) {
-        // Custom logic using threshold
-        return true, nil
-    }
-}
-
-// Usage
-filter := custom.MyCustomFilter(10)
-e := engine.New(engine.WithFilter(filter))
-```
-
-## 15. Testing Strategy
-
-* **Unit Tests**: Test each component in isolation
-  - Renderers: Test `Process()` with various inputs
-  - Filters: Test with matching and non-matching objects
-  - Transformers: Verify transformations are applied correctly
-  - Cache: Test TTL expiration, deep cloning, Get/Set behavior
-
-* **Integration Tests**: Test the full pipeline
-  - Multiple renderers with engine-level F/T
-  - Render-time options merging with engine-level
-  - Error handling throughout the pipeline
-  - Cache integration with renderers
-
-* **Benchmark Tests**: Performance testing
-  - Named with renderer prefix: `BenchmarkHelmRenderWithCache`, `BenchmarkKustomizeRenderCacheMiss`
-  - Test cache hit vs miss performance
-  - Measure deep cloning overhead
-
-* **Test Patterns**:
-  - Use vanilla Gomega (no Ginkgo)
-  - Subtests via `t.Run()`
-  - Use `t.Context()` instead of `context.Background()`
-  - Mock renderers for engine tests to avoid external dependencies
-
-## 16. Coding Conventions
-
-### 16.1. Functional Options Pattern
-
-All struct initialization uses the functional options pattern for flexible, extensible configuration:
-
-**Define Options as Interfaces:**
-```go
-type Option[T any] interface {
-    ApplyTo(target *T)
-}
-```
-
-**Provide Both Function-Based and Struct-Based Options:**
-```go
-// Function-based option
-func WithRenderer(r types.Renderer) EngineOption {
-    return util.FunctionalOption[Engine](func(e *Engine) {
-        e.renderers = append(e.renderers, r)
-    })
-}
-
-// Struct-based option for bulk configuration
-type EngineOptions struct {
-    Renderers    []types.Renderer
-    Filters      []types.Filter
-    Transformers []types.Transformer
-}
-
-func (opts EngineOptions) ApplyTo(e *Engine) {
-    e.renderers = opts.Renderers
-    e.filters = opts.Filters
-    e.transformers = opts.Transformers
-}
-```
-
-**Guidelines:**
-- For slice/map fields in struct-based options, use the type directly (not pointers)
-- Place all options and related methods in `*_option.go` files
-- Provide both patterns to support different use cases
-
-**Usage:**
-```go
-// Function-based (flexible, composable)
-engine.New(
-    engine.WithRenderer(helmRenderer),
-    engine.WithFilter(filter),
-)
-
-// Struct-based (bulk configuration via literals)
-engine.New(&engine.EngineOptions{
-    Renderers: []types.Renderer{helmRenderer},
-    Filters:   []types.Filter{filter},
-})
-```
-
-### 16.2. Testing Conventions
-
-**Framework:**
-- Use vanilla Gomega (not Ginkgo)
-- Use dot imports for Gomega packages: `import . "github.com/onsi/gomega"`
-
-**Assertions:**
-- Prefer `Should` over `To`
-- For error validation: `Should(HaveOccurred())` / `ShouldNot(HaveOccurred())`
-
-**Test Structure:**
-- Use subtests via `t.Run()` for organizing related test cases
-- Use `t.Context()` instead of `context.Background()` or `context.TODO()` (Go 1.24+)
-
-**Test Data:**
-- When creating test structs, use Gomega matchers to validate results
-- Avoid passing expected values or booleans in test structs
-
-**Benchmark Naming:**
-- Include renderer name in benchmark tests
-- Format: `Benchmark<Renderer><TestName>`
-- Examples: `BenchmarkHelmRenderWithCache`, `BenchmarkKustomizeRenderCacheMiss`
-
-Example:
-```go
-func TestRenderer(t *testing.T) {
-    g := NewWithT(t)
-    ctx := t.Context()
-
-    t.Run("should render correctly", func(t *testing.T) {
-        result, err := renderer.Process(ctx)
-        g.Expect(err).ShouldNot(HaveOccurred())
-        g.Expect(result).Should(HaveLen(3))
-    })
-}
-```
-
-## 17. Source Annotations
+## 15. Source Annotations
 
 The library provides automatic source tracking annotations that can be added to rendered objects. This feature helps track which renderer, source, and file produced each Kubernetes object.
 
-### 17.1. Annotation Keys
+### 15.1. Annotation Keys
 
 Source annotations use the `manifests.k8s-manifests-lib/source.*` prefix:
 
@@ -1342,7 +1200,7 @@ Source annotations use the `manifests.k8s-manifests-lib/source.*` prefix:
 - `manifests.k8s-manifests-lib/source.path` - Source path or chart identifier
 - `manifests.k8s-manifests-lib/source.file` - Specific template file (where applicable)
 
-### 17.2. Enabling Source Annotations
+### 15.2. Enabling Source Annotations
 
 Source annotations are **disabled by default** and can be enabled at two levels:
 
@@ -1375,7 +1233,7 @@ objects, _ := e.Render(ctx,
 )
 ```
 
-### 17.3. Annotation Values by Renderer
+### 15.3. Annotation Values by Renderer
 
 Each renderer adds source annotations with renderer-specific values:
 
@@ -1435,7 +1293,7 @@ metadata:
     manifests.k8s-manifests-lib/source.type: "mem"
 ```
 
-### 17.4. Use Cases
+### 15.4. Use Cases
 
 Source annotations enable several useful scenarios:
 
@@ -1445,7 +1303,7 @@ Source annotations enable several useful scenarios:
 4. **Monitoring**: Group and monitor resources by their source origin
 5. **Rollback**: Identify all resources from a specific source for targeted rollback
 
-### 17.5. Implementation Notes
+### 15.5. Implementation Notes
 
 - Annotations are added **after** decoding but **before** renderer-specific filters/transformers
 - Empty values are omitted (e.g., Mem renderer doesn't have path or file)
@@ -1472,7 +1330,7 @@ e := engine.New(
 )
 ```
 
-## 18. Design Principles
+## 16. Design Principles
 
 1. **Type Safety**: Compile-time type safety for renderer inputs via typed `Source` structs
 2. **Modularity**: Each renderer is independent and self-contained
