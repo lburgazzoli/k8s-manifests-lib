@@ -54,6 +54,36 @@ metadata:
   name: {{ .InvalidField }}-pod
 `
 
+const mergeValuesTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  replicas: "{{ .replicaCount }}"
+  tag: "{{ .image.tag }}"
+  repository: "{{ .image.repository }}"`
+
+const nilSourceValuesTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  env: "{{ .environment }}"`
+
+const simpleKeyTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  value: "{{ .key }}"`
+
+const nonMapValuesTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  value: "{{ . }}"`
+
 func TestRenderer(t *testing.T) {
 	g := NewWithT(t)
 
@@ -513,18 +543,9 @@ func TestRenderTimeValues(t *testing.T) {
 	g := NewWithT(t)
 
 	t.Run("should merge render-time values with source values", func(t *testing.T) {
-		templateContent := `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-config
-data:
-  replicas: "{{ .replicaCount }}"
-  tag: "{{ .image.tag }}"
-  repository: "{{ .image.repository }}"`
-
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
-				Data: []byte(templateContent),
+				Data: []byte(mergeValuesTemplate),
 			},
 		}
 
@@ -565,16 +586,9 @@ data:
 	})
 
 	t.Run("should work with nil source values", func(t *testing.T) {
-		templateContent := `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-config
-data:
-  env: "{{ .environment }}"`
-
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
-				Data: []byte(templateContent),
+				Data: []byte(nilSourceValuesTemplate),
 			},
 		}
 
@@ -602,16 +616,9 @@ data:
 	})
 
 	t.Run("should work with empty render-time values", func(t *testing.T) {
-		templateContent := `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-config
-data:
-  value: "{{ .key }}"`
-
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
-				Data: []byte(templateContent),
+				Data: []byte(simpleKeyTemplate),
 			},
 		}
 
@@ -638,16 +645,9 @@ data:
 	})
 
 	t.Run("should handle non-map source values", func(t *testing.T) {
-		templateContent := `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-config
-data:
-  value: "{{ . }}"`
-
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
-				Data: []byte(templateContent),
+				Data: []byte(nonMapValuesTemplate),
 			},
 		}
 
@@ -677,16 +677,9 @@ data:
 	})
 
 	t.Run("should update cache key with render-time values", func(t *testing.T) {
-		templateContent := `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-config
-data:
-  value: "{{ .key }}"`
-
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
-				Data: []byte(templateContent),
+				Data: []byte(simpleKeyTemplate),
 			},
 		}
 
