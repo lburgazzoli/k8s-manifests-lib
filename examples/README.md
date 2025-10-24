@@ -100,8 +100,9 @@ Advanced renderer usage patterns.
 | **Multiple Sources** | Multiple Helm charts in one renderer | [multiple-sources/main.go](06-renderers/multiple-sources/main.go) |
 | **Multiple Renderers** | Combining Helm, Kustomize, and YAML | [multiple-renderers/main.go](06-renderers/multiple-renderers/main.go) |
 | **Dynamic Values** | Runtime value functions for dynamic configuration | [dynamic-values/main.go](06-renderers/dynamic-values/main.go) |
+| **Render-Time Values** | Override values at render-time with deep merging | [render-time-values/main.go](06-renderers/render-time-values/main.go) |
 
-**Key Concepts**: Multi-source rendering, renderer aggregation, dynamic configuration
+**Key Concepts**: Multi-source rendering, renderer aggregation, dynamic configuration, render-time overrides
 
 ### 7. Caching ([07-caching/](07-caching/))
 
@@ -113,6 +114,36 @@ Performance optimization with caching.
 | **Performance** | Benchmark cache vs no-cache performance | [performance/main.go](07-caching/performance/main.go) |
 
 **Key Concepts**: Cache configuration, TTL, automatic deep cloning, performance
+
+### 8. Parallel ([08-parallel/](08-parallel/))
+
+Parallel rendering for performance.
+
+| Example | Description | File |
+|---------|-------------|------|
+| **Parallel Rendering** | Execute renderers concurrently | [main.go](08-parallel/main.go) |
+
+**Key Concepts**: Parallel execution, goroutines, I/O-bound optimization
+
+### 9. Metrics ([09-metrics/](09-metrics/))
+
+Performance monitoring and metrics collection.
+
+| Example | Description | File |
+|---------|-------------|------|
+| **Basic Metrics** | Collect render and renderer metrics | [basic/main.go](09-metrics/basic/main.go) |
+
+**Key Concepts**: Metrics collection, performance tracking, zero-overhead monitoring
+
+### 10. Source Annotations ([10-source-annotations/](10-source-annotations/))
+
+Track the source of rendered objects.
+
+| Example | Description | File |
+|---------|-------------|------|
+| **Basic** | Enable source tracking with annotations | [basic/main.go](10-source-annotations/basic/main.go) |
+
+**Key Concepts**: Source tracking, provenance, debugging, audit trails
 
 ## Learning Path
 

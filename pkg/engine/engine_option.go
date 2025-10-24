@@ -21,10 +21,9 @@ type engineOptions struct {
 
 // renderOptions represents the processing options for rendering.
 type renderOptions struct {
-	filters           []types.Filter
-	transformers      []types.Transformer
-	values            map[string]any
-	sourceAnnotations *bool
+	filters      []types.Filter
+	transformers []types.Transformer
+	values       map[string]any
 }
 
 // EngineOptions is a struct-based option that can set multiple engine options at once.
@@ -40,12 +39,6 @@ type EngineOptions struct {
 
 	// Parallel enables parallel execution of renderers.
 	Parallel bool
-
-	// SourceAnnotations enables automatic addition of source tracking annotations to rendered objects.
-	// When enabled, renderers add annotations like manifests.k8s-manifests-lib/source.type,
-	// manifests.k8s-manifests-lib/source.path, and manifests.k8s-manifests-lib/source.file.
-	// Defaults to false if not specified.
-	SourceAnnotations *bool
 }
 
 func (opts EngineOptions) ApplyTo(target *engineOptions) {
@@ -53,7 +46,6 @@ func (opts EngineOptions) ApplyTo(target *engineOptions) {
 	target.filters = opts.Filters
 	target.transformers = opts.Transformers
 	target.parallel = opts.Parallel
-	target.sourceAnnotations = opts.SourceAnnotations
 }
 
 // RenderOptions is a struct-based option that can set multiple render options at once.
@@ -69,11 +61,6 @@ type RenderOptions struct {
 	// Values are render-time values passed to all renderers during this specific Render() call.
 	// These values are deep merged with Source-level values, with render-time values taking precedence.
 	Values map[string]any
-
-	// SourceAnnotations controls whether source tracking annotations are added for this render call.
-	// If nil, inherits the engine-level setting.
-	// If set, overrides the engine-level setting for this specific render call.
-	SourceAnnotations *bool
 }
 
 func (opts RenderOptions) ApplyTo(target *renderOptions) {
@@ -81,9 +68,6 @@ func (opts RenderOptions) ApplyTo(target *renderOptions) {
 	target.transformers = append(target.transformers, opts.Transformers...)
 	if opts.Values != nil {
 		target.values = opts.Values
-	}
-	if opts.SourceAnnotations != nil {
-		target.sourceAnnotations = opts.SourceAnnotations
 	}
 }
 
@@ -206,23 +190,4 @@ type RenderValuesOption struct {
 
 func (rvo RenderValuesOption) ApplyToRenderOptions(o *renderOptions) {
 	o.values = rvo.Values
-}
-
-// WithSourceAnnotations enables or disables automatic addition of source tracking annotations.
-// When enabled, renderers add metadata annotations to track the source type, path, and file.
-// This is an engine-level option that applies to all Render() calls unless overridden.
-// Annotations added: manifests.k8s-manifests-lib/source.type, source.path, source.file.
-func WithSourceAnnotations(enabled bool) EngineOption {
-	return util.FunctionalOption[engineOptions](func(o *engineOptions) {
-		o.sourceAnnotations = &enabled
-	})
-}
-
-// WithRenderSourceAnnotations controls source annotation behavior for a single Render() call.
-// If set, this overrides the engine-level setting for this specific render.
-// If not set (nil), the engine-level setting is used.
-func WithRenderSourceAnnotations(enabled bool) RenderOption {
-	return util.FunctionalOption[renderOptions](func(o *renderOptions) {
-		o.sourceAnnotations = &enabled
-	})
 }

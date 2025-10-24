@@ -71,16 +71,16 @@ import (
 )
 
 func main() {
-    // Create a Helm renderer for a chart
+    // Create a Helm renderer with initial configuration values
     helmRenderer, err := helm.New([]helm.Source{
         {
-            Chart:       "oci://registry.example.com/my-chart:1.0.0",
+            Chart:       "oci://registry-1.docker.io/bitnamicharts/nginx",
             ReleaseName: "my-release",
             Values: helm.Values(map[string]any{
                 "replicaCount": 3,
                 "image": map[string]any{
                     "repository": "nginx",
-                    "tag":        "latest",
+                    "tag":        "1.25.0",
                 },
             }),
         },
@@ -114,11 +114,11 @@ func main() {
         engine.WithRenderTransformer(labels.Set(map[string]string{
             "environment": "production",
         })),
-        // Override Helm values at render-time
+        // Override Helm values at render-time (deep merged with configured values)
         engine.WithValues(map[string]any{
-            "replicaCount": 5,  // Override configured value
+            "replicaCount": 5, // Override configured replicaCount (3 -> 5)
             "image": map[string]any{
-                "tag": "v2.0",  // Override tag, keep repository from config
+                "tag": "1.26.0", // Override tag, repository stays "nginx"
             },
         }),
     )
@@ -151,9 +151,11 @@ For specific use cases and patterns, see the [examples directory](examples/):
 - **[03-transformation/](examples/03-transformation/)** - Transforming [labels](examples/03-transformation/labels/main.go), [annotations](examples/03-transformation/annotations/main.go), [namespace](examples/03-transformation/namespace/main.go), [name](examples/03-transformation/name/main.go)
 - **[04-composition/](examples/04-composition/)** - [Boolean logic](examples/04-composition/filter-boolean/main.go), [conditionals](examples/04-composition/filter-conditional/main.go), [chaining](examples/04-composition/transformer-chain/main.go), [switch](examples/04-composition/transformer-switch/main.go)
 - **[05-advanced/](examples/05-advanced/)** - [Three-level pipeline](examples/05-advanced/three-level-pipeline/main.go), [multi-environment](examples/05-advanced/multi-environment/main.go), [conditional transformations](examples/05-advanced/conditional-transformations/main.go), [complex nested](examples/05-advanced/complex-nested/main.go)
-- **[06-renderers/](examples/06-renderers/)** - [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go)
+- **[06-renderers/](examples/06-renderers/)** - [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go), [render-time values](examples/06-renderers/render-time-values/main.go)
 - **[07-caching/](examples/07-caching/)** - [Basic cache](examples/07-caching/basic/main.go), [performance benchmarks](examples/07-caching/performance/main.go)
-- **[08-parallel/](examples/08-parallel/)** - [Parallel rendering](examples/08-parallel/main.go) for improved performance with I/O-bound renderers
+- **[08-parallel/](examples/08-parallel/)** - [Parallel rendering](examples/08-parallel/main.go)
+- **[09-metrics/](examples/09-metrics/)** - [Basic metrics](examples/09-metrics/basic/main.go)
+- **[10-source-annotations/](examples/10-source-annotations/)** - [Source tracking](examples/10-source-annotations/basic/main.go)
 
 See the [Examples README](examples/README.md) for a complete catalog with a recommended learning path.
 
