@@ -47,21 +47,18 @@ func computeValues(ctx context.Context, input Source, renderTimeValues map[strin
 	return result, nil
 }
 
-// writeValuesConfigMap writes values as a ConfigMap YAML file using the renderer's filesystem.
-// Returns the path to the written file, or empty string if no values.
-func writeValuesConfigMap(fs filesys.FileSystem, path string, values map[string]string) (string, error) {
-	if len(values) == 0 {
-		return "", nil
+// marshalKustomization marshals a kustomization object to YAML bytes.
+func marshalKustomization(kust *kustomizetypes.Kustomization) ([]byte, error) {
+	data, err := goyaml.Marshal(kust)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal kustomization: %w", err)
 	}
+	return data, nil
+}
 
-	valuesPath := filepath.Join(path, "values.yaml")
-
-	// Check if file exists
-	if fs.Exists(valuesPath) {
-		return "", fmt.Errorf("values.yaml already exists at %s, refusing to overwrite", valuesPath)
-	}
-
-	// Create ConfigMap structure
+// createValuesConfigMapYAML creates the YAML content for a values ConfigMap.
+// Does NOT write to filesystem - returns bytes for in-memory override.
+func createValuesConfigMapYAML(values map[string]string) ([]byte, error) {
 	configMap := map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
@@ -73,14 +70,10 @@ func writeValuesConfigMap(fs filesys.FileSystem, path string, values map[string]
 
 	data, err := goyaml.Marshal(configMap)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal values ConfigMap: %w", err)
+		return nil, fmt.Errorf("failed to marshal values ConfigMap: %w", err)
 	}
 
-	if err := fs.WriteFile(valuesPath, data); err != nil {
-		return "", fmt.Errorf("failed to write values.yaml: %w", err)
-	}
-
-	return valuesPath, nil
+	return data, nil
 }
 
 func readKustomization(fs filesys.FileSystem, path string) (*kustomizetypes.Kustomization, error) {

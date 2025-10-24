@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"sigs.k8s.io/kustomize/api/resmap"
+	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,6 +37,11 @@ type Source struct {
 	// If Path/values.yaml already exists, rendering will fail with an error
 	// to prevent accidental overwrites.
 	Values func(context.Context) (map[string]string, error)
+
+	// LoadRestrictions specifies restrictions on what can be referenced.
+	// If LoadRestrictionsUnknown (zero value), uses the renderer-wide default.
+	// Set to LoadRestrictionsRootOnly or LoadRestrictionsNone to override.
+	LoadRestrictions kustomizetypes.LoadRestrictions
 }
 
 // Values returns a Values function that always returns the provided static values.
@@ -51,7 +57,7 @@ type Renderer struct {
 	inputs []Source
 	fs     filesys.FileSystem
 	engine *Engine
-	opts   RendererOptions
+	opts   *RendererOptions
 }
 
 // New creates a new kustomize renderer.
@@ -65,9 +71,10 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 
 	// Initialize renderer options
 	rendererOpts := RendererOptions{
-		Filters:      make([]types.Filter, 0),
-		Transformers: make([]types.Transformer, 0),
-		Plugins:      make([]resmap.Transformer, 0),
+		Filters:          make([]types.Filter, 0),
+		Transformers:     make([]types.Transformer, 0),
+		Plugins:          make([]resmap.Transformer, 0),
+		LoadRestrictions: kustomizetypes.LoadRestrictionsRootOnly,
 	}
 
 	// Apply all options to RendererOptions
@@ -79,8 +86,8 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 	r := &Renderer{
 		inputs: slices.Clone(inputs),
 		fs:     fs,
-		engine: NewEngine(fs, rendererOpts.SourceAnnotations, rendererOpts.Plugins),
-		opts:   rendererOpts,
+		engine: NewEngine(fs, &rendererOpts),
+		opts:   &rendererOpts,
 	}
 
 	return r, nil
@@ -143,20 +150,8 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 		}
 	}
 
-	// Write values ConfigMap if provided
-	valuesPath, err := writeValuesConfigMap(r.fs, input.Path, values)
-	if err != nil {
-		return nil, err
-	}
-
-	// Clean up values.yaml file after rendering
-	if valuesPath != "" {
-		defer func() {
-			_ = r.fs.RemoveAll(valuesPath)
-		}()
-	}
-
-	result, err := r.engine.Run(input.Path)
+	// No filesystem writes needed - values passed to engine
+	result, err := r.engine.Run(input, values)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run kustomize: %w", err)
 	}

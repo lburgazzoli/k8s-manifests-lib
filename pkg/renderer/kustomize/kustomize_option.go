@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"sigs.k8s.io/kustomize/api/resmap"
+	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -29,12 +30,18 @@ type RendererOptions struct {
 
 	// SourceAnnotations enables automatic addition of source tracking annotations.
 	SourceAnnotations bool
+
+	// LoadRestrictions sets renderer-wide default for load restrictions.
+	// Individual Sources can override this via Source.LoadRestrictions.
+	// Default: LoadRestrictionsRootOnly (security best practice).
+	LoadRestrictions kustomizetypes.LoadRestrictions
 }
 
 func (opts RendererOptions) ApplyTo(target *RendererOptions) {
 	target.Filters = opts.Filters
 	target.Transformers = opts.Transformers
 	target.Plugins = opts.Plugins
+	target.LoadRestrictions = opts.LoadRestrictions
 
 	if opts.Cache != nil {
 		target.Cache = opts.Cache
@@ -84,5 +91,17 @@ func WithCache(opts ...cache.Option) RendererOption {
 func WithSourceAnnotations(enabled bool) RendererOption {
 	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
 		opts.SourceAnnotations = enabled
+	})
+}
+
+// WithLoadRestrictions sets the renderer-wide default LoadRestrictions.
+// Valid values: LoadRestrictionsRootOnly (default), LoadRestrictionsNone, LoadRestrictionsUnknown.
+// Individual Sources can override this via Source.LoadRestrictions field.
+//
+// LoadRestrictionsRootOnly: Kustomization can only reference files within its own directory tree (secure).
+// LoadRestrictionsNone: Kustomization can reference files anywhere on the filesystem (flexible but less secure).
+func WithLoadRestrictions(restrictions kustomizetypes.LoadRestrictions) RendererOption {
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.LoadRestrictions = restrictions
 	})
 }

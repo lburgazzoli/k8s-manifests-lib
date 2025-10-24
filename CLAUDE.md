@@ -113,6 +113,7 @@ See [docs/design.md#6-caching-architecture](docs/design.md#6-caching-architectur
 
 ## Testing Guidelines
 
+### Test Framework
 - Use vanilla Gomega (not Ginkgo)
 - Use dot imports for Gomega: `import . "github.com/onsi/gomega"`
 - Prefer `Should` over `To`
@@ -120,6 +121,46 @@ See [docs/design.md#6-caching-architecture](docs/design.md#6-caching-architectur
 - Use subtests (`t.Run`) for organizing related test cases
 - Use `t.Context()` instead of `context.Background()` or `context.TODO()` (Go 1.24+)
 - Benchmark tests must include renderer name: `BenchmarkHelmRenderWithCache`, `BenchmarkKustomizeRenderCacheMiss`
+
+### Test Data Organization
+
+**CRITICAL**: All test data must be defined as package-level constants, never inline within test methods.
+
+**Good:**
+```go
+const testKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- configmap.yaml
+`
+
+func TestSomething(t *testing.T) {
+    writeFile(t, dir, "kustomization.yaml", testKustomization)
+    // ...
+}
+```
+
+**Bad:**
+```go
+func TestSomething(t *testing.T) {
+    kustomization := `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- configmap.yaml
+`  // WRONG: inline test data
+    writeFile(t, dir, "kustomization.yaml", kustomization)
+    // ...
+}
+```
+
+**Rules:**
+- ALL test data (YAML, JSON, strings, etc.) must be package-level constants
+- Define constants at the top of test files, grouped by test scenario
+- Use descriptive names that indicate purpose (e.g., `nestedResourcesKustomization`, `annotationsBaseConfigMap`)
+- Add comments to group related constants (e.g., `// Test constants for nested resources test`)
+- This makes tests more readable and data reusable across tests
 
 See [docs/design.md#152-testing-conventions](docs/design.md#152-testing-conventions) for complete testing guidelines.
 

@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 
 	"sigs.k8s.io/kustomize/api/krusty"
@@ -12,30 +13,40 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize/unionfs"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 )
 
 type Engine struct {
-	kustomizer        *krusty.Kustomizer
-	fs                filesys.FileSystem
-	sourceAnnotations bool
-	plugins           []resmap.Transformer
+	kustomizer *krusty.Kustomizer
+	fs         filesys.FileSystem
+	opts       *RendererOptions
 }
 
-func NewEngine(fs filesys.FileSystem, sourceAnnotations bool, plugins []resmap.Transformer) *Engine {
+func NewEngine(fs filesys.FileSystem, opts *RendererOptions) *Engine {
 	return &Engine{
 		kustomizer: krusty.MakeKustomizer(&krusty.Options{
-			LoadRestrictions: kustomizetypes.LoadRestrictionsRootOnly,
+			LoadRestrictions: opts.LoadRestrictions,
 			PluginConfig:     &kustomizetypes.PluginConfig{},
 		}),
-		fs:                fs,
-		sourceAnnotations: sourceAnnotations,
-		plugins:           plugins,
+		fs:   fs,
+		opts: opts,
 	}
 }
 
-func (e *Engine) Run(path string) ([]unstructured.Unstructured, error) {
-	kust, err := readKustomization(e.fs, path)
+func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Unstructured, error) {
+	restrictions := e.opts.LoadRestrictions
+	if input.LoadRestrictions != kustomizetypes.LoadRestrictionsUnknown {
+		restrictions = input.LoadRestrictions
+	}
+
+	// Create kustomizer with appropriate restrictions
+	kustomizer := krusty.MakeKustomizer(&krusty.Options{
+		LoadRestrictions: restrictions,
+		PluginConfig:     &kustomizetypes.PluginConfig{},
+	})
+
+	kust, err := readKustomization(e.fs, input.Path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read kustomization: %w", err)
 	}
@@ -43,32 +54,54 @@ func (e *Engine) Run(path string) ([]unstructured.Unstructured, error) {
 	fs := e.fs
 	addedOriginAnnotations := false
 
-	if e.sourceAnnotations {
-		if !slices.Contains(kust.BuildMetadata, kustomizetypes.OriginAnnotations) {
-			kust.BuildMetadata = append(kust.BuildMetadata, kustomizetypes.OriginAnnotations)
-			addedOriginAnnotations = true
+	if e.opts.SourceAnnotations || len(values) > 0 {
+		builder := unionfs.NewBuilder(e.fs)
+
+		// Add modified kustomization if source annotations are enabled
+		if e.opts.SourceAnnotations {
+			if !slices.Contains(kust.BuildMetadata, kustomizetypes.OriginAnnotations) {
+				kust.BuildMetadata = append(kust.BuildMetadata, kustomizetypes.OriginAnnotations)
+				addedOriginAnnotations = true
+
+				kustContent, err := marshalKustomization(kust)
+				if err != nil {
+					return nil, err
+				}
+
+				// Add for all possible kustomization file names
+				for _, filename := range kustomizationFiles {
+					builder.WithOverride(filepath.Join(input.Path, filename), kustContent)
+				}
+			}
 		}
 
-		ofs, err := newOverrideFS(e.fs, path, kust)
+		// Add values ConfigMap if provided
+		if len(values) > 0 {
+			valuesContent, err := createValuesConfigMapYAML(values)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create values ConfigMap: %w", err)
+			}
+			builder.WithOverride(filepath.Join(input.Path, "values.yaml"), valuesContent)
+		}
+
+		fs, err = builder.Build()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create union filesystem: %w", err)
 		}
-
-		fs = ofs
 	}
 
-	resMap, err := e.kustomizer.Run(fs, path)
+	resMap, err := kustomizer.Run(fs, input.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run kustomize: %w", err)
 	}
 
-	for _, t := range e.plugins {
+	for _, t := range e.opts.Plugins {
 		if err := t.Transform(resMap); err != nil {
 			return nil, fmt.Errorf("failed to apply kustomize plugin transformer: %w", err)
 		}
 	}
 
-	return e.toUnstructured(resMap, path, addedOriginAnnotations)
+	return e.toUnstructured(resMap, input.Path, addedOriginAnnotations)
 }
 
 func (e *Engine) toUnstructured(resMap resmap.ResMap, path string, removeConfig bool) ([]unstructured.Unstructured, error) {
@@ -86,7 +119,7 @@ func (e *Engine) toUnstructured(resMap resmap.ResMap, path string, removeConfig 
 			return nil, fmt.Errorf("failed to convert map to unstructured: %w", err)
 		}
 
-		if e.sourceAnnotations {
+		if e.opts.SourceAnnotations {
 			annotations := result[i].GetAnnotations()
 			if annotations == nil {
 				annotations = make(map[string]string)

@@ -33,6 +33,9 @@ type Source struct {
 	// Function is called during rendering to obtain dynamic values.
 	// Accessible within templates via dot notation (e.g., {{ .FieldName }}).
 	Values func(context.Context) (any, error)
+
+	// Parsed templates (lazy-loaded on first Process call)
+	templates *template.Template
 }
 
 // Values returns a Values function that always returns the provided static values.
@@ -83,10 +86,23 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input, renderTimeValues)
+	for i := range r.inputs {
+		if r.inputs[i].templates == nil {
+			tmpl, err := template.ParseFS(r.inputs[i].FS, r.inputs[i].Path)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to parse templates (path: %s): %w",
+					r.inputs[i].Path,
+					err,
+				)
+			}
+
+			r.inputs[i].templates = tmpl.Option("missingkey=error")
+		}
+
+		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
 		if err != nil {
-			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, input.Path, err)
+			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, r.inputs[i].Path, err)
 		}
 
 		allObjects = append(allObjects, objects...)
@@ -151,18 +167,10 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 		}
 	}
 
-	// Create a template with all files matching the path pattern
-	tmpl, err := template.ParseFS(input.FS, input.Path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse templates: %w", err)
-	}
-
-	tmpl = tmpl.Option("missingkey=error")
-
 	result := make([]unstructured.Unstructured, 0)
 
 	// Execute each template
-	for _, t := range tmpl.Templates() {
+	for _, t := range input.templates.Templates() {
 		// Skip the root template
 		if t.Name() == "" {
 			continue

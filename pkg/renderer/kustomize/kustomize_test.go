@@ -8,6 +8,7 @@ import (
 
 	jqmatcher "github.com/lburgazzoli/gomega-matchers/pkg/matchers/jq"
 	"github.com/rs/xid"
+	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -135,6 +136,174 @@ spec:
       containers:
       - name: nginx
         image: nginx:latest
+`
+
+// Test constants for nested resources test.
+const nestedResourcesKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- resources/configmap.yaml
+- resources/configs/secret.yaml
+`
+
+const nestedConfigMap = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nested-config
+data:
+  location: nested
+`
+
+//nolint:gosec
+const nestedSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nested-secret
+type: Opaque
+stringData:
+  key: value
+`
+
+// Test constants for base/overlay annotations test.
+const annotationsBaseKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- configmap.yaml
+- deployment.yaml
+`
+
+const annotationsBaseConfigMap = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: base-config
+data:
+  env: base
+`
+
+const annotationsBaseDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: nginx:latest
+`
+
+const annotationsOverlayKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../base
+
+commonLabels:
+  overlay: "true"
+`
+
+// Test constants for multiple components test.
+const componentsMainKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- components/frontend
+- components/backend
+`
+
+const componentsFrontendKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+`
+
+const componentsFrontendDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:latest
+`
+
+const componentsBackendKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- service.yaml
+`
+
+const componentsBackendDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: nginx:latest
+`
+
+const componentsBackendService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 80
+`
+
+// Test constants for LoadRestrictions test.
+const kustomizationWithParent = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../configmap.yaml
 `
 
 func TestRenderer(t *testing.T) {
@@ -295,24 +464,9 @@ func setupOverlayKustomization(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 
-	// Create base
-	baseDir := filepath.Join(dir, "base")
-	err := os.Mkdir(baseDir, 0750)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	writeFile(t, baseDir, "kustomization.yaml", baseKustomization)
-	writeFile(t, baseDir, "configmap.yaml", baseConfigMap)
-
-	// Create overlay
-	overlayDir := filepath.Join(dir, "overlay")
-	err = os.Mkdir(overlayDir, 0750)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	writeFile(t, overlayDir, "kustomization.yaml", overlayKustomization)
+	writeFile(t, dir, "base/kustomization.yaml", baseKustomization)
+	writeFile(t, dir, "base/configmap.yaml", baseConfigMap)
+	writeFile(t, dir, "overlay/kustomization.yaml", overlayKustomization)
 
 	return dir
 }
@@ -340,6 +494,12 @@ func setupKustomizationWithLabelsAndNamespace(t *testing.T) string {
 func writeFile(t *testing.T, dir string, name string, content string) {
 	t.Helper()
 	path := filepath.Join(dir, name)
+
+	// Create parent directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(path), 0750); err != nil {
+		t.Fatal(err)
+	}
+
 	err := os.WriteFile(path, []byte(content), 0600)
 	if err != nil {
 		t.Fatal(err)
@@ -369,75 +529,7 @@ func TestValuesConfigMap(t *testing.T) {
 		_, err = renderer.Process(t.Context(), nil)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		// values.yaml should be cleaned up after render
-		valuesPath := filepath.Join(dir, "values.yaml")
-		g.Expect(valuesPath).ToNot(BeAnExistingFile())
-	})
-
-	t.Run("should fail if values.yaml exists", func(t *testing.T) {
-		dir := setupBasicKustomization(t)
-
-		// Pre-create values.yaml
-		writeFile(t, dir, "values.yaml", "existing content")
-
-		renderer, err := kustomize.New([]kustomize.Source{
-			{
-				Path: dir,
-				Values: kustomize.Values(map[string]string{
-					"key": "value",
-				}),
-			},
-		})
-		g.Expect(err).ToNot(HaveOccurred())
-
-		_, err = renderer.Process(t.Context(), nil)
-		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("values.yaml already exists"))
-	})
-
-	t.Run("should clean up values.yaml after render", func(t *testing.T) {
-		dir := setupBasicKustomization(t)
-
-		renderer, err := kustomize.New([]kustomize.Source{
-			{
-				Path: dir,
-				Values: kustomize.Values(map[string]string{
-					"test": "value",
-				}),
-			},
-		})
-		g.Expect(err).ToNot(HaveOccurred())
-
-		_, err = renderer.Process(t.Context(), nil)
-		g.Expect(err).ToNot(HaveOccurred())
-
-		// Verify cleanup
-		valuesPath := filepath.Join(dir, "values.yaml")
-		g.Expect(valuesPath).ToNot(BeAnExistingFile())
-	})
-
-	t.Run("should clean up values.yaml on error", func(t *testing.T) {
-		dir := t.TempDir()
-
-		// Create invalid kustomization
-		writeFile(t, dir, "kustomization.yaml", "invalid: yaml: content:")
-
-		renderer, err := kustomize.New([]kustomize.Source{
-			{
-				Path: dir,
-				Values: kustomize.Values(map[string]string{
-					"key": "value",
-				}),
-			},
-		})
-		g.Expect(err).ToNot(HaveOccurred())
-
-		_, err = renderer.Process(t.Context(), nil)
-		g.Expect(err).To(HaveOccurred())
-
-		// Verify cleanup even on error
-		valuesPath := filepath.Join(dir, "values.yaml")
-		g.Expect(valuesPath).ToNot(BeAnExistingFile())
+		// With virtual filesystem, values.yaml never touches disk
 	})
 
 	t.Run("should work without values", func(t *testing.T) {
@@ -762,5 +854,243 @@ func TestSourceAnnotations(t *testing.T) {
 			g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourcePath))
 			// g.Expect(annotations).ShouldNot(HaveKey(types.AnnotationSourceFile))
 		}
+	})
+
+	t.Run("should annotate nested resources with relative paths", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writeFile(t, dir, "kustomization.yaml", nestedResourcesKustomization)
+		writeFile(t, dir, "resources/configmap.yaml", nestedConfigMap)
+		writeFile(t, dir, "resources/configs/secret.yaml", nestedSecret)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{{Path: dir}},
+			kustomize.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+
+		// Verify annotations include nested paths
+		foundConfigMap := false
+		foundSecret := false
+
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "kustomize"))
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, dir))
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+
+			sourceFile := annotations[types.AnnotationSourceFile]
+			switch sourceFile {
+			case "resources/configmap.yaml":
+				foundConfigMap = true
+				g.Expect(obj.GetKind()).Should(Equal("ConfigMap"))
+			case "resources/configs/secret.yaml":
+				foundSecret = true
+				g.Expect(obj.GetKind()).Should(Equal("Secret"))
+			}
+		}
+
+		g.Expect(foundConfigMap).Should(BeTrue(), "should find ConfigMap with nested path")
+		g.Expect(foundSecret).Should(BeTrue(), "should find Secret with deeply nested path")
+	})
+
+	t.Run("should annotate resources from base kustomization", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writeFile(t, dir, "base/kustomization.yaml", annotationsBaseKustomization)
+		writeFile(t, dir, "base/configmap.yaml", annotationsBaseConfigMap)
+		writeFile(t, dir, "base/deployment.yaml", annotationsBaseDeployment)
+		writeFile(t, dir, "overlay/kustomization.yaml", annotationsOverlayKustomization)
+
+		overlayDir := filepath.Join(dir, "overlay")
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{{Path: overlayDir}},
+			kustomize.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(2))
+
+		// Verify all objects have source annotations pointing to overlay
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "kustomize"))
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, overlayDir))
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+
+			// Source files should reference the base directory
+			sourceFile := annotations[types.AnnotationSourceFile]
+			g.Expect(sourceFile).Should(
+				Or(
+					Equal("../base/configmap.yaml"),
+					Equal("../base/deployment.yaml"),
+				),
+				"source file should reference base directory",
+			)
+
+			// Verify overlay label was applied
+			g.Expect(obj.GetLabels()).Should(HaveKeyWithValue("overlay", "true"))
+		}
+	})
+
+	t.Run("should annotate resources from multiple included kustomizations", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writeFile(t, dir, "components/frontend/kustomization.yaml", componentsFrontendKustomization)
+		writeFile(t, dir, "components/frontend/deployment.yaml", componentsFrontendDeployment)
+		writeFile(t, dir, "components/backend/kustomization.yaml", componentsBackendKustomization)
+		writeFile(t, dir, "components/backend/deployment.yaml", componentsBackendDeployment)
+		writeFile(t, dir, "components/backend/service.yaml", componentsBackendService)
+		writeFile(t, dir, "kustomization.yaml", componentsMainKustomization)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{{Path: dir}},
+			kustomize.WithSourceAnnotations(true),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(3))
+
+		// Map to track found resources
+		foundResources := make(map[string]string)
+
+		for _, obj := range objects {
+			annotations := obj.GetAnnotations()
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "kustomize"))
+			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, dir))
+			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
+
+			sourceFile := annotations[types.AnnotationSourceFile]
+			key := obj.GetKind() + "/" + obj.GetName()
+			foundResources[key] = sourceFile
+		}
+
+		// Verify we found all expected resources with correct source files
+		g.Expect(foundResources).Should(HaveKeyWithValue("Deployment/frontend", "components/frontend/deployment.yaml"))
+		g.Expect(foundResources).Should(HaveKeyWithValue("Deployment/backend", "components/backend/deployment.yaml"))
+		g.Expect(foundResources).Should(HaveKeyWithValue("Service/backend", "components/backend/service.yaml"))
+	})
+}
+
+func TestLoadRestrictions(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should use default LoadRestrictionsRootOnly", func(t *testing.T) {
+		parentDir := t.TempDir()
+		childDir := filepath.Join(parentDir, "child")
+
+		// Create configmap in parent dir
+		writeFile(t, parentDir, "configmap.yaml", basicConfigMap)
+
+		// Create kustomization in child that tries to reference parent
+		writeFile(t, childDir, "kustomization.yaml", kustomizationWithParent)
+
+		renderer, err := kustomize.New([]kustomize.Source{
+			{Path: childDir},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Should fail because default is LoadRestrictionsRootOnly
+		_, err = renderer.Process(t.Context(), nil)
+		g.Expect(err).Should(HaveOccurred())
+		g.Expect(err.Error()).Should(ContainSubstring("failed to run kustomize"))
+	})
+
+	t.Run("should allow LoadRestrictionsNone via renderer option", func(t *testing.T) {
+		parentDir := t.TempDir()
+		childDir := filepath.Join(parentDir, "child")
+
+		// Create configmap in parent dir
+		writeFile(t, parentDir, "configmap.yaml", basicConfigMap)
+
+		// Create kustomization in child that references parent
+		writeFile(t, childDir, "kustomization.yaml", kustomizationWithParent)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{
+				{Path: childDir},
+			},
+			kustomize.WithLoadRestrictions(kustomizetypes.LoadRestrictionsNone),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Should succeed with LoadRestrictionsNone
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(1))
+		g.Expect(objects[0].GetKind()).Should(Equal("ConfigMap"))
+	})
+
+	t.Run("should allow per-Source LoadRestrictions override", func(t *testing.T) {
+		parentDir := t.TempDir()
+		child1Dir := filepath.Join(parentDir, "child1")
+		child2Dir := filepath.Join(parentDir, "child2")
+
+		// Create configmap in parent dir
+		writeFile(t, parentDir, "configmap.yaml", basicConfigMap)
+
+		// Create kustomization in child1 that references parent (will use None)
+		writeFile(t, child1Dir, "kustomization.yaml", kustomizationWithParent)
+
+		// Create basic kustomization in child2 (will use RootOnly)
+		writeFile(t, child2Dir, "kustomization.yaml", basicKustomization)
+		writeFile(t, child2Dir, "configmap.yaml", basicConfigMap)
+		writeFile(t, child2Dir, "pod.yaml", basicPod)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{
+				{
+					Path:             child1Dir,
+					LoadRestrictions: kustomizetypes.LoadRestrictionsNone,
+				},
+				{
+					Path:             child2Dir,
+					LoadRestrictions: kustomizetypes.LoadRestrictionsRootOnly,
+				},
+			},
+			kustomize.WithLoadRestrictions(kustomizetypes.LoadRestrictionsRootOnly),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Should succeed: child1 uses None, child2 uses RootOnly
+		objects, err := renderer.Process(t.Context(), nil)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(objects).Should(HaveLen(3)) // 1 from child1, 2 from child2
+	})
+
+	t.Run("should respect Source override over renderer-wide default", func(t *testing.T) {
+		parentDir := t.TempDir()
+		childDir := filepath.Join(parentDir, "child")
+
+		// Create configmap in parent dir
+		writeFile(t, parentDir, "configmap.yaml", basicConfigMap)
+
+		// Create kustomization in child that references parent
+		writeFile(t, childDir, "kustomization.yaml", kustomizationWithParent)
+
+		renderer, err := kustomize.New(
+			[]kustomize.Source{
+				{
+					Path:             childDir,
+					LoadRestrictions: kustomizetypes.LoadRestrictionsRootOnly,
+				},
+			},
+			kustomize.WithLoadRestrictions(kustomizetypes.LoadRestrictionsNone),
+		)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Should fail because Source overrides to RootOnly
+		_, err = renderer.Process(t.Context(), nil)
+		g.Expect(err).Should(HaveOccurred())
+		g.Expect(err.Error()).Should(ContainSubstring("failed to run kustomize"))
 	})
 }
