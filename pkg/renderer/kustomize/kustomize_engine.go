@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	goyaml "gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
@@ -63,14 +64,14 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 				kust.BuildMetadata = append(kust.BuildMetadata, kustomizetypes.OriginAnnotations)
 				addedOriginAnnotations = true
 
-				kustContent, err := marshalKustomization(kust)
+				data, err := goyaml.Marshal(kust)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to marshal kustomization: %w", err)
 				}
 
 				// Add for all possible kustomization file names
 				for _, filename := range kustomizationFiles {
-					builder.WithOverride(filepath.Join(input.Path, filename), kustContent)
+					builder.WithOverride(filepath.Join(input.Path, filename), data)
 				}
 			}
 		}
