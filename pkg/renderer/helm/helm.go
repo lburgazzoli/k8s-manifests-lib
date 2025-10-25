@@ -166,15 +166,21 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 			)
 		}
 
-		allObjects = append(allObjects, objects...)
+		// Apply renderer-level filters and transformers per-source for better error context
+		transformed, err := pipeline.Apply(ctx, objects, r.opts.Filters, r.opts.Transformers)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"error applying filters/transformers to helm chart %s (release: %s): %w",
+				r.inputs[i].Chart,
+				r.inputs[i].ReleaseName,
+				err,
+			)
+		}
+
+		allObjects = append(allObjects, transformed...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
-	if err != nil {
-		return nil, fmt.Errorf("helm renderer: %w", err)
-	}
-
-	return transformed, nil
+	return allObjects, nil
 }
 
 // Name returns the renderer type identifier.
@@ -241,12 +247,24 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 		return nil, err
 	}
 
-	// Compute cache key from render values
+	// Compute cache key from chart identifier and render values
+	type cacheKeyData struct {
+		Chart          string
+		ReleaseName    string
+		ReleaseVersion string
+		RenderValues   chartutil.Values
+	}
+
 	var cacheKey string
 
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
-		cacheKey = dump.ForHash(renderValues)
+		cacheKey = dump.ForHash(cacheKeyData{
+			Chart:          input.Chart,
+			ReleaseName:    input.ReleaseName,
+			ReleaseVersion: input.ReleaseVersion,
+			RenderValues:   renderValues,
+		})
 
 		// ensure objects are evicted
 		r.opts.Cache.Sync()

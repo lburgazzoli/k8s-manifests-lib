@@ -75,7 +75,7 @@ func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructure
 
 	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
 	if err != nil {
-		return nil, fmt.Errorf("mem renderer: %w", err)
+		return nil, fmt.Errorf("error applying filters/transformers in mem renderer: %w", err)
 	}
 
 	return transformed, nil

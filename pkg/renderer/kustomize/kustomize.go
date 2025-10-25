@@ -108,15 +108,20 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 			return nil, fmt.Errorf("error rendering kustomize[%d] path %s: %w", i, input.Path, err)
 		}
 
-		allObjects = append(allObjects, objects...)
+		// Apply renderer-level filters and transformers per-source for better error context
+		transformed, err := pipeline.Apply(ctx, objects, r.opts.Filters, r.opts.Transformers)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"error applying filters/transformers to path %s: %w",
+				input.Path,
+				err,
+			)
+		}
+
+		allObjects = append(allObjects, transformed...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
-	if err != nil {
-		return nil, fmt.Errorf("kustomize renderer: %w", err)
-	}
-
-	return transformed, nil
+	return allObjects, nil
 }
 
 // renderSingle performs the rendering for a single kustomize path.

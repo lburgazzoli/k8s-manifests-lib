@@ -75,15 +75,20 @@ func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructure
 			return nil, fmt.Errorf("error rendering YAML[%d] pattern %s: %w", i, input.Path, err)
 		}
 
-		allObjects = append(allObjects, objects...)
+		// Apply renderer-level filters and transformers per-source for better error context
+		transformed, err := pipeline.Apply(ctx, objects, r.opts.Filters, r.opts.Transformers)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"error applying filters/transformers to YAML pattern %s: %w",
+				input.Path,
+				err,
+			)
+		}
+
+		allObjects = append(allObjects, transformed...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
-	if err != nil {
-		return nil, fmt.Errorf("yaml renderer: %w", err)
-	}
-
-	return transformed, nil
+	return allObjects, nil
 }
 
 // Name returns the renderer type identifier.

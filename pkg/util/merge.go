@@ -54,8 +54,9 @@ func cloneMap(m map[string]any) map[string]any {
 	return result
 }
 
-// cloneValue creates a copy of a value.
-// For maps, creates a shallow copy. For slices, creates a shallow copy.
+// cloneValue creates a deep copy of a value.
+// For maps, recursively clones all nested maps and slices.
+// For slices, recursively clones all elements.
 // For other types, returns the value as-is (primitives, pointers, etc.).
 func cloneValue(v any) any {
 	if v == nil {
@@ -67,7 +68,9 @@ func cloneValue(v any) any {
 		return cloneMap(val)
 	case []any:
 		clone := make([]any, len(val))
-		copy(clone, val)
+		for i, elem := range val {
+			clone[i] = cloneValue(elem)
+		}
 		return clone
 	default:
 		return v

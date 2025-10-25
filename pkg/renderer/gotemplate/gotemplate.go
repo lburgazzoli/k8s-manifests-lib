@@ -105,15 +105,21 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, r.inputs[i].Path, err)
 		}
 
-		allObjects = append(allObjects, objects...)
+		// Apply renderer-level filters and transformers per-source for better error context
+		transformed, err := pipeline.Apply(ctx, objects, r.opts.Filters, r.opts.Transformers)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"error applying filters/transformers to gotemplate[%d] pattern %s: %w",
+				i,
+				r.inputs[i].Path,
+				err,
+			)
+		}
+
+		allObjects = append(allObjects, transformed...)
 	}
 
-	transformed, err := pipeline.Apply(ctx, allObjects, r.opts.Filters, r.opts.Transformers)
-	if err != nil {
-		return nil, fmt.Errorf("gotemplate renderer: %w", err)
-	}
-
-	return transformed, nil
+	return allObjects, nil
 }
 
 // Name returns the renderer type identifier.
@@ -152,12 +158,20 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 		return nil, fmt.Errorf("failed to get values: %w", err)
 	}
 
-	// Compute cache key from values
+	// Compute cache key from template path and values
+	type cacheKeyData struct {
+		Path   string
+		Values any
+	}
+
 	var cacheKey string
 
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
-		cacheKey = dump.ForHash(values)
+		cacheKey = dump.ForHash(cacheKeyData{
+			Path:   input.Path,
+			Values: values,
+		})
 
 		// ensure objects are evicted
 		r.opts.Cache.Sync()

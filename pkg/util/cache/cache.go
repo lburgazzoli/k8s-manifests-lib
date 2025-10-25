@@ -88,6 +88,13 @@ func (c *defaultCache[T]) Set(key string, val T) {
 	}
 }
 
+// Sync removes all expired entries from the cache.
+//
+// Note: Expired entries may still be briefly returned by Get() before Sync() is called,
+// as Get() performs lazy expiration checking (returns false for expired entries without
+// removing them).
+//
+// This is intentional for performance - avoiding write locks on every Get().
 func (c *defaultCache[T]) Sync() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

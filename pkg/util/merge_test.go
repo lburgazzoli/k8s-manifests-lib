@@ -248,4 +248,201 @@ func TestDeepMerge(t *testing.T) {
 			},
 		}))
 	})
+
+	t.Run("should deeply clone nested maps in slices", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"items": []any{
+				map[string]any{
+					"name": "item1",
+					"config": map[string]any{
+						"enabled": true,
+					},
+				},
+			},
+		}
+		overlay := map[string]any{
+			"items": []any{
+				map[string]any{
+					"name": "item2",
+				},
+			},
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		g.Expect(result).Should(Equal(map[string]any{
+			"items": []any{
+				map[string]any{
+					"name": "item2",
+				},
+			},
+		}))
+
+		resultItems := result["items"].([]any)
+		overlayItems := overlay["items"].([]any)
+		resultMap := resultItems[0].(map[string]any)
+		overlayMap := overlayItems[0].(map[string]any)
+
+		resultMap["modified"] = "value"
+
+		g.Expect(overlayMap).ShouldNot(HaveKey("modified"))
+	})
+
+	t.Run("should deeply clone nested slices in slices", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"matrix": []any{
+				[]any{"a", "b"},
+				[]any{"c", "d"},
+			},
+		}
+		overlay := map[string]any{
+			"other": "value",
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		g.Expect(result).Should(HaveKey("matrix"))
+		g.Expect(result).Should(HaveKey("other"))
+
+		resultMatrix := result["matrix"].([]any)
+		baseMatrix := base["matrix"].([]any)
+
+		resultInner := resultMatrix[0].([]any)
+		baseInner := baseMatrix[0].([]any)
+
+		resultInner[0] = "modified"
+
+		g.Expect(baseInner[0]).Should(Equal("a"))
+	})
+
+	t.Run("should deeply clone complex nested structures with mixed types", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"containers": []any{
+				map[string]any{
+					"name":  "nginx",
+					"image": "nginx:1.0",
+					"env": []any{
+						map[string]any{
+							"name":  "ENV_VAR",
+							"value": "base_value",
+						},
+					},
+				},
+			},
+		}
+		overlay := map[string]any{
+			"containers": []any{
+				map[string]any{
+					"name":  "nginx",
+					"image": "nginx:2.0",
+					"env": []any{
+						map[string]any{
+							"name":  "ENV_VAR",
+							"value": "overlay_value",
+						},
+					},
+				},
+			},
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		resultContainers := result["containers"].([]any)
+		overlayContainers := overlay["containers"].([]any)
+		baseContainers := base["containers"].([]any)
+
+		resultContainer := resultContainers[0].(map[string]any)
+		resultEnv := resultContainer["env"].([]any)
+		resultEnvVar := resultEnv[0].(map[string]any)
+
+		resultEnvVar["modified"] = "test"
+
+		overlayContainer := overlayContainers[0].(map[string]any)
+		overlayEnv := overlayContainer["env"].([]any)
+		overlayEnvVar := overlayEnv[0].(map[string]any)
+		g.Expect(overlayEnvVar).ShouldNot(HaveKey("modified"))
+
+		baseContainer := baseContainers[0].(map[string]any)
+		baseEnv := baseContainer["env"].([]any)
+		baseEnvVar := baseEnv[0].(map[string]any)
+		g.Expect(baseEnvVar).ShouldNot(HaveKey("modified"))
+	})
+
+	t.Run("should clone slices with nil elements", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"list": []any{"a", nil, "c"},
+		}
+		overlay := map[string]any{
+			"other": "value",
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		g.Expect(result["list"]).Should(Equal([]any{"a", nil, "c"}))
+
+		resultList := result["list"].([]any)
+		baseList := base["list"].([]any)
+
+		resultList[0] = "modified"
+
+		g.Expect(baseList[0]).Should(Equal("a"))
+	})
+
+	t.Run("should clone empty slices correctly", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"empty": []any{},
+		}
+		overlay := map[string]any{
+			"other": "value",
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		g.Expect(result["empty"]).Should(Equal([]any{}))
+		g.Expect(result["empty"]).ShouldNot(BeIdenticalTo(base["empty"]))
+	})
+
+	t.Run("should handle slice of maps with varying structures", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"configs": []any{
+				map[string]any{
+					"type":  "database",
+					"host":  "localhost",
+					"ports": []any{5432, 5433},
+				},
+				map[string]any{
+					"type": "cache",
+					"ttl":  300,
+				},
+			},
+		}
+		overlay := map[string]any{
+			"version": "v2",
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		resultConfigs := result["configs"].([]any)
+		baseConfigs := base["configs"].([]any)
+
+		resultFirst := resultConfigs[0].(map[string]any)
+		resultPorts := resultFirst["ports"].([]any)
+		resultPorts[0] = 9999
+
+		baseFirst := baseConfigs[0].(map[string]any)
+		basePorts := baseFirst["ports"].([]any)
+		g.Expect(basePorts[0]).Should(Equal(5432))
+	})
 }
