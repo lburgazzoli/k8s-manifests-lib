@@ -56,6 +56,14 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 	addedOriginAnnotations := false
 
 	if e.opts.SourceAnnotations || len(values) > 0 {
+		p, f, err := e.fs.CleanedAbs(input.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve path %q: %w", input.Path, err)
+		}
+		if f != "" {
+			return nil, fmt.Errorf("path %q must be a dir: %w", input.Path, err)
+		}
+
 		builder := unionfs.NewBuilder(e.fs)
 
 		// Add modified kustomization if source annotations are enabled
@@ -71,7 +79,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 
 				// Add for all possible kustomization file names
 				for _, filename := range kustomizationFiles {
-					builder.WithOverride(filepath.Join(input.Path, filename), data)
+					builder.WithOverride(filepath.Join(p.String(), filename), data)
 				}
 			}
 		}
@@ -82,7 +90,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 			if err != nil {
 				return nil, fmt.Errorf("failed to create values ConfigMap: %w", err)
 			}
-			builder.WithOverride(filepath.Join(input.Path, "values.yaml"), valuesContent)
+			builder.WithOverride(filepath.Join(p.String(), "values.yaml"), valuesContent)
 		}
 
 		fs, err = builder.Build()
