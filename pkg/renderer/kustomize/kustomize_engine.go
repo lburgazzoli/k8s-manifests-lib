@@ -47,7 +47,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 		PluginConfig:     &kustomizetypes.PluginConfig{},
 	})
 
-	kust, err := readKustomization(e.fs, input.Path)
+	kust, name, err := readKustomization(e.fs, input.Path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read kustomization: %w", err)
 	}
@@ -77,10 +77,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 					return nil, fmt.Errorf("failed to marshal kustomization: %w", err)
 				}
 
-				// Add for all possible kustomization file names
-				for _, filename := range kustomizationFiles {
-					builder.WithOverride(filepath.Join(p.String(), filename), data)
-				}
+				builder.WithOverride(filepath.Join(p.String(), name), data)
 			}
 		}
 

@@ -67,30 +67,32 @@ func createValuesConfigMapYAML(values map[string]string) ([]byte, error) {
 	return data, nil
 }
 
-func readKustomization(fs filesys.FileSystem, path string) (*kustomizetypes.Kustomization, error) {
+func readKustomization(fs filesys.FileSystem, path string) (*kustomizetypes.Kustomization, string, error) {
+	var kustName string
 	var kustFile string
 
 	for _, filename := range kustomizationFiles {
 		candidate := filepath.Join(path, filename)
 		if fs.Exists(candidate) {
+			kustName = filename
 			kustFile = candidate
 			break
 		}
 	}
 
 	if kustFile == "" {
-		return nil, fmt.Errorf("no kustomization file found in %s", path)
+		return nil, "", fmt.Errorf("no kustomization file found in %s", path)
 	}
 
 	content, err := fs.ReadFile(kustFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read kustomization from %s: %w", kustFile, err)
+		return nil, "", fmt.Errorf("failed to read kustomization from %s: %w", kustFile, err)
 	}
 
 	kust := &kustomizetypes.Kustomization{}
 	if err := kust.Unmarshal(content); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal kustomization from %s: %w", kustFile, err)
+		return nil, "", fmt.Errorf("failed to unmarshal kustomization from %s: %w", kustFile, err)
 	}
 
-	return kust, nil
+	return kust, kustName, nil
 }
