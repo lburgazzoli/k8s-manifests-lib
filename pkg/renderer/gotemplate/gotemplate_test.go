@@ -232,9 +232,12 @@ func TestRenderer(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			renderer, err := gotemplate.New([]gotemplate.Source{tt.data}, tt.opts...)
+			//nolint:govet // Copying Source by value in test is safe - mutex is zero-initialized
+			sources := []gotemplate.Source{tt.data}
+			renderer, err := gotemplate.New(sources, tt.opts...)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			objects, err := renderer.Process(t.Context(), nil)

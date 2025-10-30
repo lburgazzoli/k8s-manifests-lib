@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -51,12 +52,15 @@ type Source struct {
 	// Default is false.
 	ProcessDependencies bool
 
-	// The loaded Helm chart
+	// Mutex protects concurrent access to chart field
+	mu sync.RWMutex
+
+	// The loaded Helm chart (protected by mu)
 	chart *chart.Chart
 }
 
 // Validate checks if the Source configuration is valid.
-func (s Source) Validate() error {
+func (s *Source) Validate() error {
 	if len(strings.TrimSpace(s.Chart)) == 0 {
 		return errors.New("chart cannot be empty or whitespace-only")
 	}
@@ -82,6 +86,10 @@ func Values(values map[string]any) func(context.Context) (map[string]any, error)
 
 // Renderer handles Helm rendering operations.
 // It implements types.Renderer.
+//
+// Thread-safety: Renderer is safe for concurrent use. Multiple goroutines
+// may call Process() concurrently on the same Renderer instance. Chart loading
+// is protected by per-Source mutexes to ensure thread-safe lazy initialization.
 type Renderer struct {
 	settings   *cli.EnvSettings
 	install    *action.Install
@@ -94,8 +102,8 @@ type Renderer struct {
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 	// Validate inputs at construction time to fail fast on configuration errors.
 	// Checks: Chart/ReleaseName not empty/whitespace, ReleaseName ≤53 chars (DNS limit).
-	for _, input := range inputs {
-		if err := input.Validate(); err != nil {
+	for i := range inputs {
+		if err := inputs[i].Validate(); err != nil {
 			return nil, err
 		}
 	}
@@ -135,43 +143,12 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 
 // Process executes the rendering logic for all configured inputs.
 // It implements the types.Renderer interface.
+// This method is safe for concurrent use.
 func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i := range r.inputs {
-		// Load chart if not already loaded (lazy loading for retry support)
-		if r.inputs[i].chart == nil {
-			opt := r.install.ChartPathOptions
-			opt.RepoURL = r.inputs[i].Repo
-			opt.Version = r.inputs[i].ReleaseVersion
-
-			path, err := opt.LocateChart(r.inputs[i].Chart, r.settings)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"input[%d]: unable to locate chart (repo: %s, name: %s, version: %s): %w",
-					i,
-					r.inputs[i].Repo,
-					r.inputs[i].Chart,
-					r.inputs[i].ReleaseVersion,
-					err)
-			}
-
-			c, err := loader.Load(path)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"input[%d]: failed to load chart (repo: %s, name: %s, version: %s): %w",
-					i,
-					r.inputs[i].Repo,
-					r.inputs[i].Chart,
-					r.inputs[i].ReleaseVersion,
-					err,
-				)
-			}
-
-			r.inputs[i].chart = c
-		}
-
-		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
+		objects, err := r.renderSingle(ctx, &r.inputs[i], renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error rendering helm chart[%d] %s (release: %s): %w",
@@ -204,7 +181,47 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (map[string]any, error) {
+// getChart loads the chart for the given source if not already loaded.
+// This method is thread-safe and uses lazy loading with mutex protection.
+func (r *Renderer) getChart(source *Source) (*chart.Chart, error) {
+	source.mu.Lock()
+	defer source.mu.Unlock()
+
+	if source.chart != nil {
+		return source.chart, nil
+	}
+
+	opt := r.install.ChartPathOptions
+	opt.RepoURL = source.Repo
+	opt.Version = source.ReleaseVersion
+
+	path, err := opt.LocateChart(source.Chart, r.settings)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"unable to locate chart (repo: %s, name: %s, version: %s): %w",
+			source.Repo,
+			source.Chart,
+			source.ReleaseVersion,
+			err,
+		)
+	}
+
+	c, err := loader.Load(path)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to load chart (repo: %s, name: %s, version: %s): %w",
+			source.Repo,
+			source.Chart,
+			source.ReleaseVersion,
+			err,
+		)
+	}
+
+	source.chart = c
+	return source.chart, nil
+}
+
+func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues map[string]any) (map[string]any, error) {
 	sourceValues := map[string]any{}
 
 	if input.Values != nil {
@@ -221,7 +238,7 @@ func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues ma
 
 // prepareRenderValues gets values from the Values function, processes dependencies,
 // and prepares render values using chartutil.ToRenderValues.
-func (r *Renderer) prepareRenderValues(ctx context.Context, input Source, renderTimeValues map[string]any) (chartutil.Values, error) {
+func (r *Renderer) prepareRenderValues(ctx context.Context, input *Source, renderTimeValues map[string]any) (chartutil.Values, error) {
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
@@ -256,7 +273,13 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, input Source, render
 // renderSingle performs the rendering for a single Helm chart.
 // It processes dependencies, prepares render values, renders the templates,
 // and converts the output to unstructured objects.
-func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+	// Load chart if not already loaded (thread-safe lazy loading)
+	chart, err := r.getChart(input)
+	if err != nil {
+		return nil, err
+	}
+
 	// Prepare render values (includes render-time values)
 	renderValues, err := r.prepareRenderValues(ctx, input, renderTimeValues)
 	if err != nil {
@@ -291,7 +314,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	}
 
 	// Render the chart
-	files, err := r.helmEngine.Render(input.chart, renderValues)
+	files, err := r.helmEngine.Render(chart, renderValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 	}
@@ -299,7 +322,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	result := make([]unstructured.Unstructured, 0)
 
 	// Process CRDs first
-	for _, crd := range input.chart.CRDObjects() {
+	for _, crd := range chart.CRDObjects() {
 		objects, err := k8s.DecodeYAML(crd.File.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode CRD %s: %w", crd.Name, err)

@@ -24,8 +24,11 @@ import (
 //	    helm.WithCache(cache.WithTTL(5*time.Minute)),
 //	)
 //	objects, _ := e.Render(ctx)
+//
+//nolint:govet // Copying Source by value is safe here - mutex is zero-initialized
 func Helm(source helm.Source, opts ...helm.RendererOption) (*Engine, error) {
-	renderer, err := helm.New([]helm.Source{source}, opts...)
+	sources := []helm.Source{source}
+	renderer, err := helm.New(sources, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create helm renderer: %w", err)
 	}
@@ -77,8 +80,11 @@ func Yaml(source yaml.Source, opts ...yaml.RendererOption) (*Engine, error) {
 //	    Path: "*.yaml.tmpl",
 //	})
 //	objects, _ := e.Render(ctx)
+//
+//nolint:govet // Copying Source by value is safe here - mutex is zero-initialized
 func GoTemplate(source gotemplate.Source, opts ...gotemplate.RendererOption) (*Engine, error) {
-	renderer, err := gotemplate.New([]gotemplate.Source{source}, opts...)
+	sources := []gotemplate.Source{source}
+	renderer, err := gotemplate.New(sources, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gotemplate renderer: %w", err)
 	}

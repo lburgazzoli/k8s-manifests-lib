@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"slices"
 	"strings"
+	"sync"
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,12 +37,15 @@ type Source struct {
 	// Accessible within templates via dot notation (e.g., {{ .FieldName }}).
 	Values func(context.Context) (any, error)
 
-	// Parsed templates (lazy-loaded on first Process call)
+	// Mutex protects concurrent access to templates field
+	mu sync.RWMutex
+
+	// Parsed templates (lazy-loaded on first Process call, protected by mu)
 	templates *template.Template
 }
 
 // Validate checks if the Source configuration is valid.
-func (s Source) Validate() error {
+func (s *Source) Validate() error {
 	if s.FS == nil {
 		return errors.New("fs is required")
 	}
@@ -61,6 +65,10 @@ func Values(values any) func(context.Context) (any, error) {
 
 // Renderer handles Go template rendering operations.
 // It implements types.Renderer.
+//
+// Thread-safety: Renderer is safe for concurrent use. Multiple goroutines
+// may call Process() concurrently on the same Renderer instance. Template parsing
+// is protected by per-Source mutexes to ensure thread-safe lazy initialization.
 type Renderer struct {
 	inputs []Source
 	opts   RendererOptions
@@ -70,8 +78,8 @@ type Renderer struct {
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 	// Validate inputs at construction time to fail fast on configuration errors.
 	// Checks: FS not nil, Path not empty/whitespace.
-	for _, input := range inputs {
-		if err := input.Validate(); err != nil {
+	for i := range inputs {
+		if err := inputs[i].Validate(); err != nil {
 			return nil, err
 		}
 	}
@@ -94,24 +102,12 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 }
 
 // Process executes the rendering logic for all configured inputs.
+// This method is safe for concurrent use.
 func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i := range r.inputs {
-		if r.inputs[i].templates == nil {
-			tmpl, err := template.ParseFS(r.inputs[i].FS, r.inputs[i].Path)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to parse templates (path: %s): %w",
-					r.inputs[i].Path,
-					err,
-				)
-			}
-
-			r.inputs[i].templates = tmpl.Option("missingkey=error")
-		}
-
-		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
+		objects, err := r.renderSingle(ctx, &r.inputs[i], renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, r.inputs[i].Path, err)
 		}
@@ -138,7 +134,30 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues map[string]any) (any, error) {
+// getTemplates parses the templates for the given source if not already parsed.
+// This method is thread-safe and uses lazy loading with mutex protection.
+func (r *Renderer) getTemplates(source *Source) (*template.Template, error) {
+	source.mu.Lock()
+	defer source.mu.Unlock()
+
+	if source.templates != nil {
+		return source.templates, nil
+	}
+
+	tmpl, err := template.ParseFS(source.FS, source.Path)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to parse templates (path: %s): %w",
+			source.Path,
+			err,
+		)
+	}
+
+	source.templates = tmpl.Option("missingkey=error")
+	return source.templates, nil
+}
+
+func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues map[string]any) (any, error) {
 	sourceValues := map[string]any{}
 
 	if input.Values != nil {
@@ -162,7 +181,13 @@ func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues ma
 }
 
 // renderSingle performs the rendering for a single template input.
-func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+	// Parse templates if not already parsed (thread-safe lazy loading)
+	templates, err := r.getTemplates(input)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
@@ -195,7 +220,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	result := make([]unstructured.Unstructured, 0)
 
 	// Execute each template
-	for _, t := range input.templates.Templates() {
+	for _, t := range templates.Templates() {
 		// Skip the root template
 		if t.Name() == "" {
 			continue
