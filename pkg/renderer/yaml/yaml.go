@@ -2,11 +2,13 @@ package yaml
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -28,6 +30,17 @@ type Source struct {
 	Path string
 }
 
+// Validate checks if the Source configuration is valid.
+func (s Source) Validate() error {
+	if s.FS == nil {
+		return errors.New("fs is required")
+	}
+	if len(strings.TrimSpace(s.Path)) == 0 {
+		return errors.New("path cannot be empty or whitespace-only")
+	}
+	return nil
+}
+
 // Renderer handles YAML file rendering operations.
 // It implements types.Renderer.
 type Renderer struct {
@@ -37,13 +50,11 @@ type Renderer struct {
 
 // New creates a new YAML Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs
-	for i, input := range inputs {
-		if input.FS == nil {
-			return nil, fmt.Errorf("input[%d]: FS is required", i)
-		}
-		if input.Path == "" {
-			return nil, fmt.Errorf("input[%d]: Path is required", i)
+	// Validate inputs at construction time to fail fast on configuration errors.
+	// Checks: FS not nil, Path not empty/whitespace.
+	for _, input := range inputs {
+		if err := input.Validate(); err != nil {
+			return nil, err
 		}
 	}
 

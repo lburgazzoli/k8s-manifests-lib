@@ -3,9 +3,11 @@ package gotemplate
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"slices"
+	"strings"
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -38,6 +40,17 @@ type Source struct {
 	templates *template.Template
 }
 
+// Validate checks if the Source configuration is valid.
+func (s Source) Validate() error {
+	if s.FS == nil {
+		return errors.New("fs is required")
+	}
+	if len(strings.TrimSpace(s.Path)) == 0 {
+		return errors.New("path cannot be empty or whitespace-only")
+	}
+	return nil
+}
+
 // Values returns a Values function that always returns the provided static values.
 // This is a convenience helper for the common case of non-dynamic values.
 func Values(values any) func(context.Context) (any, error) {
@@ -55,13 +68,11 @@ type Renderer struct {
 
 // New creates a new GoTemplate Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs
-	for i, input := range inputs {
-		if input.FS == nil {
-			return nil, fmt.Errorf("input[%d]: FS is required", i)
-		}
-		if input.Path == "" {
-			return nil, fmt.Errorf("input[%d]: Path is required", i)
+	// Validate inputs at construction time to fail fast on configuration errors.
+	// Checks: FS not nil, Path not empty/whitespace.
+	for _, input := range inputs {
+		if err := input.Validate(); err != nil {
+			return nil, err
 		}
 	}
 

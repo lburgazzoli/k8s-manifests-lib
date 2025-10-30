@@ -434,7 +434,14 @@ func TestNew(t *testing.T) {
 	t.Run("should reject input without path", func(t *testing.T) {
 		renderer, err := kustomize.New([]kustomize.Source{{}})
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("Path is required"))
+		g.Expect(err.Error()).To(ContainSubstring("path cannot be empty or whitespace-only"))
+		g.Expect(renderer).To(BeNil())
+	})
+
+	t.Run("should reject input with whitespace-only path", func(t *testing.T) {
+		renderer, err := kustomize.New([]kustomize.Source{{Path: "   "}})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("path cannot be empty or whitespace-only"))
 		g.Expect(renderer).To(BeNil())
 	})
 

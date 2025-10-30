@@ -22,6 +22,16 @@ type Source struct {
 	Objects []unstructured.Unstructured
 }
 
+// Validate checks if the Source configuration is valid.
+func (s Source) Validate() error {
+	for i := range s.Objects {
+		if len(s.Objects[i].Object) == 0 {
+			return fmt.Errorf("object at index %d is empty or has nil internal data", i)
+		}
+	}
+	return nil
+}
+
 // Renderer handles memory-based rendering operations.
 // It implements types.Renderer for objects that are already in memory.
 type Renderer struct {
@@ -31,6 +41,14 @@ type Renderer struct {
 
 // New creates a new memory-based renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
+	// Validate inputs at construction time to fail fast on configuration errors.
+	// Checks: Objects not empty/nil.
+	for _, input := range inputs {
+		if err := input.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	rendererOpts := RendererOptions{
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),

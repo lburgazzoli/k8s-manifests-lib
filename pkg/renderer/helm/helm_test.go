@@ -321,7 +321,19 @@ func TestNew(t *testing.T) {
 			},
 		})
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("Chart is required"))
+		g.Expect(err.Error()).To(ContainSubstring("chart cannot be empty or whitespace-only"))
+		g.Expect(renderer).To(BeNil())
+	})
+
+	t.Run("should reject input with whitespace-only Chart", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "   ",
+				ReleaseName: "test",
+			},
+		})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("chart cannot be empty or whitespace-only"))
 		g.Expect(renderer).To(BeNil())
 	})
 
@@ -332,7 +344,31 @@ func TestNew(t *testing.T) {
 			},
 		})
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("ReleaseName is required"))
+		g.Expect(err.Error()).To(ContainSubstring("release name cannot be empty or whitespace-only"))
+		g.Expect(renderer).To(BeNil())
+	})
+
+	t.Run("should reject input with whitespace-only ReleaseName", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+				ReleaseName: "   ",
+			},
+		})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("release name cannot be empty or whitespace-only"))
+		g.Expect(renderer).To(BeNil())
+	})
+
+	t.Run("should reject input with ReleaseName exceeding 53 characters", func(t *testing.T) {
+		renderer, err := helm.New([]helm.Source{
+			{
+				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+				ReleaseName: "this-is-a-very-long-release-name-that-exceeds-the-limit",
+			},
+		})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("release name must not exceed 53 characters"))
 		g.Expect(renderer).To(BeNil())
 	})
 

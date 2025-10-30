@@ -2,6 +2,7 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -54,6 +55,23 @@ type Source struct {
 	chart *chart.Chart
 }
 
+// Validate checks if the Source configuration is valid.
+func (s Source) Validate() error {
+	if len(strings.TrimSpace(s.Chart)) == 0 {
+		return errors.New("chart cannot be empty or whitespace-only")
+	}
+
+	releaseName := strings.TrimSpace(s.ReleaseName)
+	if len(releaseName) == 0 {
+		return errors.New("release name cannot be empty or whitespace-only")
+	}
+	if len(releaseName) > 53 {
+		return fmt.Errorf("release name must not exceed 53 characters (got %d)", len(releaseName))
+	}
+
+	return nil
+}
+
 // Values returns a Values function that always returns the provided static values.
 // This is a convenience helper for the common case of non-dynamic values.
 func Values(values map[string]any) func(context.Context) (map[string]any, error) {
@@ -74,13 +92,11 @@ type Renderer struct {
 
 // New creates a new Helm Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs
-	for i, input := range inputs {
-		if input.Chart == "" {
-			return nil, fmt.Errorf("input[%d]: Chart is required", i)
-		}
-		if input.ReleaseName == "" {
-			return nil, fmt.Errorf("input[%d]: ReleaseName is required", i)
+	// Validate inputs at construction time to fail fast on configuration errors.
+	// Checks: Chart/ReleaseName not empty/whitespace, ReleaseName ≤53 chars (DNS limit).
+	for _, input := range inputs {
+		if err := input.Validate(); err != nil {
+			return nil, err
 		}
 	}
 

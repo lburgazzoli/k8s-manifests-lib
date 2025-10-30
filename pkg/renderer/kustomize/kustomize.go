@@ -2,8 +2,10 @@ package kustomize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"sigs.k8s.io/kustomize/api/resmap"
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
@@ -44,6 +46,15 @@ type Source struct {
 	LoadRestrictions kustomizetypes.LoadRestrictions
 }
 
+// Validate checks if the Source configuration is valid.
+func (s Source) Validate() error {
+	if len(strings.TrimSpace(s.Path)) == 0 {
+		return errors.New("path cannot be empty or whitespace-only")
+	}
+
+	return nil
+}
+
 // Values returns a Values function that always returns the provided static values.
 // This is a convenience helper for the common case of non-dynamic values.
 func Values(values map[string]string) func(context.Context) (map[string]string, error) {
@@ -62,10 +73,11 @@ type Renderer struct {
 
 // New creates a new kustomize renderer.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs
-	for i, input := range inputs {
-		if input.Path == "" {
-			return nil, fmt.Errorf("input[%d]: Path is required", i)
+	// Validate inputs at construction time to fail fast on configuration errors.
+	// Checks: Path not empty/whitespace.
+	for _, input := range inputs {
+		if err := input.Validate(); err != nil {
+			return nil, err
 		}
 	}
 
