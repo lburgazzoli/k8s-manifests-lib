@@ -16,17 +16,15 @@ import (
 
 // Engine represents the core manifest rendering and processing engine.
 type Engine struct {
-	options engineOptions
+	options EngineOptions
 }
 
 // New creates a new Engine with the given options.
 func New(opts ...EngineOption) *Engine {
-	options := engineOptions{
-		renderers: make([]types.Renderer, 0),
-		renderOptions: renderOptions{
-			filters:      make([]types.Filter, 0),
-			transformers: make([]types.Transformer, 0),
-		},
+	options := EngineOptions{
+		Renderers:    make([]types.Renderer, 0),
+		Filters:      make([]types.Filter, 0),
+		Transformers: make([]types.Transformer, 0),
 	}
 
 	for _, opt := range opts {
@@ -52,10 +50,10 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	startTime := time.Now()
 
 	// Initialize render options by cloning the engine's options
-	renderOpts := renderOptions{
-		filters:      slices.Clone(e.options.filters),
-		transformers: slices.Clone(e.options.transformers),
-		values:       make(map[string]any),
+	renderOpts := RenderOptions{
+		Filters:      slices.Clone(e.options.Filters),
+		Transformers: slices.Clone(e.options.Transformers),
+		Values:       make(map[string]any),
 	}
 
 	// Apply render options
@@ -67,10 +65,10 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	var err error
 
 	// Process renderers in parallel or sequentially
-	if e.options.parallel {
-		allObjects, err = e.renderParallel(ctx, renderOpts.values)
+	if e.options.Parallel {
+		allObjects, err = e.renderParallel(ctx, renderOpts.Values)
 	} else {
-		allObjects, err = e.renderSequential(ctx, renderOpts.values)
+		allObjects, err = e.renderSequential(ctx, renderOpts.Values)
 	}
 
 	if err != nil {
@@ -78,13 +76,13 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	}
 
 	// Apply filters
-	filtered, err := pipeline.ApplyFilters(ctx, allObjects, renderOpts.filters)
+	filtered, err := pipeline.ApplyFilters(ctx, allObjects, renderOpts.Filters)
 	if err != nil {
 		return nil, fmt.Errorf("engine filter error: %w", err)
 	}
 
 	// Apply transformers
-	transformed, err := pipeline.ApplyTransformers(ctx, filtered, renderOpts.transformers)
+	transformed, err := pipeline.ApplyTransformers(ctx, filtered, renderOpts.Transformers)
 	if err != nil {
 		return nil, fmt.Errorf("engine transformer error: %w", err)
 	}
@@ -112,7 +110,7 @@ func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer, v
 func (e *Engine) renderSequential(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for _, renderer := range e.options.renderers {
+	for _, renderer := range e.options.Renderers {
 		objects, err := e.processRenderer(ctx, renderer, values)
 		if err != nil {
 			return nil, err
@@ -131,10 +129,10 @@ func (e *Engine) renderParallel(ctx context.Context, values map[string]any) ([]u
 		err     error
 	}
 
-	results := make(chan result, len(e.options.renderers))
+	results := make(chan result, len(e.options.Renderers))
 	var wg sync.WaitGroup
 
-	for _, renderer := range e.options.renderers {
+	for _, renderer := range e.options.Renderers {
 		wg.Add(1)
 		go func(r types.Renderer) {
 			defer wg.Done()
