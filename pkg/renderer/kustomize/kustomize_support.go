@@ -27,7 +27,7 @@ func computeValues(ctx context.Context, input Source, renderTimeValues map[strin
 	if input.Values != nil {
 		v, err := input.Values(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get values for kustomize path %q: %w", input.Path, err)
 		}
 		// Convert map[string]string to map[string]any for merging
 		for k, v := range v {

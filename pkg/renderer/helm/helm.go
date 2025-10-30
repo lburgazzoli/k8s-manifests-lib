@@ -194,7 +194,7 @@ func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues ma
 	if input.Values != nil {
 		v, err := input.Values(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 		}
 		sourceValues = v
 	}
@@ -209,13 +209,13 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, input Source, render
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values: %w", err)
+		return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 	}
 
 	// Process dependencies if enabled
 	if input.ProcessDependencies {
 		if err := chartutil.ProcessDependencies(input.chart, values); err != nil {
-			return nil, fmt.Errorf("failed to process dependencies: %w", err)
+			return nil, fmt.Errorf("failed to process dependencies for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 		}
 	}
 
@@ -231,7 +231,7 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, input Source, render
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare render values: %w", err)
+		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 	}
 
 	return renderValues, nil
@@ -244,7 +244,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// Prepare render values (includes render-time values)
 	renderValues, err := r.prepareRenderValues(ctx, input, renderTimeValues)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 	}
 
 	// Compute cache key from chart identifier and render values
@@ -277,7 +277,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// Render the chart
 	files, err := r.helmEngine.Render(input.chart, renderValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render chart: %w", err)
+		return nil, fmt.Errorf("failed to render chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
 	}
 
 	result := make([]unstructured.Unstructured, 0)

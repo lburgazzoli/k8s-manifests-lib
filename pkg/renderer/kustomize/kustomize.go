@@ -129,7 +129,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// Get values dynamically (includes render-time values)
 	values, err := computeValues(ctx, input, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values: %w", err)
+		return nil, fmt.Errorf("failed to get values for path %q: %w", input.Path, err)
 	}
 
 	// Compute cache key from input Path and Values
@@ -158,7 +158,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// No filesystem writes needed - values passed to engine
 	result, err := r.engine.Run(input, values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run kustomize: %w", err)
+		return nil, fmt.Errorf("failed to run kustomize for path %q: %w", input.Path, err)
 	}
 
 	// Cache result (if enabled)

@@ -49,7 +49,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 
 	kust, name, err := readKustomization(e.fs, input.Path)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read kustomization: %w", err)
+		return nil, fmt.Errorf("unable to read kustomization from path %q: %w", input.Path, err)
 	}
 
 	fs := e.fs
@@ -98,12 +98,12 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 
 	resMap, err := kustomizer.Run(fs, input.Path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run kustomize: %w", err)
+		return nil, fmt.Errorf("failed to run kustomize for path %q: %w", input.Path, err)
 	}
 
 	for _, t := range e.opts.Plugins {
 		if err := t.Transform(resMap); err != nil {
-			return nil, fmt.Errorf("failed to apply kustomize plugin transformer: %w", err)
+			return nil, fmt.Errorf("failed to apply kustomize plugin transformer for path %q: %w", input.Path, err)
 		}
 	}
 
@@ -116,13 +116,13 @@ func (e *Engine) toUnstructured(resMap resmap.ResMap, path string, removeConfig 
 	for i, res := range resMap.Resources() {
 		m, err := res.Map()
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert resource to map: %w", err)
+			return nil, fmt.Errorf("failed to convert resource %s to map: %w", res.CurId(), err)
 		}
 
 		result[i] = unstructured.Unstructured{}
 
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(m, &result[i]); err != nil {
-			return nil, fmt.Errorf("failed to convert map to unstructured: %w", err)
+			return nil, fmt.Errorf("failed to convert map to unstructured for resource %s: %w", res.CurId(), err)
 		}
 
 		if e.opts.SourceAnnotations {

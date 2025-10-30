@@ -133,7 +133,7 @@ func (r *Renderer) values(ctx context.Context, input Source, renderTimeValues ma
 	if input.Values != nil {
 		v, err := input.Values(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get values for template pattern %q: %w", input.Path, err)
 		}
 
 		// If source values are a map, convert to map[string]any for merging
@@ -155,7 +155,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, input, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values: %w", err)
+		return nil, fmt.Errorf("failed to get values for pattern %q: %w", input.Path, err)
 	}
 
 	// Compute cache key from template path and values

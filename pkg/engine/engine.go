@@ -72,7 +72,7 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rendering failed: %w", err)
 	}
 
 	// Apply filters
