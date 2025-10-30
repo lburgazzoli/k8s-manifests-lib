@@ -337,4 +337,21 @@ func TestRenderCache(t *testing.T) {
 		_, found = c.Get(key)
 		g.Expect(found).To(BeFalse())
 	})
+
+	t.Run("should handle nil cache gracefully", func(t *testing.T) {
+		// Create a renderCache with nil underlying cache
+		var rc struct {
+			cache.Interface[[]unstructured.Unstructured]
+		}
+
+		// Get should return false without panicking
+		_, found := rc.Get("test-key")
+		g.Expect(found).To(BeFalse())
+
+		// Set should not panic
+		rc.Set("test-key", []unstructured.Unstructured{})
+
+		// Sync should not panic
+		rc.Sync()
+	})
 }

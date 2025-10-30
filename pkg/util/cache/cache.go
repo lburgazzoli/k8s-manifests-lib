@@ -121,6 +121,10 @@ func NewRenderCache(opts ...Option) Interface[[]unstructured.Unstructured] {
 }
 
 func (r *renderCache) Get(key string) ([]unstructured.Unstructured, bool) {
+	if r.cache == nil {
+		return nil, false
+	}
+
 	cached, found := r.cache.Get(key)
 	if !found {
 		return nil, false
@@ -130,9 +134,17 @@ func (r *renderCache) Get(key string) ([]unstructured.Unstructured, bool) {
 }
 
 func (r *renderCache) Set(key string, value []unstructured.Unstructured) {
+	if r.cache == nil {
+		return
+	}
+
 	r.cache.Set(key, utilk8s.DeepCloneUnstructuredSlice(value))
 }
 
 func (r *renderCache) Sync() {
+	if r.cache == nil {
+		return
+	}
+
 	r.cache.Sync()
 }
