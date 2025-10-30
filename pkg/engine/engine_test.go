@@ -3,6 +3,7 @@ package engine_test
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -421,9 +422,7 @@ func addLabels(labels map[string]string) func(context.Context, unstructured.Unst
 		if existingLabels == nil {
 			existingLabels = make(map[string]string)
 		}
-		for k, v := range labels {
-			existingLabels[k] = v
-		}
+		maps.Copy(existingLabels, labels)
 		obj.SetLabels(existingLabels)
 		return obj, nil
 	}

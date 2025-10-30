@@ -167,13 +167,13 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 
 		original := []unstructured.Unstructured{
 			{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "ConfigMap",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name": "test",
 					},
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"key": "value",
 					},
 				},
@@ -187,11 +187,11 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 
 		// Modify the cloned object
 		cloned[0].SetName("modified")
-		cloned[0].Object["data"].(map[string]interface{})["key"] = "modified-value"
+		cloned[0].Object["data"].(map[string]any)["key"] = "modified-value"
 
 		// Verify original is unchanged
 		g.Expect(original[0].GetName()).Should(Equal("test"))
-		g.Expect(original[0].Object["data"].(map[string]interface{})["key"]).Should(Equal("value"))
+		g.Expect(original[0].Object["data"].(map[string]any)["key"]).Should(Equal("value"))
 	})
 
 	t.Run("clones multiple objects", func(t *testing.T) {
@@ -199,19 +199,19 @@ func TestDeepCloneUnstructuredSlice(t *testing.T) {
 
 		original := []unstructured.Unstructured{
 			{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "ConfigMap",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name": "config1",
 					},
 				},
 			},
 			{
-				Object: map[string]interface{}{
+				Object: map[string]any{
 					"apiVersion": "v1",
 					"kind":       "Secret",
-					"metadata": map[string]interface{}{
+					"metadata": map[string]any{
 						"name": "secret1",
 					},
 				},
@@ -356,10 +356,10 @@ func TestToUnstructured(t *testing.T) {
 	t.Run("converts map to unstructured", func(t *testing.T) {
 		g := NewWithT(t)
 
-		obj := map[string]interface{}{
+		obj := map[string]any{
 			"apiVersion": "v1",
 			"kind":       "ConfigMap",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      "test",
 				"namespace": "default",
 			},
@@ -402,7 +402,7 @@ func TestToUnstructured(t *testing.T) {
 	t.Run("handles empty map", func(t *testing.T) {
 		g := NewWithT(t)
 
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 
 		result, err := k8s.ToUnstructured(&obj)
 
@@ -414,17 +414,17 @@ func TestToUnstructured(t *testing.T) {
 	t.Run("preserves nested structures", func(t *testing.T) {
 		g := NewWithT(t)
 
-		obj := map[string]interface{}{
+		obj := map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Service",
-			"spec": map[string]interface{}{
-				"ports": []interface{}{
-					map[string]interface{}{
+			"spec": map[string]any{
+				"ports": []any{
+					map[string]any{
 						"port":       80,
 						"targetPort": 8080,
 					},
 				},
-				"selector": map[string]interface{}{
+				"selector": map[string]any{
 					"app": "test",
 				},
 			},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path/filepath"
 
 	"sigs.k8s.io/kustomize/kyaml/filesys"
@@ -168,9 +169,7 @@ func (b *Builder) WithOverride(path string, content []byte) *Builder {
 
 // WithOverrides adds multiple virtual files to the memory layer.
 func (b *Builder) WithOverrides(overrides map[string][]byte) *Builder {
-	for path, content := range overrides {
-		b.overrides[path] = content
-	}
+	maps.Copy(b.overrides, overrides)
 	return b
 }
 

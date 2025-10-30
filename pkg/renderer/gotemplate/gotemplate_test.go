@@ -101,7 +101,7 @@ func TestRenderer(t *testing.T) {
 					"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "test-app",
 					"Component": "frontend",
 				}),
@@ -122,7 +122,7 @@ func TestRenderer(t *testing.T) {
 					"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "test-app",
 					"Component": "frontend",
 					"Port":      8080,
@@ -148,7 +148,7 @@ func TestRenderer(t *testing.T) {
 					"templates/invalid.yaml.tpl": &fstest.MapFile{Data: []byte(invalidTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo": "test-app",
 				}),
 			},
@@ -163,7 +163,7 @@ func TestRenderer(t *testing.T) {
 					"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "test-app",
 					"Component": "frontend",
 					"Port":      8080,
@@ -185,7 +185,7 @@ func TestRenderer(t *testing.T) {
 					"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "test-app",
 					"Component": "frontend",
 				}),
@@ -209,7 +209,7 @@ func TestRenderer(t *testing.T) {
 			data: gotemplate.Source{
 				FS:   fstest.MapFS{},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo": "test-app",
 				}),
 			},
@@ -223,7 +223,7 @@ func TestRenderer(t *testing.T) {
 					"templates/other.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo": "test-app",
 				}),
 			},
@@ -312,7 +312,7 @@ func TestCacheIntegration(t *testing.T) {
 					"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "cache-app",
 					"Component": "frontend",
 				}),
@@ -342,7 +342,7 @@ func TestCacheIntegration(t *testing.T) {
 		callCount := 0
 		dynamicValues := func(_ context.Context) (any, error) {
 			callCount++
-			return map[string]interface{}{
+			return map[string]any{
 				"Repo":      xid.New().String(),
 				"Component": "frontend",
 			}, nil
@@ -383,7 +383,7 @@ func TestCacheIntegration(t *testing.T) {
 						"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 					},
 					Path: "templates/*.tpl",
-					Values: gotemplate.Values(map[string]interface{}{
+					Values: gotemplate.Values(map[string]any{
 						"Repo":      "no-cache-app",
 						"Component": "frontend",
 					}),
@@ -410,7 +410,7 @@ func TestCacheIntegration(t *testing.T) {
 					"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "clone-app",
 					"Component": "frontend",
 				}),
@@ -449,7 +449,7 @@ func BenchmarkGoTemplateRenderWithoutCache(b *testing.B) {
 				"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
 			},
 			Path: "templates/*.tpl",
-			Values: gotemplate.Values(map[string]interface{}{
+			Values: gotemplate.Values(map[string]any{
 				"Repo":      "bench-app",
 				"Component": "backend",
 				"Port":      8080,
@@ -463,7 +463,7 @@ func BenchmarkGoTemplateRenderWithoutCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -480,7 +480,7 @@ func BenchmarkGoTemplateRenderWithCache(b *testing.B) {
 					"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
 				},
 				Path: "templates/*.tpl",
-				Values: gotemplate.Values(map[string]interface{}{
+				Values: gotemplate.Values(map[string]any{
 					"Repo":      "bench-app",
 					"Component": "backend",
 					"Port":      8080,
@@ -496,7 +496,7 @@ func BenchmarkGoTemplateRenderWithCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -514,7 +514,7 @@ func BenchmarkGoTemplateRenderCacheMiss(b *testing.B) {
 				},
 				Path: "templates/*.tpl",
 				Values: func(_ context.Context) (any, error) {
-					return map[string]interface{}{
+					return map[string]any{
 						"Repo":      xid.New().String(),
 						"Component": "backend",
 						"Port":      8080,
@@ -531,7 +531,7 @@ func BenchmarkGoTemplateRenderCacheMiss(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -735,7 +735,7 @@ func TestSourceAnnotations(t *testing.T) {
 				{
 					FS:   fs,
 					Path: "templates/*.tpl",
-					Values: gotemplate.Values(map[string]interface{}{
+					Values: gotemplate.Values(map[string]any{
 						"Repo":      "test-app",
 						"Component": "frontend",
 						"Port":      8080,
@@ -776,7 +776,7 @@ func TestSourceAnnotations(t *testing.T) {
 				{
 					FS:   fs,
 					Path: "templates/*.tpl",
-					Values: gotemplate.Values(map[string]interface{}{
+					Values: gotemplate.Values(map[string]any{
 						"Repo":      "test-app",
 						"Component": "frontend",
 					}),

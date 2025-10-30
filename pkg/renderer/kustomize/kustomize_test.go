@@ -704,7 +704,7 @@ func BenchmarkKustomizeRenderWithoutCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -738,7 +738,7 @@ func BenchmarkKustomizeRenderWithCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -773,7 +773,7 @@ func BenchmarkKustomizeRenderCacheMiss(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)

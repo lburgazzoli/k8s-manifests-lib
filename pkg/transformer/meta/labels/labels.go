@@ -2,6 +2,7 @@ package labels
 
 import (
 	"context"
+	"maps"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -16,9 +17,7 @@ func Set(labelsToApply map[string]string) types.Transformer {
 			values = make(map[string]string)
 		}
 
-		for k, v := range labelsToApply {
-			values[k] = v
-		}
+		maps.Copy(values, labelsToApply)
 
 		obj.SetLabels(values)
 

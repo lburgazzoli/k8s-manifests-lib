@@ -37,7 +37,7 @@ func DecodeYAML(content []byte) ([]unstructured.Unstructured, error) {
 
 	docIndex := 0
 	for {
-		var out map[string]interface{}
+		var out map[string]any
 
 		err := yd.Decode(&out)
 		if err != nil {

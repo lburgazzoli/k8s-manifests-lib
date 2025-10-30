@@ -560,7 +560,7 @@ func BenchmarkHelmRenderWithoutCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -590,7 +590,7 @@ func BenchmarkHelmRenderWithCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -622,7 +622,7 @@ func BenchmarkHelmRenderCacheMiss(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)

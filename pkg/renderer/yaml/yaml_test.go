@@ -348,7 +348,7 @@ func BenchmarkYamlRenderWithoutCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -376,7 +376,7 @@ func BenchmarkYamlRenderWithCache(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := renderer.Process(context.Background(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
@@ -393,7 +393,7 @@ func BenchmarkYamlRenderCacheMiss(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		// Create new renderer each time to ensure cache miss
 		renderer, err := yaml.New(
 			[]yaml.Source{

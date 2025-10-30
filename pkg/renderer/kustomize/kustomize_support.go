@@ -50,7 +50,7 @@ func computeValues(ctx context.Context, input Source, renderTimeValues map[strin
 // createValuesConfigMapYAML creates the YAML content for a values ConfigMap.
 // Does NOT write to filesystem - returns bytes for in-memory override.
 func createValuesConfigMapYAML(values map[string]string) ([]byte, error) {
-	configMap := map[string]interface{}{
+	configMap := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
 		"metadata": map[string]string{

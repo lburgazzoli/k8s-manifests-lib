@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"context"
+	"maps"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -16,9 +17,7 @@ func Set(annotationsToApply map[string]string) types.Transformer {
 			values = make(map[string]string)
 		}
 
-		for k, v := range annotationsToApply {
-			values[k] = v
-		}
+		maps.Copy(values, annotationsToApply)
 
 		obj.SetAnnotations(values)
 
