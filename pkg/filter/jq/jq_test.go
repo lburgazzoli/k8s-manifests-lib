@@ -1,7 +1,6 @@
 package jq_test
 
 import (
-	"context"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -14,7 +13,7 @@ import (
 
 func TestFilter(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should filter by kind", func(t *testing.T) {
 		filter, err := jq.Filter(`.kind == "Pod"`)

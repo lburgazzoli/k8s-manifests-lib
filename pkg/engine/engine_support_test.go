@@ -1,7 +1,6 @@
 package engine_test
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -144,7 +143,7 @@ func TestMem(t *testing.T) {
 		g.Expect(e).ShouldNot(BeNil())
 
 		// Verify it can render
-		objects, err := e.Render(context.Background())
+		objects, err := e.Render(t.Context())
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(objects).Should(HaveLen(1))
 		g.Expect(objects[0].GetName()).Should(Equal("test-pod"))
@@ -159,7 +158,7 @@ func TestMem(t *testing.T) {
 		g.Expect(e).ShouldNot(BeNil())
 
 		// Verify it renders empty
-		objects, err := e.Render(context.Background())
+		objects, err := e.Render(t.Context())
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(objects).Should(BeEmpty())
 	})
@@ -167,7 +166,7 @@ func TestMem(t *testing.T) {
 
 func benchmarkEngineRender(b *testing.B, parallel bool) {
 	b.Helper()
-	ctx := context.Background()
+	ctx := b.Context()
 
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -249,7 +248,7 @@ func BenchmarkEngineRenderParallel(b *testing.B) {
 
 func benchmarkEngineHelm(b *testing.B, parallel bool) {
 	b.Helper()
-	ctx := context.Background()
+	ctx := b.Context()
 
 	prefix := "bench-seq"
 	if parallel {

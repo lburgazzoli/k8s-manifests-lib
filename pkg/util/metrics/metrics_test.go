@@ -1,7 +1,6 @@
 package metrics_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/metrics"
@@ -13,7 +12,7 @@ import (
 
 func TestMetricsContext(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should store and retrieve metrics from context", func(t *testing.T) {
 		m := &metrics.Metrics{

@@ -1,7 +1,6 @@
 package noop_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 
 func TestRenderMetric(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should not panic", func(t *testing.T) {
 		m := noop.RenderMetric{}
@@ -24,7 +23,7 @@ func TestRenderMetric(t *testing.T) {
 
 func TestRendererMetric(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should not panic", func(t *testing.T) {
 		m := noop.RendererMetric{}

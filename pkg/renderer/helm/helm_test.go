@@ -250,7 +250,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should handle values context cancellation", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel() // Cancel immediately
 
 		valuesFn := func(ctx context.Context) (map[string]any, error) {
@@ -387,7 +387,7 @@ func TestValuesHelper(t *testing.T) {
 		}
 
 		valuesFn := helm.Values(staticValues)
-		result, err := valuesFn(context.Background())
+		result, err := valuesFn(t.Context())
 
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result).To(Equal(staticValues))
@@ -395,7 +395,7 @@ func TestValuesHelper(t *testing.T) {
 
 	t.Run("should work with nil values", func(t *testing.T) {
 		valuesFn := helm.Values(nil)
-		result, err := valuesFn(context.Background())
+		result, err := valuesFn(t.Context())
 
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result).To(BeNil())
@@ -403,7 +403,7 @@ func TestValuesHelper(t *testing.T) {
 
 	t.Run("should work with empty map", func(t *testing.T) {
 		valuesFn := helm.Values(map[string]any{})
-		result, err := valuesFn(context.Background())
+		result, err := valuesFn(t.Context())
 
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(result).To(Equal(map[string]any{}))
@@ -561,7 +561,7 @@ func BenchmarkHelmRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := renderer.Process(context.Background(), nil)
+		_, err := renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -591,7 +591,7 @@ func BenchmarkHelmRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := renderer.Process(context.Background(), nil)
+		_, err := renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -623,7 +623,7 @@ func BenchmarkHelmRenderCacheMiss(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := renderer.Process(context.Background(), nil)
+		_, err := renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}

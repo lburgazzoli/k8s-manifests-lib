@@ -1,7 +1,6 @@
 package memory_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -13,7 +12,7 @@ import (
 
 func TestRenderMetric(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should record single render", func(t *testing.T) {
 		m := &memory.RenderMetric{}
@@ -49,7 +48,7 @@ func TestRenderMetric(t *testing.T) {
 
 func TestRendererMetric(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should record single renderer execution", func(t *testing.T) {
 		m := memory.NewRendererMetric()

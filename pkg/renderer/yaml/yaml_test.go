@@ -1,7 +1,6 @@
 package yaml_test
 
 import (
-	"context"
 	"testing"
 	"testing/fstest"
 
@@ -349,7 +348,7 @@ func BenchmarkYamlRenderWithoutCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := renderer.Process(context.Background(), nil)
+		_, err := renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -377,7 +376,7 @@ func BenchmarkYamlRenderWithCache(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := renderer.Process(context.Background(), nil)
+		_, err := renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}
@@ -405,7 +404,7 @@ func BenchmarkYamlRenderCacheMiss(b *testing.B) {
 			b.Fatalf("failed to create renderer: %v", err)
 		}
 
-		_, err = renderer.Process(context.Background(), nil)
+		_, err = renderer.Process(b.Context(), nil)
 		if err != nil {
 			b.Fatalf("failed to render: %v", err)
 		}

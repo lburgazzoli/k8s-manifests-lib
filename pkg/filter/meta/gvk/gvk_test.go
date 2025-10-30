@@ -1,7 +1,6 @@
 package gvk_test
 
 import (
-	"context"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -16,7 +15,7 @@ import (
 
 func TestFilter(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should filter single GVK", func(t *testing.T) {
 		filter := gvk.Filter(corev1.SchemeGroupVersion.WithKind("Pod"))
