@@ -123,34 +123,33 @@ func (e *Engine) renderSequential(ctx context.Context, values map[string]any) ([
 }
 
 // renderParallel processes all renderers concurrently using goroutines.
+// Results are collected in the original renderer order for consistent output.
 func (e *Engine) renderParallel(ctx context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 	type result struct {
 		objects []unstructured.Unstructured
 		err     error
 	}
 
-	results := make(chan result, len(e.options.Renderers))
+	results := make([]result, len(e.options.Renderers))
 	var wg sync.WaitGroup
 
-	for _, renderer := range e.options.Renderers {
+	for i, renderer := range e.options.Renderers {
 		wg.Add(1)
-		go func(r types.Renderer) {
+		go func(idx int, r types.Renderer) {
 			defer wg.Done()
 			objects, err := e.processRenderer(ctx, r, values)
-			results <- result{
+			results[idx] = result{
 				objects: objects,
 				err:     err,
 			}
-		}(renderer)
+		}(i, renderer)
 	}
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	wg.Wait()
 
+	// Collect results in original renderer order
 	allObjects := make([]unstructured.Unstructured, 0)
-	for res := range results {
+	for _, res := range results {
 		if res.err != nil {
 			return nil, res.err
 		}
