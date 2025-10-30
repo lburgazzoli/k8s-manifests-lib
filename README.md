@@ -96,21 +96,24 @@ func main() {
     }
 
     // Create the engine with initial configuration
+    // Note: Filters and transformers are applied in the order specified
     e := engine.New(
         // Add the Helm renderer
         engine.WithRenderer(helmRenderer),
-        // Add a filter to only keep Deployments
+        // Add a filter to only keep Deployments (applied first)
         engine.WithFilter(deploymentFilter),
-        // Add a transformer to add a common label
+        // Add a transformer to add a common label (applied to filtered objects)
         engine.WithTransformer(labels.Set(map[string]string{
             "app.kubernetes.io/managed-by": "my-operator",
         })),
     )
 
     // Render with additional render-time options
+    // Note: Render-time transformers are applied AFTER engine-level transformers
     ctx := context.Background()
     objects, err := e.Render(ctx,
         // Add a render-time transformer to add an environment label
+        // This runs after the "managed-by" label is set above
         engine.WithRenderTransformer(labels.Set(map[string]string{
             "environment": "production",
         })),
@@ -160,6 +163,73 @@ For specific use cases and patterns, see the [examples directory](examples/):
 See the [Examples README](examples/README.md) for a complete catalog with a recommended learning path.
 
 Each example is runnable: `go run examples/<category>/<name>/main.go`
+
+## Filter and Transformer Ordering
+
+Filters and transformers are applied **in the order they are specified**. Understanding this is crucial for correctness and performance.
+
+### Filter Ordering
+
+Filters use **AND logic** - an object must pass ALL filters. Order them from most to least restrictive for better performance:
+
+```go
+engine.New(
+    engine.WithFilter(namespace.Is("production")),  // Most restrictive first
+    engine.WithFilter(gvk.Filter(...)),             // Then by kind
+    engine.WithFilter(labels.Has("app")),           // Least restrictive last
+)
+```
+
+### Transformer Ordering
+
+Transformers are applied **sequentially** - output of one feeds into the next. Order them by logical dependencies:
+
+```go
+engine.New(
+    engine.WithTransformer(namespace.Set("prod")),           // Set namespace first
+    engine.WithTransformer(labels.Set(map[string]string{     // Then add labels
+        "env": "prod",
+    })),
+    engine.WithTransformer(ownerref.Set(...)),              // Set references last
+)
+```
+
+### Common Pitfalls
+
+**Overwriting transformers**: If two transformers modify the same field, the last one wins.
+
+```go
+// ❌ Bad: second transformer overwrites the first
+engine.WithTransformer(labels.Set(map[string]string{"env": "dev"}))
+engine.WithTransformer(labels.Set(map[string]string{"env": "prod"}))  // Overwrites!
+
+// ✅ Good: merge in a single transformer
+engine.WithTransformer(labels.Set(map[string]string{
+    "env": "prod",
+    "team": "platform",
+}))
+```
+
+**Filter after dependencies**: Filters that remove objects needed by transformers cause silent skips.
+
+```go
+// ❌ Bad: filter might remove objects that transformer expects
+engine.WithTransformer(ownerref.Set(...))      // Expects objects to exist
+engine.WithFilter(namespace.Is("prod"))        // Might filter them out!
+
+// ✅ Good: filter first, then transform remaining objects
+engine.WithFilter(namespace.Is("prod"))
+engine.WithTransformer(ownerref.Set(...))
+```
+
+### Best Practices
+
+1. **Document assumptions**: If a transformer expects certain fields/objects, document it
+2. **Test combinations**: Test your filter/transformer chains together, not just individually
+3. **Use descriptive names**: Name custom filters/transformers to indicate what they modify
+4. **Group related operations**: Apply related transformations in sequence
+
+For detailed information on the three-level pipeline (renderer-specific, engine-level, render-time), see [docs/design.md](docs/design.md#8-three-level-filteringtransformation).
 
 ## Project Structure
 

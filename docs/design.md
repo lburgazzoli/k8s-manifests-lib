@@ -917,6 +917,41 @@ engine.New(
 
 **Order matters!** Implementation in `pipeline.ApplyTransformers()` processes transformers in sequence.
 
+#### 9.2.1. Ordering Guidelines
+
+When applying multiple filters or transformers, consider these ordering principles:
+
+**Filters (apply most restrictive first for performance):**
+```go
+engine.New(
+    engine.WithFilter(namespaceFilter),    // Narrow down to specific namespace first
+    engine.WithFilter(kindFilter),         // Then filter by kind
+    engine.WithFilter(labelFilter),        // Finally filter by labels
+)
+```
+
+**Transformers (apply in logical dependency order):**
+```go
+engine.New(
+    engine.WithTransformer(namespace.Set("prod")),           // Set namespace first
+    engine.WithTransformer(labels.Set(map[string]string{     // Then add labels (may use namespace)
+        "env": "prod",
+    })),
+    engine.WithTransformer(ownerref.Set(...)),              // Set owner refs last (may reference labels)
+)
+```
+
+**Potential conflicts:**
+- **Overwriting transformers**: If two transformers modify the same field, the last one wins
+- **Filter after transformer**: Applying a filter that removes objects a transformer expects will silently skip them
+- **Namespace dependencies**: Transformers that validate namespace should run after namespace-setting transformers
+
+**Best practices:**
+1. **Document transformer assumptions**: If a transformer expects certain fields to exist, document it
+2. **Test combinations**: Test your filter/transformer chains together, not just individually
+3. **Use descriptive names**: Name custom filters/transformers clearly to indicate what they modify
+4. **Group related operations**: Apply related transformations together in sequence
+
 ## 10. Pipeline Execution (pkg/pipeline)
 
 ### 10.1. Filter/Transformer Application
