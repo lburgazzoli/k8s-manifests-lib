@@ -1,5 +1,7 @@
 package util
 
+import "reflect"
+
 // DeepMerge recursively merges overlay into base, with overlay values taking precedence.
 // For maps, the merge is recursive. For all other types, overlay replaces base.
 // Returns a new map without modifying the inputs.
@@ -56,8 +58,9 @@ func cloneMap(m map[string]any) map[string]any {
 
 // cloneValue creates a deep copy of a value.
 // For maps, recursively clones all nested maps and slices.
-// For slices, recursively clones all elements.
-// For other types, returns the value as-is (primitives, pointers, etc.).
+// For []any slices, recursively clones all elements with deep cloning.
+// For other slice types ([]string, []int, etc.), creates a shallow copy of the slice itself.
+// For primitives and other types, returns the value as-is.
 func cloneValue(v any) any {
 	if v == nil {
 		return nil
@@ -73,6 +76,16 @@ func cloneValue(v any) any {
 		}
 		return clone
 	default:
+		// Handle other slice types using reflection to avoid shared memory
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Slice {
+			sliceLen := rv.Len()
+			clone := reflect.MakeSlice(rv.Type(), sliceLen, sliceLen)
+			for i := range sliceLen {
+				clone.Index(i).Set(rv.Index(i))
+			}
+			return clone.Interface()
+		}
 		return v
 	}
 }

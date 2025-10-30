@@ -445,4 +445,115 @@ func TestDeepMerge(t *testing.T) {
 		basePorts := baseFirst["ports"].([]any)
 		g.Expect(basePorts[0]).Should(Equal(5432))
 	})
+
+	t.Run("should clone []string slices to avoid shared memory", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"tags": []string{"dev", "test"},
+		}
+
+		result := util.DeepMerge(base, nil)
+
+		// Modify the cloned slice
+		resultTags := result["tags"].([]string)
+		resultTags[0] = "production"
+
+		// Original should be unchanged
+		baseTags := base["tags"].([]string)
+		g.Expect(baseTags[0]).Should(Equal("dev"))
+		g.Expect(baseTags[1]).Should(Equal("test"))
+	})
+
+	t.Run("should clone []int slices to avoid shared memory", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"ports": []int{8080, 9090},
+		}
+
+		result := util.DeepMerge(base, nil)
+
+		// Modify the cloned slice
+		resultPorts := result["ports"].([]int)
+		resultPorts[0] = 3000
+
+		// Original should be unchanged
+		basePorts := base["ports"].([]int)
+		g.Expect(basePorts[0]).Should(Equal(8080))
+		g.Expect(basePorts[1]).Should(Equal(9090))
+	})
+
+	t.Run("should clone []bool slices to avoid shared memory", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"features": []bool{true, false, true},
+		}
+
+		result := util.DeepMerge(base, nil)
+
+		// Modify the cloned slice
+		resultFeatures := result["features"].([]bool)
+		resultFeatures[0] = false
+
+		// Original should be unchanged
+		baseFeatures := base["features"].([]bool)
+		g.Expect(baseFeatures[0]).Should(BeTrue())
+		g.Expect(baseFeatures[1]).Should(BeFalse())
+		g.Expect(baseFeatures[2]).Should(BeTrue())
+	})
+
+	t.Run("should handle nested maps with typed slices", func(t *testing.T) {
+		g := NewWithT(t)
+
+		base := map[string]any{
+			"config": map[string]any{
+				"hosts": []string{"localhost", "127.0.0.1"},
+				"ports": []int{8080, 9090},
+			},
+		}
+
+		overlay := map[string]any{
+			"config": map[string]any{
+				"enabled": true,
+			},
+		}
+
+		result := util.DeepMerge(base, overlay)
+
+		// Modify the cloned slices
+		resultConfig := result["config"].(map[string]any)
+		resultHosts := resultConfig["hosts"].([]string)
+		resultPorts := resultConfig["ports"].([]int)
+		resultHosts[0] = "example.com"
+		resultPorts[0] = 3000
+
+		// Original should be unchanged
+		baseConfig := base["config"].(map[string]any)
+		baseHosts := baseConfig["hosts"].([]string)
+		basePorts := baseConfig["ports"].([]int)
+		g.Expect(baseHosts[0]).Should(Equal("localhost"))
+		g.Expect(basePorts[0]).Should(Equal(8080))
+	})
+
+	t.Run("should clone []string in overlay without affecting original", func(t *testing.T) {
+		g := NewWithT(t)
+
+		overlay := map[string]any{
+			"environments": []string{"dev", "staging", "prod"},
+		}
+
+		result := util.DeepMerge(nil, overlay)
+
+		// Modify the cloned slice
+		resultEnvs := result["environments"].([]string)
+		resultEnvs[2] = "production"
+
+		// Original overlay should be unchanged
+		overlayEnvs := overlay["environments"].([]string)
+		g.Expect(overlayEnvs[0]).Should(Equal("dev"))
+		g.Expect(overlayEnvs[1]).Should(Equal("staging"))
+		g.Expect(overlayEnvs[2]).Should(Equal("prod"))
+	})
 }
