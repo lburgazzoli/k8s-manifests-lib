@@ -1432,7 +1432,7 @@ Source annotations use the `manifests.k8s-manifests-lib/source.*` prefix:
 
 ### 15.2. Enabling Source Annotations
 
-Source annotations are **disabled by default** and can be enabled at two levels:
+Source annotations are **disabled by default** and can be enabled per renderer:
 
 **Renderer-level** (per renderer):
 ```go
@@ -1447,21 +1447,7 @@ kustomizeRenderer, _ := kustomize.New(
 )
 ```
 
-**Engine-level** (all renderers):
-```go
-e := engine.New(
-    engine.WithRenderer(helmRenderer),
-    engine.WithRenderer(kustomizeRenderer),
-    engine.WithSourceAnnotations(true),  // Not yet implemented - use renderer-level for now
-)
-```
-
-**Render-time** (single render call):
-```go
-objects, _ := e.Render(ctx,
-    engine.WithRenderSourceAnnotations(true),  // Not yet implemented - use renderer-level for now
-)
-```
+**Note**: Source annotations are currently configured at the renderer level only. Each renderer must be configured individually with `WithSourceAnnotations(true)` if you want to enable source tracking.
 
 ### 15.3. Annotation Values by Renderer
 

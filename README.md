@@ -439,7 +439,7 @@ For detailed architecture and design information, see the [Design Document](docs
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.adoc) for details.
+We welcome contributions! Please see our [Development Guide](docs/development.md) for coding conventions, testing guidelines, and contribution practices.
 
 ## License
 
