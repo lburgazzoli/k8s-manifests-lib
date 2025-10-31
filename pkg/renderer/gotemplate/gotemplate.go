@@ -3,13 +3,9 @@ package gotemplate
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
-	"slices"
-	"strings"
 	"sync"
-	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/dump"
@@ -36,31 +32,6 @@ type Source struct {
 	// Function is called during rendering to obtain dynamic values.
 	// Accessible within templates via dot notation (e.g., {{ .FieldName }}).
 	Values func(context.Context) (any, error)
-
-	// Mutex protects concurrent access to templates field
-	mu sync.RWMutex
-
-	// Parsed templates (lazy-loaded on first Process call, protected by mu)
-	templates *template.Template
-}
-
-// Validate checks if the Source configuration is valid.
-func (s *Source) Validate() error {
-	if s.FS == nil {
-		return errors.New("fs is required")
-	}
-	if len(strings.TrimSpace(s.Path)) == 0 {
-		return errors.New("path cannot be empty or whitespace-only")
-	}
-	return nil
-}
-
-// Values returns a Values function that always returns the provided static values.
-// This is a convenience helper for the common case of non-dynamic values.
-func Values(values any) func(context.Context) (any, error) {
-	return func(_ context.Context) (any, error) {
-		return values, nil
-	}
 }
 
 // Renderer handles Go template rendering operations.
@@ -70,20 +41,12 @@ func Values(values any) func(context.Context) (any, error) {
 // may call Process() concurrently on the same Renderer instance. Template parsing
 // is protected by per-Source mutexes to ensure thread-safe lazy initialization.
 type Renderer struct {
-	inputs []Source
+	inputs []*sourceHolder
 	opts   RendererOptions
 }
 
 // New creates a new GoTemplate Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs at construction time to fail fast on configuration errors.
-	// Checks: FS not nil, Path not empty/whitespace.
-	for i := range inputs {
-		if err := inputs[i].Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	rendererOpts := RendererOptions{
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),
@@ -93,8 +56,20 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		opt.ApplyTo(&rendererOpts)
 	}
 
+	// Wrap sources in holders and validate
+	holders := make([]*sourceHolder, len(inputs))
+	for i := range inputs {
+		holders[i] = &sourceHolder{
+			Source: inputs[i],
+			mu:     &sync.RWMutex{},
+		}
+		if err := holders[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	r := &Renderer{
-		inputs: slices.Clone(inputs),
+		inputs: holders,
 		opts:   rendererOpts,
 	}
 
@@ -107,17 +82,16 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i := range r.inputs {
-		objects, err := r.renderSingle(ctx, &r.inputs[i], renderTimeValues)
+		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
 		if err != nil {
-			return nil, fmt.Errorf("error rendering gotemplate[%d] pattern %s: %w", i, r.inputs[i].Path, err)
+			return nil, fmt.Errorf("error rendering gotemplate pattern %s: %w", r.inputs[i].Path, err)
 		}
 
 		// Apply renderer-level filters and transformers per-source for better error context
 		transformed, err := pipeline.Apply(ctx, objects, r.opts.Filters, r.opts.Transformers)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error applying filters/transformers to gotemplate[%d] pattern %s: %w",
-				i,
+				"error applying filters/transformers to gotemplate pattern %s: %w",
 				r.inputs[i].Path,
 				err,
 			)
@@ -134,36 +108,13 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-// getTemplates parses the templates for the given source if not already parsed.
-// This method is thread-safe and uses lazy loading with mutex protection.
-func (r *Renderer) getTemplates(source *Source) (*template.Template, error) {
-	source.mu.Lock()
-	defer source.mu.Unlock()
-
-	if source.templates != nil {
-		return source.templates, nil
-	}
-
-	tmpl, err := template.ParseFS(source.FS, source.Path)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to parse templates (path: %s): %w",
-			source.Path,
-			err,
-		)
-	}
-
-	source.templates = tmpl.Option("missingkey=error")
-	return source.templates, nil
-}
-
-func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues map[string]any) (any, error) {
+func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (any, error) {
 	sourceValues := map[string]any{}
 
-	if input.Values != nil {
-		v, err := input.Values(ctx)
+	if holder.Values != nil {
+		v, err := holder.Values(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get values for template pattern %q: %w", input.Path, err)
+			return nil, fmt.Errorf("failed to get values for template pattern %q: %w", holder.Path, err)
 		}
 
 		// If source values are a map, convert to map[string]any for merging
@@ -181,17 +132,17 @@ func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues m
 }
 
 // renderSingle performs the rendering for a single template input.
-func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	// Parse templates if not already parsed (thread-safe lazy loading)
-	templates, err := r.getTemplates(input)
+	templates, err := holder.LoadTemplates()
 	if err != nil {
 		return nil, err
 	}
 
 	// Get values dynamically (includes render-time values)
-	values, err := r.values(ctx, input, renderTimeValues)
+	values, err := r.values(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for pattern %q: %w", input.Path, err)
+		return nil, fmt.Errorf("failed to get values for pattern %q: %w", holder.Path, err)
 	}
 
 	// Compute cache key from template path and values
@@ -205,7 +156,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(cacheKeyData{
-			Path:   input.Path,
+			Path:   holder.Path,
 			Values: values,
 		})
 
@@ -247,7 +198,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 				}
 
 				annotations[types.AnnotationSourceType] = rendererType
-				annotations[types.AnnotationSourcePath] = input.Path
+				annotations[types.AnnotationSourcePath] = holder.Path
 				annotations[types.AnnotationSourceFile] = t.Name()
 
 				objs[i].SetAnnotations(annotations)

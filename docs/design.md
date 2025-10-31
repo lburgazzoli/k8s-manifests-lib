@@ -232,6 +232,146 @@ renderValues := map[string]any{
 // }
 ```
 
+For detailed merge semantics, see **Section 4.3 Value Merging Strategy** below.
+
+### 4.3. Value Merging Strategy
+
+When render-time values are provided via `engine.WithValues()`, they are deep merged with Source-level values for renderers that support dynamic values (Helm, Kustomize, GoTemplate). This merge is performed by the `util.DeepMerge()` function.
+
+**Implementation**: `pkg/util/merge.go`
+
+#### 4.3.1. Merge Semantics
+
+The deep merge follows these rules:
+
+1. **Maps**: Recursively merged
+   - Keys from both base and overlay are preserved
+   - Overlapping keys use the overlay value
+   - Nested maps are merged recursively
+
+2. **Slices**: Completely replaced (NOT appended or merged)
+   - Overlay slice entirely replaces base slice
+   - No element-wise merging occurs
+
+3. **Other Types**: Overlay value replaces base value
+   - Scalars, structs, and other types are replaced
+
+4. **Type Mismatches**: Overlay wins regardless of types
+   - A map can be replaced by a string, or vice versa
+
+5. **Nil Values**: Treated as empty
+   - `nil` base returns cloned overlay
+   - `nil` overlay returns cloned base
+   - Both `nil` returns empty map
+
+**Example - Nested Map Merge**:
+```go
+base := map[string]any{
+    "config": map[string]any{
+        "host":    "localhost",
+        "port":    8080,
+        "timeout": 30,
+    },
+}
+
+overlay := map[string]any{
+    "config": map[string]any{
+        "port":    9090,  // Override existing key
+        "retries": 3,     // Add new key
+    },
+}
+
+result := util.DeepMerge(base, overlay)
+// result["config"] = {
+//     "host":    "localhost",  // Preserved from base
+//     "port":    9090,         // Overridden by overlay
+//     "timeout": 30,           // Preserved from base
+//     "retries": 3,            // Added by overlay
+// }
+```
+
+**Example - Slice Replacement**:
+```go
+base := map[string]any{
+    "tags": []string{"dev", "test"},
+}
+
+overlay := map[string]any{
+    "tags": []string{"prod"},
+}
+
+result := util.DeepMerge(base, overlay)
+// result["tags"] = ["prod"]  // NOT ["dev", "test", "prod"]
+```
+
+**Example - Type Mismatch**:
+```go
+base := map[string]any{
+    "service": map[string]any{
+        "type": "ClusterIP",
+        "port": 80,
+    },
+}
+
+overlay := map[string]any{
+    "service": "NodePort",  // String replacing a map
+}
+
+result := util.DeepMerge(base, overlay)
+// result["service"] = "NodePort"  // Map completely replaced by string
+```
+
+#### 4.3.2. Performance Characteristics
+
+The `DeepMerge` implementation is optimized for performance:
+
+1. **Allocation Efficiency**: Preallocates result map with estimated capacity
+2. **Selective Cloning**: Only clones values that won't be immediately replaced
+3. **Type-Specific Optimization**: Uses fast type switches for common slice types
+   - Fast path for `[]string`, `[]int`, `[]int64`, `[]float64`, `[]bool`
+   - Reflection fallback for uncommon slice types
+4. **No Shared Memory**: All values are deep cloned to prevent cache pollution
+
+#### 4.3.3. Renderer-Specific Behavior
+
+**Helm**: Deep merges render-time values with Source `Values()` result
+```go
+source := helm.Source{
+    Values: helm.Values(map[string]any{"replicaCount": 2}),
+}
+// Render with override
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{"replicaCount": 5}))
+// Helm receives: {"replicaCount": 5}
+```
+
+**Kustomize**: Deep merges, then converts to `map[string]string` for ConfigMap
+```go
+source := kustomize.Source{
+    Values: kustomize.Values(map[string]string{"VERSION": "v1.0"}),
+}
+// Render with override (as map[string]any)
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{"VERSION": "v2.0", "REPLICAS": 3}))
+// Kustomize receives: map[string]string{"VERSION": "v2.0", "REPLICAS": "3"}
+```
+
+**GoTemplate**: Deep merges when Source values are a map, otherwise ignores
+```go
+source := gotemplate.Source{
+    Values: gotemplate.Values(map[string]any{"appName": "myapp"}),
+}
+// Render with override
+objects, _ := engine.Render(ctx, engine.WithValues(map[string]any{"replicas": 3}))
+// Template receives: {"appName": "myapp", "replicas": 3}
+```
+
+**YAML, Mem**: Ignore render-time values (no template support)
+
+#### 4.3.4. Comprehensive Documentation
+
+For complete documentation including edge cases and additional examples, see:
+- **godoc**: `pkg/util/merge.go` - Comprehensive function documentation
+- **Examples**: `pkg/util/merge_test.go` - Runnable Example functions showing all merge scenarios
+
 ## 5. Renderer Implementations
 
 All renderers follow a consistent pattern:
@@ -580,7 +720,62 @@ helmRenderer, _ := helm.New(
 * GoTemplate: Hash of template values
 * YAML: File path pattern
 
-### 6.7. Benefits
+**Nil Receiver Safety:**
+* `renderCache` methods check for `nil` receiver and handle gracefully
+* `Get()` returns `(nil, false)` for nil receiver
+* `Set()` and `Sync()` are no-ops for nil receiver
+* Defensive programming prevents panics in edge cases
+
+### 6.7. Memory Management
+
+The cache uses a **lazy expiration** strategy that is intentionally designed to balance performance and memory usage:
+
+**Lazy Expiration Design:**
+
+1. **On `Get()`**: Expired entries are detected and treated as "not found", but NOT deleted
+   - Avoids write lock acquisition on every `Get()` (read-only operation)
+   - Maintains high concurrency with `sync.RWMutex` read locks
+   - Expired entries remain in memory until explicitly cleaned up
+
+2. **On `Sync()`**: Expired entries are actively removed from the map
+   - Acquires write lock to delete expired entries
+   - Should be called periodically to prevent memory growth
+   - Not called automatically - application controls cleanup timing
+
+**When to call `Sync()`:**
+
+```go
+// Option 1: Periodic cleanup in background
+go func() {
+    ticker := time.NewTicker(1 * time.Minute)
+    defer ticker.Stop()
+    for range ticker.C {
+        cache.Sync()
+    }
+}()
+
+// Option 2: After batch operations
+for i := 0; i < 1000; i++ {
+    cache.Set(fmt.Sprintf("key-%d", i), value)
+}
+cache.Sync()  // Clean up after bulk operations
+
+// Option 3: Application-controlled (e.g., on low memory)
+if memoryPressureDetected() {
+    cache.Sync()
+}
+```
+
+**Memory Characteristics:**
+
+* **TTL duration**: Shorter TTL = more frequent expirations, lower memory usage
+* **Default TTL**: 5 minutes (configurable via `cache.WithTTL()`)
+* **Cleanup frequency**: Application-controlled via `Sync()` calls
+* **Memory growth**: Bounded by (number of unique keys) × (entry size) × (time between Sync calls)
+
+For typical rendering workloads with reasonable TTL values (5-10 minutes) and periodic `Sync()` calls, memory growth is minimal and acceptable.
+
+### 6.8. Benefits
 
 1. **Reduced Dependencies**: No longer depends on `k8s.io/client-go/tools/cache`
 2. **Type Safety**: Generic interface allows compile-time type checking

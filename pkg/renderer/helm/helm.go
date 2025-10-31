@@ -2,19 +2,13 @@ package helm
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/registry"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/dump"
@@ -51,37 +45,6 @@ type Source struct {
 	// If true, chartutil.ProcessDependencies will be called during rendering.
 	// Default is false.
 	ProcessDependencies bool
-
-	// Mutex protects concurrent access to chart field
-	mu sync.RWMutex
-
-	// The loaded Helm chart (protected by mu)
-	chart *chart.Chart
-}
-
-// Validate checks if the Source configuration is valid.
-func (s *Source) Validate() error {
-	if len(strings.TrimSpace(s.Chart)) == 0 {
-		return errors.New("chart cannot be empty or whitespace-only")
-	}
-
-	releaseName := strings.TrimSpace(s.ReleaseName)
-	if len(releaseName) == 0 {
-		return errors.New("release name cannot be empty or whitespace-only")
-	}
-	if len(releaseName) > 53 {
-		return fmt.Errorf("release name must not exceed 53 characters (got %d)", len(releaseName))
-	}
-
-	return nil
-}
-
-// Values returns a Values function that always returns the provided static values.
-// This is a convenience helper for the common case of non-dynamic values.
-func Values(values map[string]any) func(context.Context) (map[string]any, error) {
-	return func(_ context.Context) (map[string]any, error) {
-		return values, nil
-	}
 }
 
 // Renderer handles Helm rendering operations.
@@ -92,22 +55,13 @@ func Values(values map[string]any) func(context.Context) (map[string]any, error)
 // is protected by per-Source mutexes to ensure thread-safe lazy initialization.
 type Renderer struct {
 	settings   *cli.EnvSettings
-	install    *action.Install
-	inputs     []Source
+	inputs     []*sourceHolder
 	helmEngine engine.Engine
 	opts       RendererOptions
 }
 
 // New creates a new Helm Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs at construction time to fail fast on configuration errors.
-	// Checks: Chart/ReleaseName not empty/whitespace, ReleaseName ≤53 chars (DNS limit).
-	for i := range inputs {
-		if err := inputs[i].Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	rendererOpts := RendererOptions{
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),
@@ -123,19 +77,23 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		settings = cli.New()
 	}
 
-	c, err := registry.NewClient()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create a registry client: %w", err)
+	// Wrap sources in holders and validate
+	holders := make([]*sourceHolder, len(inputs))
+	for i := range inputs {
+		holders[i] = &sourceHolder{
+			Source: inputs[i],
+			mu:     &sync.RWMutex{},
+		}
+		if err := holders[i].Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	r := &Renderer{
 		settings:   settings,
-		inputs:     slices.Clone(inputs),
+		inputs:     holders,
 		helmEngine: engine.Engine{},
 		opts:       rendererOpts,
-		install: action.NewInstall(&action.Configuration{
-			RegistryClient: c,
-		}),
 	}
 
 	return r, nil
@@ -148,11 +106,10 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 	allObjects := make([]unstructured.Unstructured, 0)
 
 	for i := range r.inputs {
-		objects, err := r.renderSingle(ctx, &r.inputs[i], renderTimeValues)
+		objects, err := r.renderSingle(ctx, r.inputs[i], renderTimeValues)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error rendering helm chart[%d] %s (release: %s): %w",
-				i,
+				"error rendering helm chart %s (release: %s): %w",
 				r.inputs[i].Chart,
 				r.inputs[i].ReleaseName,
 				err,
@@ -181,53 +138,13 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-// getChart loads the chart for the given source if not already loaded.
-// This method is thread-safe and uses lazy loading with mutex protection.
-func (r *Renderer) getChart(source *Source) (*chart.Chart, error) {
-	source.mu.Lock()
-	defer source.mu.Unlock()
-
-	if source.chart != nil {
-		return source.chart, nil
-	}
-
-	opt := r.install.ChartPathOptions
-	opt.RepoURL = source.Repo
-	opt.Version = source.ReleaseVersion
-
-	path, err := opt.LocateChart(source.Chart, r.settings)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"unable to locate chart (repo: %s, name: %s, version: %s): %w",
-			source.Repo,
-			source.Chart,
-			source.ReleaseVersion,
-			err,
-		)
-	}
-
-	c, err := loader.Load(path)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to load chart (repo: %s, name: %s, version: %s): %w",
-			source.Repo,
-			source.Chart,
-			source.ReleaseVersion,
-			err,
-		)
-	}
-
-	source.chart = c
-	return source.chart, nil
-}
-
-func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues map[string]any) (map[string]any, error) {
+func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (map[string]any, error) {
 	sourceValues := map[string]any{}
 
-	if input.Values != nil {
-		v, err := input.Values(ctx)
+	if holder.Values != nil {
+		v, err := holder.Values(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+			return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 		}
 		sourceValues = v
 	}
@@ -238,33 +155,33 @@ func (r *Renderer) values(ctx context.Context, input *Source, renderTimeValues m
 
 // prepareRenderValues gets values from the Values function, processes dependencies,
 // and prepares render values using chartutil.ToRenderValues.
-func (r *Renderer) prepareRenderValues(ctx context.Context, input *Source, renderTimeValues map[string]any) (chartutil.Values, error) {
+func (r *Renderer) prepareRenderValues(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (chartutil.Values, error) {
 	// Get values dynamically (includes render-time values)
-	values, err := r.values(ctx, input, renderTimeValues)
+	values, err := r.values(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+		return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 	}
 
 	// Process dependencies if enabled
-	if input.ProcessDependencies {
-		if err := chartutil.ProcessDependencies(input.chart, values); err != nil {
-			return nil, fmt.Errorf("failed to process dependencies for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+	if holder.ProcessDependencies {
+		if err := chartutil.ProcessDependencies(holder.chart, values); err != nil {
+			return nil, fmt.Errorf("failed to process dependencies for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 		}
 	}
 
 	// Prepare render values
 	renderValues, err := chartutil.ToRenderValues(
-		input.chart,
+		holder.chart,
 		values,
 		chartutil.ReleaseOptions{
-			Name:      input.ReleaseName,
+			Name:      holder.ReleaseName,
 			Revision:  1,
 			IsInstall: true,
 		},
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 	}
 
 	return renderValues, nil
@@ -273,17 +190,17 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, input *Source, rende
 // renderSingle performs the rendering for a single Helm chart.
 // It processes dependencies, prepares render values, renders the templates,
 // and converts the output to unstructured objects.
-func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	// Load chart if not already loaded (thread-safe lazy loading)
-	chart, err := r.getChart(input)
+	chart, err := holder.LoadChart(r.settings)
 	if err != nil {
 		return nil, err
 	}
 
 	// Prepare render values (includes render-time values)
-	renderValues, err := r.prepareRenderValues(ctx, input, renderTimeValues)
+	renderValues, err := r.prepareRenderValues(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 	}
 
 	// Compute cache key from chart identifier and render values
@@ -299,9 +216,9 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(cacheKeyData{
-			Chart:          input.Chart,
-			ReleaseName:    input.ReleaseName,
-			ReleaseVersion: input.ReleaseVersion,
+			Chart:          holder.Chart,
+			ReleaseName:    holder.ReleaseName,
+			ReleaseVersion: holder.ReleaseVersion,
 			RenderValues:   renderValues,
 		})
 
@@ -316,7 +233,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 	// Render the chart
 	files, err := r.helmEngine.Render(chart, renderValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render chart %q (release %q): %w", input.Chart, input.ReleaseName, err)
+		return nil, fmt.Errorf("failed to render chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
 	}
 
 	result := make([]unstructured.Unstructured, 0)
@@ -337,7 +254,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 				}
 
 				annotations[types.AnnotationSourceType] = rendererType
-				annotations[types.AnnotationSourcePath] = input.Chart
+				annotations[types.AnnotationSourcePath] = holder.Chart
 				annotations[types.AnnotationSourceFile] = crd.Name
 
 				objects[i].SetAnnotations(annotations)
@@ -367,7 +284,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input *Source, renderTimeVa
 				}
 
 				annotations[types.AnnotationSourceType] = rendererType
-				annotations[types.AnnotationSourcePath] = input.Chart
+				annotations[types.AnnotationSourcePath] = holder.Chart
 				annotations[types.AnnotationSourceFile] = k
 
 				objects[i].SetAnnotations(annotations)

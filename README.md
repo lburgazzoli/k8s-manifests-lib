@@ -97,7 +97,7 @@ func main() {
 
     // Create the engine with initial configuration
     // Note: Filters and transformers are applied in the order specified
-    e := engine.New(
+    e, err := engine.New(
         // Add the Helm renderer
         engine.WithRenderer(helmRenderer),
         // Add a filter to only keep Deployments (applied first)
@@ -107,6 +107,9 @@ func main() {
             "app.kubernetes.io/managed-by": "my-operator",
         })),
     )
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
     // Render with additional render-time options
     // Note: Render-time transformers are applied AFTER engine-level transformers
@@ -163,6 +166,123 @@ For specific use cases and patterns, see the [examples directory](examples/):
 See the [Examples README](examples/README.md) for a complete catalog with a recommended learning path.
 
 Each example is runnable: `go run examples/<category>/<name>/main.go`
+
+## Renderer-Specific Features
+
+### Kustomize Values ConfigMap
+
+The Kustomize renderer supports dynamic values injection through an automatically-generated ConfigMap. This allows you to parameterize your Kustomize manifests similar to Helm values.
+
+#### How It Works
+
+When you provide values to a Kustomize source, the library automatically creates a virtual `values.yaml` file containing a ConfigMap named `values`:
+
+```go
+renderer, err := kustomize.New([]kustomize.Source{
+    {
+        Path: "./my-kustomization",
+        Values: kustomize.Values(map[string]string{
+            "environment": "production",
+            "replicaCount": "3",
+            "imageTag": "v1.2.3",
+        }),
+    },
+})
+```
+
+This generates a virtual ConfigMap that can be referenced in your kustomization.yaml:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: values
+data:
+  environment: production
+  replicaCount: "3"
+  imageTag: v1.2.3
+```
+
+#### Using Values in Kustomization
+
+**Important**: Values are NOT automatically applied to your resources. You must explicitly reference the `values.yaml` ConfigMap in your `kustomization.yaml` using one of these methods:
+
+**Option 1: Using Replacements (Recommended)**
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- values.yaml  # Reference the generated ConfigMap
+
+replacements:
+- source:
+    kind: ConfigMap
+    name: values
+    fieldPath: data.imageTag
+  targets:
+  - select:
+      kind: Deployment
+    fieldPaths:
+    - spec.template.spec.containers.[name=app].image
+    options:
+      delimiter: ':'
+      index: 1
+```
+
+**Option 2: Using Patches**
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- values.yaml
+
+patches:
+- target:
+    kind: Deployment
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: $(REPLICA_COUNT)
+  options:
+    allowNameChange: true
+
+vars:
+- name: REPLICA_COUNT
+  objref:
+    kind: ConfigMap
+    name: values
+    apiVersion: v1
+  fieldref:
+    fieldpath: data.replicaCount
+```
+
+#### Dynamic Values at Render-Time
+
+Like Helm, you can override Source-level values at render-time:
+
+```go
+objects, err := e.Render(ctx,
+    engine.WithValues(map[string]any{
+        "environment": "staging",  // Override production -> staging
+        "imageTag": "v1.3.0",      // Override v1.2.3 -> v1.3.0
+    }),
+)
+```
+
+Render-time values are deep-merged with Source-level values, with render-time taking precedence.
+
+#### Best Practices
+
+- **Always reference values.yaml**: Include `values.yaml` in your kustomization resources
+- **Use replacements for complex substitutions**: More powerful than vars for deep field paths
+- **Keep values simple**: All values are converted to strings in the ConfigMap
+- **Test without library first**: Validate your kustomization with `kustomize build` before integrating
 
 ## Filter and Transformer Ordering
 

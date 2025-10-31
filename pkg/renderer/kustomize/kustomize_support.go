@@ -2,8 +2,10 @@ package kustomize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	goyaml "gopkg.in/yaml.v3"
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
@@ -11,6 +13,14 @@ import (
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 )
+
+// Values returns a Values function that always returns the provided static values.
+// This is a convenience helper for the common case of non-dynamic values.
+func Values(values map[string]string) func(context.Context) (map[string]string, error) {
+	return func(_ context.Context) (map[string]string, error) {
+		return values, nil
+	}
+}
 
 var (
 	//nolint:gochecknoglobals
@@ -20,6 +30,20 @@ var (
 		"Kustomization",
 	}
 )
+
+// sourceHolder wraps a Source with internal state for consistency with other renderers.
+type sourceHolder struct {
+	Source
+}
+
+// Validate checks if the Source configuration is valid.
+func (h *sourceHolder) Validate() error {
+	if len(strings.TrimSpace(h.Path)) == 0 {
+		return errors.New("path cannot be empty or whitespace-only")
+	}
+
+	return nil
+}
 
 func computeValues(ctx context.Context, input Source, renderTimeValues map[string]any) (map[string]string, error) {
 	sourceValues := map[string]any{}

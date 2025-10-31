@@ -29,10 +29,13 @@ func main() {
 	fmt.Println("1. Include Filter - Keep only objects in 'production' and 'staging'")
 	includeFilter := namespace.Filter("production", "staging")
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(includeFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -45,10 +48,13 @@ func main() {
 	fmt.Println("2. Exclude Filter - Exclude system namespaces")
 	excludeFilter := namespace.Exclude("kube-system", "kube-public", "kube-node-lease")
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(excludeFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {

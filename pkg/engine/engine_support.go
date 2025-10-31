@@ -24,15 +24,12 @@ import (
 //	    helm.WithCache(cache.WithTTL(5*time.Minute)),
 //	)
 //	objects, _ := e.Render(ctx)
-//
-//nolint:govet // Copying Source by value is safe here - mutex is zero-initialized
 func Helm(source helm.Source, opts ...helm.RendererOption) (*Engine, error) {
-	sources := []helm.Source{source}
-	renderer, err := helm.New(sources, opts...)
+	renderer, err := helm.New([]helm.Source{source}, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create helm renderer: %w", err)
 	}
-	return New(WithRenderer(renderer)), nil
+	return New(WithRenderer(renderer))
 }
 
 // Kustomize creates an Engine configured with a single Kustomize renderer.
@@ -49,7 +46,7 @@ func Kustomize(source kustomize.Source, opts ...kustomize.RendererOption) (*Engi
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kustomize renderer: %w", err)
 	}
-	return New(WithRenderer(renderer)), nil
+	return New(WithRenderer(renderer))
 }
 
 // Yaml creates an Engine configured with a single YAML renderer.
@@ -67,7 +64,7 @@ func Yaml(source yaml.Source, opts ...yaml.RendererOption) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create yaml renderer: %w", err)
 	}
-	return New(WithRenderer(renderer)), nil
+	return New(WithRenderer(renderer))
 }
 
 // GoTemplate creates an Engine configured with a single Go template renderer.
@@ -80,15 +77,13 @@ func Yaml(source yaml.Source, opts ...yaml.RendererOption) (*Engine, error) {
 //	    Path: "*.yaml.tmpl",
 //	})
 //	objects, _ := e.Render(ctx)
-//
-//nolint:govet // Copying Source by value is safe here - mutex is zero-initialized
 func GoTemplate(source gotemplate.Source, opts ...gotemplate.RendererOption) (*Engine, error) {
 	sources := []gotemplate.Source{source}
 	renderer, err := gotemplate.New(sources, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gotemplate renderer: %w", err)
 	}
-	return New(WithRenderer(renderer)), nil
+	return New(WithRenderer(renderer))
 }
 
 // Mem creates an Engine configured with a single memory renderer.
@@ -105,5 +100,5 @@ func Mem(source mem.Source, opts ...mem.RendererOption) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mem renderer: %w", err)
 	}
-	return New(WithRenderer(renderer)), nil
+	return New(WithRenderer(renderer))
 }

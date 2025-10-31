@@ -2,13 +2,10 @@ package yaml
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
-	"slices"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -30,34 +27,15 @@ type Source struct {
 	Path string
 }
 
-// Validate checks if the Source configuration is valid.
-func (s Source) Validate() error {
-	if s.FS == nil {
-		return errors.New("fs is required")
-	}
-	if len(strings.TrimSpace(s.Path)) == 0 {
-		return errors.New("path cannot be empty or whitespace-only")
-	}
-	return nil
-}
-
 // Renderer handles YAML file rendering operations.
 // It implements types.Renderer.
 type Renderer struct {
-	inputs []Source
+	inputs []*sourceHolder
 	opts   RendererOptions
 }
 
 // New creates a new YAML Renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs at construction time to fail fast on configuration errors.
-	// Checks: FS not nil, Path not empty/whitespace.
-	for _, input := range inputs {
-		if err := input.Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	rendererOpts := RendererOptions{
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),
@@ -67,8 +45,19 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		opt.ApplyTo(&rendererOpts)
 	}
 
+	// Wrap sources in holders and validate
+	holders := make([]*sourceHolder, len(inputs))
+	for i := range inputs {
+		holders[i] = &sourceHolder{
+			Source: inputs[i],
+		}
+		if err := holders[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	r := &Renderer{
-		inputs: slices.Clone(inputs),
+		inputs: holders,
 		opts:   rendererOpts,
 	}
 
@@ -80,10 +69,10 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input)
+	for _, holder := range r.inputs {
+		objects, err := r.renderSingle(ctx, holder)
 		if err != nil {
-			return nil, fmt.Errorf("error rendering YAML[%d] pattern %s: %w", i, input.Path, err)
+			return nil, fmt.Errorf("error rendering YAML pattern %s: %w", holder.Path, err)
 		}
 
 		// Apply renderer-level filters and transformers per-source for better error context
@@ -91,7 +80,7 @@ func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructure
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error applying filters/transformers to YAML pattern %s: %w",
-				input.Path,
+				holder.Path,
 				err,
 			)
 		}
@@ -108,9 +97,9 @@ func (r *Renderer) Name() string {
 }
 
 // renderSingle performs the rendering for a single YAML input.
-func (r *Renderer) renderSingle(_ context.Context, data Source) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(_ context.Context, holder *sourceHolder) ([]unstructured.Unstructured, error) {
 	// Use path as cache key
-	cacheKey := data.Path
+	cacheKey := holder.Path
 
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
@@ -125,18 +114,18 @@ func (r *Renderer) renderSingle(_ context.Context, data Source) ([]unstructured.
 	result := make([]unstructured.Unstructured, 0)
 
 	// Find all matching files
-	matches, err := fs.Glob(data.FS, data.Path)
+	matches, err := fs.Glob(holder.FS, holder.Path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to match pattern %s: %w", data.Path, err)
+		return nil, fmt.Errorf("failed to match pattern %s: %w", holder.Path, err)
 	}
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("no files matched pattern: %s", data.Path)
+		return nil, fmt.Errorf("no files matched pattern: %s", holder.Path)
 	}
 
 	// Process each matched file
 	for _, match := range matches {
-		fileObjects, err := r.loadYAMLFile(data.FS, match)
+		fileObjects, err := r.loadYAMLFile(holder.FS, match)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load %s: %w", match, err)
 		}

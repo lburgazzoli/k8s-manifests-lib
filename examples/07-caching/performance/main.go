@@ -55,7 +55,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	noCacheEngine := engine.New(engine.WithRenderer(noCacheRenderer))
+	noCacheEngine, err := engine.New(engine.WithRenderer(noCacheRenderer))
+	if err != nil {
+		log.Fatal(err)
+	}
 	benchmarkRender("Without Cache", noCacheEngine, iterations)
 
 	// With cache
@@ -76,7 +79,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cacheEngine := engine.New(engine.WithRenderer(cacheRenderer))
+	cacheEngine, err := engine.New(engine.WithRenderer(cacheRenderer))
+	if err != nil {
+		log.Fatal(err)
+	}
 	benchmarkRender("With Cache", cacheEngine, iterations)
 
 	fmt.Println("\n=== Summary ===")

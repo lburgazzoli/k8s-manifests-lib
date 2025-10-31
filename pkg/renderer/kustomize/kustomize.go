@@ -2,10 +2,7 @@ package kustomize
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"slices"
-	"strings"
 
 	"sigs.k8s.io/kustomize/api/resmap"
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
@@ -46,26 +43,9 @@ type Source struct {
 	LoadRestrictions kustomizetypes.LoadRestrictions
 }
 
-// Validate checks if the Source configuration is valid.
-func (s Source) Validate() error {
-	if len(strings.TrimSpace(s.Path)) == 0 {
-		return errors.New("path cannot be empty or whitespace-only")
-	}
-
-	return nil
-}
-
-// Values returns a Values function that always returns the provided static values.
-// This is a convenience helper for the common case of non-dynamic values.
-func Values(values map[string]string) func(context.Context) (map[string]string, error) {
-	return func(_ context.Context) (map[string]string, error) {
-		return values, nil
-	}
-}
-
 // Renderer is a renderer that uses kustomize to render resources.
 type Renderer struct {
-	inputs []Source
+	inputs []*sourceHolder
 	fs     filesys.FileSystem
 	engine *Engine
 	opts   *RendererOptions
@@ -73,14 +53,6 @@ type Renderer struct {
 
 // New creates a new kustomize renderer.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs at construction time to fail fast on configuration errors.
-	// Checks: Path not empty/whitespace.
-	for _, input := range inputs {
-		if err := input.Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	// Initialize renderer options
 	rendererOpts := RendererOptions{
 		Filters:          make([]types.Filter, 0),
@@ -94,9 +66,20 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		opt.ApplyTo(&rendererOpts)
 	}
 
+	// Wrap sources in holders and validate
+	holders := make([]*sourceHolder, len(inputs))
+	for i := range inputs {
+		holders[i] = &sourceHolder{
+			Source: inputs[i],
+		}
+		if err := holders[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	fs := filesys.MakeFsOnDisk()
 	r := &Renderer{
-		inputs: slices.Clone(inputs),
+		inputs: holders,
 		fs:     fs,
 		engine: NewEngine(fs, &rendererOpts),
 		opts:   &rendererOpts,
@@ -114,10 +97,10 @@ func (r *Renderer) Name() string {
 func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	allObjects := make([]unstructured.Unstructured, 0)
 
-	for i, input := range r.inputs {
-		objects, err := r.renderSingle(ctx, input, renderTimeValues)
+	for _, holder := range r.inputs {
+		objects, err := r.renderSingle(ctx, holder, renderTimeValues)
 		if err != nil {
-			return nil, fmt.Errorf("error rendering kustomize[%d] path %s: %w", i, input.Path, err)
+			return nil, fmt.Errorf("error rendering kustomize path %s: %w", holder.Path, err)
 		}
 
 		// Apply renderer-level filters and transformers per-source for better error context
@@ -125,7 +108,7 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error applying filters/transformers to path %s: %w",
-				input.Path,
+				holder.Path,
 				err,
 			)
 		}
@@ -137,11 +120,11 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 }
 
 // renderSingle performs the rendering for a single kustomize path.
-func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
 	// Get values dynamically (includes render-time values)
-	values, err := computeValues(ctx, input, renderTimeValues)
+	values, err := computeValues(ctx, holder.Source, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for path %q: %w", input.Path, err)
+		return nil, fmt.Errorf("failed to get values for path %q: %w", holder.Path, err)
 	}
 
 	// Compute cache key from input Path and Values
@@ -155,7 +138,7 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	// Check cache (if enabled)
 	if r.opts.Cache != nil {
 		cacheKey = dump.ForHash(cacheKeyData{
-			Path:   input.Path,
+			Path:   holder.Path,
 			Values: values,
 		})
 
@@ -168,9 +151,9 @@ func (r *Renderer) renderSingle(ctx context.Context, input Source, renderTimeVal
 	}
 
 	// No filesystem writes needed - values passed to engine
-	result, err := r.engine.Run(input, values)
+	result, err := r.engine.Run(holder.Source, values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run kustomize for path %q: %w", input.Path, err)
+		return nil, fmt.Errorf("failed to run kustomize for path %q: %w", holder.Path, err)
 	}
 
 	// Cache result (if enabled)

@@ -34,7 +34,10 @@ func main() {
 		log.Fatalf("Failed to create Helm renderer: %v", err)
 	}
 
-	e := engine.New(engine.WithRenderer(helmRenderer))
+	e, err := engine.New(engine.WithRenderer(helmRenderer))
+	if err != nil {
+		log.Fatal(err)
+	}
 	ctx := context.Background()
 
 	// First render: cache miss

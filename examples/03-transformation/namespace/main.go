@@ -29,10 +29,13 @@ func main() {
 	fmt.Println("1. Set - Force namespace to 'production'")
 	setTransformer := namespace.Set("production")
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(setTransformer),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -49,10 +52,13 @@ func main() {
 	fmt.Println("2. EnsureDefault - Set namespace only if not already set")
 	ensureTransformer := namespace.EnsureDefault("default")
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(ensureTransformer),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {

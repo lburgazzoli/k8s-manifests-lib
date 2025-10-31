@@ -32,10 +32,13 @@ func main() {
 	fmt.Println("1. Single Kind - Keep only Deployments")
 	deploymentFilter := gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(deploymentFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -51,10 +54,13 @@ func main() {
 		corev1.SchemeGroupVersion.WithKind("Service"),
 	)
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(multiKindFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {

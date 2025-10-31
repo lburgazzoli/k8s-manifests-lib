@@ -33,10 +33,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(appsV1Filter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -52,10 +55,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(orFilter),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {
@@ -74,10 +80,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	e3 := engine.New(
+	e3, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(varFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects3, err := e3.Render(context.Background())
 	if err != nil {

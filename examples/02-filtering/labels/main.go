@@ -29,10 +29,13 @@ func main() {
 	fmt.Println("1. HasLabel - Keep objects with 'app' label")
 	hasLabelFilter := labels.HasLabel("app")
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(hasLabelFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -48,10 +51,13 @@ func main() {
 		"version": "1.0",
 	})
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(matchFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {
@@ -67,10 +73,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	e3 := engine.New(
+	e3, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(selectorFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects3, err := e3.Render(context.Background())
 	if err != nil {

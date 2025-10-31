@@ -29,10 +29,13 @@ func main() {
 	fmt.Println("1. SetPrefix - Add 'prod-' prefix to all object names")
 	prefixTransformer := name.SetPrefix("prod-")
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(prefixTransformer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -48,10 +51,13 @@ func main() {
 	fmt.Println("2. SetSuffix - Add '-v2' suffix to all object names")
 	suffixTransformer := name.SetSuffix("-v2")
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(suffixTransformer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {
@@ -67,10 +73,13 @@ func main() {
 	fmt.Println("3. Replace - Replace 'staging' with 'production' in names")
 	replaceTransformer := name.Replace("staging", "production")
 
-	e3 := engine.New(
+	e3, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(replaceTransformer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects3, err := e3.Render(context.Background())
 	if err != nil {

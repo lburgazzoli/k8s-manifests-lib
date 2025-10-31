@@ -8,4 +8,6 @@ type Option[T any] interface {
 // FunctionalOption is a generic functional option type.
 type FunctionalOption[T any] func(*T)
 
-func (f FunctionalOption[T]) ApplyTo(target *T) { f(target) }
+func (f FunctionalOption[T]) ApplyTo(target *T) {
+	f(target)
+}

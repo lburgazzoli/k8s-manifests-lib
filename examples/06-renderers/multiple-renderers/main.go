@@ -50,11 +50,14 @@ func main() {
 	}
 
 	// Combine all three renderers in a single engine
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithRenderer(kustomizeRenderer),
 		engine.WithRenderer(yamlRenderer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {

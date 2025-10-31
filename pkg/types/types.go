@@ -2,6 +2,9 @@ package types
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -26,4 +29,19 @@ type Renderer interface {
 	// Name returns the renderer type identifier for metrics and logging.
 	// Examples: "helm", "kustomize", "gotemplate", "yaml", "mem"
 	Name() string
+}
+
+// ValidateRenderer checks if a Renderer implementation is valid.
+// Returns an error if the renderer is nil or if Name() returns an empty string.
+func ValidateRenderer(r Renderer) error {
+	if r == nil {
+		return errors.New("renderer cannot be nil")
+	}
+
+	name := r.Name()
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("renderer %T must return a non-empty name", r)
+	}
+
+	return nil
 }

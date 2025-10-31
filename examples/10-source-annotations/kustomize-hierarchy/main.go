@@ -29,9 +29,12 @@ func main() {
 		log.Fatalf("Failed to create Kustomize renderer: %v", err)
 	}
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(renderer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	ctx := context.Background()
 

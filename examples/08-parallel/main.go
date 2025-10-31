@@ -48,11 +48,14 @@ func main() {
 
 	// Sequential rendering (default)
 	fmt.Println("=== Sequential Rendering ===")
-	sequentialEngine := engine.New(
+	sequentialEngine, err := engine.New(
 		engine.WithRenderer(yamlRenderer1),
 		engine.WithRenderer(yamlRenderer2),
 		engine.WithRenderer(yamlRenderer3),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	start := time.Now()
 	objects, err := sequentialEngine.Render(ctx)
@@ -64,12 +67,15 @@ func main() {
 
 	// Parallel rendering
 	fmt.Println("=== Parallel Rendering ===")
-	parallelEngine := engine.New(
+	parallelEngine, err := engine.New(
 		engine.WithRenderer(yamlRenderer1),
 		engine.WithRenderer(yamlRenderer2),
 		engine.WithRenderer(yamlRenderer3),
 		engine.WithParallel(true), // Enable parallel rendering
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	start = time.Now()
 	objects, err = parallelEngine.Render(ctx)
@@ -81,7 +87,7 @@ func main() {
 
 	// Using struct-based options
 	fmt.Println("=== Struct-based Options ===")
-	structEngine := engine.New(&engine.EngineOptions{
+	structEngine, err := engine.New(&engine.EngineOptions{
 		Renderers: []types.Renderer{
 			yamlRenderer1,
 			yamlRenderer2,
@@ -89,6 +95,9 @@ func main() {
 		},
 		Parallel: true,
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	start = time.Now()
 	objects, err = structEngine.Render(ctx)

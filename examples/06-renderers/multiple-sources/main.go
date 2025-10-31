@@ -43,7 +43,10 @@ func main() {
 		log.Fatalf("Failed to create Helm renderer: %v", err)
 	}
 
-	e := engine.New(engine.WithRenderer(helmRenderer))
+	e, err := engine.New(engine.WithRenderer(helmRenderer))
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {

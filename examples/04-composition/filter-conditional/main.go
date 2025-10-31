@@ -41,10 +41,13 @@ func main() {
 		labels.HasLabel("critical"),
 	)
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(f),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {
@@ -72,10 +75,13 @@ func main() {
 		),
 	)
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(multiFilter),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {

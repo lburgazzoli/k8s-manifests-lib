@@ -220,12 +220,15 @@ func benchmarkEngineRender(b *testing.B, parallel bool) {
 	r2, _ := mem.New([]mem.Source{renderer2})
 	r3, _ := mem.New([]mem.Source{renderer3})
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(r1),
 		engine.WithRenderer(r2),
 		engine.WithRenderer(r3),
 		engine.WithParallel(parallel),
 	)
+	if err != nil {
+		b.Fatalf("failed to create engine: %v", err)
+	}
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -300,12 +303,15 @@ func benchmarkEngineHelm(b *testing.B, parallel bool) {
 		b.Fatalf("failed to create helm renderer 3: %v", err)
 	}
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer1),
 		engine.WithRenderer(helmRenderer2),
 		engine.WithRenderer(helmRenderer3),
 		engine.WithParallel(parallel),
 	)
+	if err != nil {
+		b.Fatalf("failed to create engine: %v", err)
+	}
 
 	// Warm up cache
 	_, _ = e.Render(ctx)

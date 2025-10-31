@@ -35,10 +35,14 @@ func main() {
 		"prometheus.io/port":   "9113",
 	})
 
-	e1 := engine.New(
+	e1, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(setTransformer),
 	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects1, err := e1.Render(context.Background())
 	if err != nil {
@@ -54,10 +58,14 @@ func main() {
 	fmt.Println("2. Remove - Remove specific annotation keys")
 	removeTransformer := annotations.Remove("temp-note", "debug-info")
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(removeTransformer),
 	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {
@@ -73,10 +81,14 @@ func main() {
 		return value == "delete-me" || value == "temporary"
 	})
 
-	e3 := engine.New(
+	e3, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(removeIfTransformer),
 	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects3, err := e3.Render(context.Background())
 	if err != nil {

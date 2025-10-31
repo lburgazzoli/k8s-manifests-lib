@@ -5,7 +5,6 @@ package mem
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -22,33 +21,15 @@ type Source struct {
 	Objects []unstructured.Unstructured
 }
 
-// Validate checks if the Source configuration is valid.
-func (s Source) Validate() error {
-	for i := range s.Objects {
-		if len(s.Objects[i].Object) == 0 {
-			return fmt.Errorf("object at index %d is empty or has nil internal data", i)
-		}
-	}
-	return nil
-}
-
 // Renderer handles memory-based rendering operations.
 // It implements types.Renderer for objects that are already in memory.
 type Renderer struct {
-	inputs []Source
+	inputs []*sourceHolder
 	opts   RendererOptions
 }
 
 // New creates a new memory-based renderer with the given inputs and options.
 func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
-	// Validate inputs at construction time to fail fast on configuration errors.
-	// Checks: Objects not empty/nil.
-	for _, input := range inputs {
-		if err := input.Validate(); err != nil {
-			return nil, err
-		}
-	}
-
 	rendererOpts := RendererOptions{
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),
@@ -58,8 +39,19 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 		opt.ApplyTo(&rendererOpts)
 	}
 
+	// Wrap sources in holders and validate
+	holders := make([]*sourceHolder, len(inputs))
+	for i := range inputs {
+		holders[i] = &sourceHolder{
+			Source: inputs[i],
+		}
+		if err := holders[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	r := &Renderer{
-		inputs: slices.Clone(inputs),
+		inputs: holders,
 		opts:   rendererOpts,
 	}
 
@@ -71,8 +63,8 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 func (r *Renderer) Process(ctx context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 	// Make deep copies of all objects from all inputs
 	allObjects := make([]unstructured.Unstructured, 0)
-	for _, input := range r.inputs {
-		for _, obj := range input.Objects {
+	for _, holder := range r.inputs {
+		for _, obj := range holder.Objects {
 			objCopy := obj.DeepCopy()
 
 			// Add source annotations if enabled

@@ -93,11 +93,14 @@ func main() {
 		),
 	)
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(f),
 		engine.WithTransformer(t),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {

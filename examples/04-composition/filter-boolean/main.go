@@ -49,10 +49,13 @@ func main() {
 		),
 	)
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(f),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {
@@ -76,10 +79,13 @@ func main() {
 		),
 	)
 
-	e2 := engine.New(
+	e2, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithFilter(complexFilter),
 	)
+	if err != nil {
+		log.Fatalf("Failed to create engine: %v", err)
+	}
 
 	objects2, err := e2.Render(context.Background())
 	if err != nil {

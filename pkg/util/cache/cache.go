@@ -121,7 +121,7 @@ func NewRenderCache(opts ...Option) Interface[[]unstructured.Unstructured] {
 }
 
 func (r *renderCache) Get(key string) ([]unstructured.Unstructured, bool) {
-	if r.cache == nil {
+	if r == nil || r.cache == nil {
 		return nil, false
 	}
 
@@ -134,7 +134,7 @@ func (r *renderCache) Get(key string) ([]unstructured.Unstructured, bool) {
 }
 
 func (r *renderCache) Set(key string, value []unstructured.Unstructured) {
-	if r.cache == nil {
+	if r == nil || r.cache == nil {
 		return
 	}
 
@@ -142,7 +142,7 @@ func (r *renderCache) Set(key string, value []unstructured.Unstructured) {
 }
 
 func (r *renderCache) Sync() {
-	if r.cache == nil {
+	if r == nil || r.cache == nil {
 		return
 	}
 

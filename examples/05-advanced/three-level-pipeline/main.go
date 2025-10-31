@@ -53,7 +53,7 @@ func main() {
 
 	// Create the engine with the apps/v1 filter applied at engine-level
 	// The deployment filter was already applied at renderer-level
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		// Engine-level filter: Only keep objects from apps/v1 API group
 		engine.WithFilter(appsV1Filter),
@@ -62,6 +62,9 @@ func main() {
 			"app.kubernetes.io/managed-by": "k8s-manifests-lib",
 		})),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Create a context
 	ctx := context.Background()

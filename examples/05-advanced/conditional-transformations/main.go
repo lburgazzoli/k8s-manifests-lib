@@ -64,10 +64,13 @@ func main() {
 		),
 	)
 
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithTransformer(t),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	objects, err := e.Render(context.Background())
 	if err != nil {

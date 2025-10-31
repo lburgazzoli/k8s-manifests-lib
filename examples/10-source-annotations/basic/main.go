@@ -50,10 +50,13 @@ func main() {
 	}
 
 	// Create engine with renderers
-	e := engine.New(
+	e, err := engine.New(
 		engine.WithRenderer(helmRenderer),
 		engine.WithRenderer(yamlRenderer),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	ctx := context.Background()
 

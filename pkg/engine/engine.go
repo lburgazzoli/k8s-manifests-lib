@@ -20,7 +20,7 @@ type Engine struct {
 }
 
 // New creates a new Engine with the given options.
-func New(opts ...EngineOption) *Engine {
+func New(opts ...EngineOption) (*Engine, error) {
 	options := EngineOptions{
 		Renderers:    make([]types.Renderer, 0),
 		Filters:      make([]types.Filter, 0),
@@ -31,9 +31,17 @@ func New(opts ...EngineOption) *Engine {
 		opt.ApplyTo(&options)
 	}
 
-	return &Engine{
+	for _, renderer := range options.Renderers {
+		if err := types.ValidateRenderer(renderer); err != nil {
+			return nil, fmt.Errorf("invalid renderer: %w", err)
+		}
+	}
+
+	e := Engine{
 		options: options,
 	}
+
+	return &e, nil
 }
 
 // Render processes all inputs associated with the registered renderer configurations
