@@ -12,7 +12,7 @@ import (
 )
 
 // ApplyFilters applies a series of filters to objects, returning only those that match all filters.
-// Returns FilterError with detailed context if any filter fails.
+// Returns Error with detailed context if any filter fails.
 func ApplyFilters(
 	ctx context.Context,
 	objects []unstructured.Unstructured,
@@ -29,9 +29,8 @@ func ApplyFilters(
 		for _, f := range filters {
 			ok, err := f(ctx, obj)
 			if err != nil {
-				// filter.Error already returns a typed FilterError
-				//nolint:wrapcheck
-				return nil, filter.Error(obj, err)
+				// filter.Wrap already returns a typed Error
+				return nil, filter.Wrap(obj, err)
 			}
 			if !ok {
 				matches = false
@@ -48,7 +47,7 @@ func ApplyFilters(
 }
 
 // ApplyTransformers applies a series of transformers to objects, transforming each object sequentially.
-// Returns TransformerError with detailed context if any transformer fails.
+// Returns Error with detailed context if any transformer fails.
 func ApplyTransformers(
 	ctx context.Context,
 	objects []unstructured.Unstructured,
@@ -65,9 +64,8 @@ func ApplyTransformers(
 		for _, t := range transformers {
 			r, err := t(ctx, result)
 			if err != nil {
-				// transformer.Error already returns a typed TransformerError
-				//nolint:wrapcheck
-				return nil, transformer.Error(obj, err)
+				// transformer.Wrap already returns a typed Error
+				return nil, transformer.Wrap(obj, err)
 			}
 			result = r
 		}

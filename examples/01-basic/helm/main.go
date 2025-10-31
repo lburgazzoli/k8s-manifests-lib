@@ -18,10 +18,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Basic Helm Example ===")
-	log.Log("Demonstrates: Simple Helm chart rendering using engine.Helm() convenience function")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Basic Helm Example ===")
+	l.Log("Demonstrates: Simple Helm chart rendering using engine.Helm() convenience function")
+	l.Log("")
 
 	// Create an Engine with a single Helm renderer
 	// This is the simplest way to render a Helm chart
@@ -46,16 +46,16 @@ func Run(ctx context.Context) error {
 	}
 
 	// Print summary
-	log.Logf("Successfully rendered %d Kubernetes objects from Helm chart\n\n", len(objects))
+	l.Logf("Successfully rendered %d Kubernetes objects from Helm chart\n\n", len(objects))
 
 	// Show what was rendered
-	log.Log("Rendered objects:")
+	l.Log("Rendered objects:")
 	for i, obj := range objects {
-		log.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
+		l.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
 		if obj.GetNamespace() != "" {
-			log.Logf(" (namespace: %s)", obj.GetNamespace())
+			l.Logf(" (namespace: %s)", obj.GetNamespace())
 		}
-		log.Log("")
+		l.Log("")
 	}
 
 	return nil

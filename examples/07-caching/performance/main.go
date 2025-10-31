@@ -13,8 +13,8 @@ import (
 )
 
 func benchmarkRender(ctx context.Context, name string, e *engine.Engine, iterations int) error {
-	log := logger.FromContext(ctx)
-	log.Logf("\n=== %s ===\n", name)
+	l := logger.FromContext(ctx)
+	l.Logf("\n=== %s ===\n", name)
 
 	var totalDuration time.Duration
 
@@ -27,11 +27,11 @@ func benchmarkRender(ctx context.Context, name string, e *engine.Engine, iterati
 		duration := time.Since(start)
 		totalDuration += duration
 
-		log.Logf("  Iteration %d: %v (%d objects)\n", i+1, duration, len(objects))
+		l.Logf("  Iteration %d: %v (%d objects)\n", i+1, duration, len(objects))
 	}
 
 	avgDuration := totalDuration / time.Duration(iterations)
-	log.Logf("  Average: %v\n", avgDuration)
+	l.Logf("  Average: %v\n", avgDuration)
 
 	return nil
 }
@@ -44,15 +44,15 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Cache Performance Comparison ===")
-	log.Log("Demonstrates: Performance benefits of caching")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Cache Performance Comparison ===")
+	l.Log("Demonstrates: Performance benefits of caching")
+	l.Log("")
 
 	iterations := 3
 
 	// Without cache
-	log.Log("Creating renderer WITHOUT cache...")
+	l.Log("Creating renderer WITHOUT cache...")
 	noCacheRenderer, err := helm.New([]helm.Source{
 		{
 			Chart:       "oci://registry-1.docker.io/bitnamicharts/nginx",
@@ -75,7 +75,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// With cache
-	log.Log("\nCreating renderer WITH cache...")
+	l.Log("\nCreating renderer WITH cache...")
 	cacheRenderer, err := helm.New(
 		[]helm.Source{
 			{
@@ -100,10 +100,10 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	log.Log("\n=== Summary ===")
-	log.Log("Without cache: Every render fetches from source (slow)")
-	log.Log("With cache: First render fetches, subsequent renders use cache (fast)")
-	log.Log("Cache automatically deep clones results to prevent pollution")
+	l.Log("\n=== Summary ===")
+	l.Log("Without cache: Every render fetches from source (slow)")
+	l.Log("With cache: First render fetches, subsequent renders use cache (fast)")
+	l.Log("Cache automatically deep clones results to prevent pollution")
 
 	return nil
 }

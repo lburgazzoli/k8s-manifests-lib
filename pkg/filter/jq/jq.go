@@ -12,7 +12,7 @@ import (
 )
 
 // Filter creates a new JQ filter with the given expression and options.
-func Filter(expression string, opts ...jq.EngineOption) (types.Filter, error) {
+func Filter(expression string, opts ...jq.Option) (types.Filter, error) {
 	// Create a new JQ engine
 	engine, err := jq.NewEngine(expression, opts...)
 	if err != nil {
@@ -23,7 +23,7 @@ func Filter(expression string, opts ...jq.EngineOption) (types.Filter, error) {
 		// Run the JQ program and get a single value
 		v, err := engine.Run(obj.Object)
 		if err != nil {
-			return false, &filter.FilterError{
+			return false, &filter.Error{
 				Object: obj,
 				Err:    fmt.Errorf("error executing jq expression: %w", err),
 			}
@@ -34,7 +34,7 @@ func Filter(expression string, opts ...jq.EngineOption) (types.Filter, error) {
 			return b, nil
 		}
 
-		return false, &filter.FilterError{
+		return false, &filter.Error{
 			Object: obj,
 			Err:    fmt.Errorf("jq expression must return a boolean, got %T", v),
 		}

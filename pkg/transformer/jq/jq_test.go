@@ -34,7 +34,7 @@ func TestTransformer(t *testing.T) {
 	tests := []struct {
 		name           string
 		expression     string
-		opts           []jqu.EngineOption
+		opts           []jqu.Option
 		inputObject    runtime.Object
 		validation     types.GomegaMatcher
 		expectNewErr   bool
@@ -111,7 +111,7 @@ func TestTransformer(t *testing.T) {
 		{
 			name:       "should use custom function to transform content",
 			expression: `addPrefixToLabels("env-")`,
-			opts: []jqu.EngineOption{
+			opts: []jqu.Option{
 				jqu.WithFunction("addPrefixToLabels", 1, 1, func(input any, args []any) any {
 					obj, ok := input.(map[string]any)
 					if !ok {
@@ -163,7 +163,7 @@ func TestTransformer(t *testing.T) {
 		{
 			name:       "should use custom function to transform labels",
 			expression: `.metadata.labels = (.metadata.labels | addPrefixToLabels("env-"))`,
-			opts: []jqu.EngineOption{
+			opts: []jqu.Option{
 				jqu.WithFunction("addPrefixToLabels", 1, 1, func(input any, args []any) any {
 					prefix := args[0].(string)
 
@@ -201,7 +201,7 @@ func TestTransformer(t *testing.T) {
 		{
 			name:       "should use variables in expression",
 			expression: `.data.greeting = $greeting`,
-			opts: []jqu.EngineOption{
+			opts: []jqu.Option{
 				jqu.WithVariable("greeting", "Hello, World!"),
 			},
 			inputObject: &corev1.ConfigMap{
@@ -221,7 +221,7 @@ func TestTransformer(t *testing.T) {
 		{
 			name:       "should use multiple variables in expression",
 			expression: `setpath(["data", "greeting"]; $greeting) | setpath(["data", "count"]; $count)`,
-			opts: []jqu.EngineOption{
+			opts: []jqu.Option{
 				jqu.WithVariable("greeting", "Hello, World!"),
 				jqu.WithVariable("count", 42),
 			},

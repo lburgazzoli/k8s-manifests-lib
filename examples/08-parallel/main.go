@@ -21,7 +21,7 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
+	l := logger.FromContext(ctx)
 	// Create three YAML renderers that will process different manifest directories
 	yamlRenderer1, err := yaml.New([]yaml.Source{
 		{
@@ -54,7 +54,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Sequential rendering (default)
-	log.Log("=== Sequential Rendering ===")
+	l.Log("=== Sequential Rendering ===")
 	sequentialEngine, err := engine.New(
 		engine.WithRenderer(yamlRenderer1),
 		engine.WithRenderer(yamlRenderer2),
@@ -70,10 +70,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("sequential render failed: %w", err)
 	}
 	sequentialTime := time.Since(start)
-	log.Logf("Rendered %d objects in %v\n\n", len(objects), sequentialTime)
+	l.Logf("Rendered %d objects in %v\n\n", len(objects), sequentialTime)
 
 	// Parallel rendering
-	log.Log("=== Parallel Rendering ===")
+	l.Log("=== Parallel Rendering ===")
 	parallelEngine, err := engine.New(
 		engine.WithRenderer(yamlRenderer1),
 		engine.WithRenderer(yamlRenderer2),
@@ -90,11 +90,11 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("parallel render failed: %w", err)
 	}
 	parallelTime := time.Since(start)
-	log.Logf("Rendered %d objects in %v\n\n", len(objects), parallelTime)
+	l.Logf("Rendered %d objects in %v\n\n", len(objects), parallelTime)
 
 	// Using struct-based options
-	log.Log("=== Struct-based Options ===")
-	structEngine, err := engine.New(&engine.EngineOptions{
+	l.Log("=== Struct-based Options ===")
+	structEngine, err := engine.New(&engine.Options{
 		Renderers: []types.Renderer{
 			yamlRenderer1,
 			yamlRenderer2,
@@ -112,12 +112,12 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("struct-based render failed: %w", err)
 	}
 	structTime := time.Since(start)
-	log.Logf("Rendered %d objects in %v\n", len(objects), structTime)
+	l.Logf("Rendered %d objects in %v\n", len(objects), structTime)
 
 	// Print speedup
 	if parallelTime < sequentialTime {
 		speedup := float64(sequentialTime) / float64(parallelTime)
-		log.Logf("\nSpeedup: %.2fx faster\n", speedup)
+		l.Logf("\nSpeedup: %.2fx faster\n", speedup)
 	}
 
 	return nil

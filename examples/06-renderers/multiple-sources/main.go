@@ -20,10 +20,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Multiple Helm Sources Example ===")
-	log.Log("Demonstrates: Rendering multiple Helm charts with a single renderer")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Multiple Helm Sources Example ===")
+	l.Log("Demonstrates: Rendering multiple Helm charts with a single renderer")
+	l.Log()
 
 	// Create a Helm renderer with multiple source charts
 	// Each chart is processed independently and results are aggregated
@@ -62,7 +62,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Successfully rendered %d objects from %d Helm charts\n\n", len(objects), 2)
+	l.Logf("Successfully rendered %d objects from %d Helm charts\n\n", len(objects), 2)
 
 	// Count objects per release
 	releaseCounts := make(map[string]int)
@@ -73,9 +73,9 @@ func Run(ctx context.Context) error {
 		}
 	}
 
-	log.Log("Objects per release:")
+	l.Log("Objects per release:")
 	for release, count := range releaseCounts {
-		log.Logf("  - %s: %d objects\n", release, count)
+		l.Logf("  - %s: %d objects\n", release, count)
 	}
 
 	return nil

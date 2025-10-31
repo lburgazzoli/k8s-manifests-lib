@@ -29,10 +29,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Complex Nested Composition Example ===")
-	log.Log("Demonstrates: Deep nesting of filters and transformers")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Complex Nested Composition Example ===")
+	l.Log("Demonstrates: Deep nesting of filters and transformers")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -116,30 +116,30 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects with complex nested filtering and transformations\n\n", len(objects))
+	l.Logf("Rendered %d objects with complex nested filtering and transformations\n\n", len(objects))
 
-	log.Log("Filter Logic:")
-	log.Log("  Exclude: kube-system, kube-public")
-	log.Log("  Include:")
-	log.Log("    - Production Deployments/StatefulSets with 'critical' label")
-	log.Log("    - Staging/dev Services")
-	log.Log()
-	log.Log("Transformer Logic:")
-	log.Log("  Always: Ensure default namespace")
-	log.Log("  Production:")
-	log.Log("    - Add critical labels + SLA annotations")
-	log.Log("    - If Deployment: Add deployment-strategy label")
-	log.Log("  Default: Add dev environment label")
+	l.Log("Filter Logic:")
+	l.Log("  Exclude: kube-system, kube-public")
+	l.Log("  Include:")
+	l.Log("    - Production Deployments/StatefulSets with 'critical' label")
+	l.Log("    - Staging/dev Services")
+	l.Log()
+	l.Log("Transformer Logic:")
+	l.Log("  Always: Ensure default namespace")
+	l.Log("  Production:")
+	l.Log("    - Add critical labels + SLA annotations")
+	l.Log("    - If Deployment: Add deployment-strategy label")
+	l.Log("  Default: Add dev environment label")
 
 	// Show examples
 	for i, obj := range objects {
 		if i >= 3 {
 			break
 		}
-		log.Logf("\n%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
-		log.Logf("   Labels: %v\n", obj.GetLabels())
+		l.Logf("\n%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
+		l.Logf("   Labels: %v\n", obj.GetLabels())
 		if len(obj.GetAnnotations()) > 0 {
-			log.Logf("   Annotations: %v\n", obj.GetAnnotations())
+			l.Logf("   Annotations: %v\n", obj.GetAnnotations())
 		}
 	}
 

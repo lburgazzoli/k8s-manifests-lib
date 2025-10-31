@@ -32,8 +32,8 @@ func (opts RenderOptions) ApplyTo(target *RenderOptions) {
 	}
 }
 
-// EngineOptions represents the processing options for the engine.
-type EngineOptions struct {
+// Options represents the processing options for the engine.
+type Options struct {
 	// Filters are engine-level filters applied to all renders.
 	Filters []types.Filter
 
@@ -50,8 +50,8 @@ type EngineOptions struct {
 	Parallel bool
 }
 
-// ApplyTo implements the Option interface for EngineOptions.
-func (opts EngineOptions) ApplyTo(target *EngineOptions) {
+// ApplyTo implements the Option interface for Options.
+func (opts Options) ApplyTo(target *Options) {
 	target.Renderers = append(target.Renderers, opts.Renderers...)
 	target.Filters = append(target.Filters, opts.Filters...)
 	target.Transformers = append(target.Transformers, opts.Transformers...)
@@ -62,16 +62,16 @@ func (opts EngineOptions) ApplyTo(target *EngineOptions) {
 	}
 }
 
-// EngineOption is a generic option for EngineOptions.
-type EngineOption = util.Option[EngineOptions]
+// Option is a generic option for Options.
+type Option = util.Option[Options]
 
 // RenderOption is a generic option for RenderOptions.
 type RenderOption = util.Option[RenderOptions]
 
 // WithRenderer adds a configured renderer to the engine.
 // Can only be used during engine creation.
-func WithRenderer(r types.Renderer) EngineOption {
-	return util.FunctionalOption[EngineOptions](func(o *EngineOptions) {
+func WithRenderer(r types.Renderer) Option {
+	return util.FunctionalOption[Options](func(o *Options) {
 		o.Renderers = append(o.Renderers, r)
 	})
 }
@@ -80,8 +80,8 @@ func WithRenderer(r types.Renderer) EngineOption {
 // Engine-level filters are applied to aggregated results from all renderers on every Render() call.
 // For renderer-specific filtering, use the renderer's WithFilter option (e.g., helm.WithFilter).
 // For one-time filtering on a single Render() call, use WithRenderFilter.
-func WithFilter(f types.Filter) EngineOption {
-	return util.FunctionalOption[EngineOptions](func(o *EngineOptions) {
+func WithFilter(f types.Filter) Option {
+	return util.FunctionalOption[Options](func(o *Options) {
 		o.Filters = append(o.Filters, f)
 	})
 }
@@ -90,8 +90,8 @@ func WithFilter(f types.Filter) EngineOption {
 // Engine-level transformers are applied to aggregated results from all renderers on every Render() call.
 // For renderer-specific transformation, use the renderer's WithTransformer option (e.g., helm.WithTransformer).
 // For one-time transformation on a single Render() call, use WithRenderTransformer.
-func WithTransformer(t types.Transformer) EngineOption {
-	return util.FunctionalOption[EngineOptions](func(o *EngineOptions) {
+func WithTransformer(t types.Transformer) Option {
+	return util.FunctionalOption[Options](func(o *Options) {
 		o.Transformers = append(o.Transformers, t)
 	})
 }
@@ -118,8 +118,8 @@ func WithRenderTransformer(t types.Transformer) RenderOption {
 // When enabled, all renderers execute concurrently using goroutines.
 // When disabled (default), renderers execute sequentially.
 // Parallel execution is beneficial for I/O-bound renderers (Helm OCI fetch, file reads).
-func WithParallel(enabled bool) EngineOption {
-	return util.FunctionalOption[EngineOptions](func(o *EngineOptions) {
+func WithParallel(enabled bool) Option {
+	return util.FunctionalOption[Options](func(o *Options) {
 		o.Parallel = enabled
 	})
 }

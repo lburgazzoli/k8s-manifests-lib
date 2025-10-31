@@ -8,7 +8,6 @@ linters:
     - exhaustruct
     - funlen
     - ireturn
-    - revive
     - lll
     - depguard
     - err113
@@ -22,6 +21,37 @@ linters:
     - gocognit
     - maintidx
     - nestif
+  settings:
+    revive:
+      enable-all-rules: true
+      rules:
+        # Disable noisy rules that don't add value
+        - name: package-comments
+          disabled: true  # Package comments not critical for examples/main packages
+        - name: dot-imports
+          disabled: true  # Common practice for Gomega test assertions
+        - name: unused-parameter
+          disabled: true  # Common in test subtests and lambda functions
+        - name: var-naming
+          disabled: true  # "types" and "util" are reasonable package names
+        - name: line-length-limit
+          disabled: true  # 80 character limit is too restrictive for modern code
+        - name: function-length
+          disabled: true  # 75 line limit too restrictive for test functions
+        - name: cognitive-complexity
+          disabled: true  # Complexity metrics are subjective
+        - name: add-constant
+          disabled: true  # Magic number detection is too noisy
+        - name: unchecked-type-assertion
+          disabled: true  # Type assertions in tests are usually safe
+        - name: unhandled-error
+          disabled: true  # Requiring error checks for fmt.Println is excessive
+        - name: cyclomatic
+          disabled: true  # Cyclomatic complexity is similar to cognitive complexity
+        - name: package-directory-mismatch
+          disabled: true  # main_test pattern is intentional for example tests
+        - name: unused-receiver
+          disabled: true  # Interface methods often don't need the receiver
 
 formatters:
   enable:
@@ -43,3 +73,27 @@ formatters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    # Exclude package-comments for all files
+    - linters:
+        - revive
+      text: "package-comments"
+    # Exclude dot-imports for test files (common Gomega practice)
+    - linters:
+        - revive
+      text: "dot-imports"
+      path: "_test\\.go$"
+    # Exclude unused-parameter in test files (common in subtests)
+    - linters:
+        - revive
+      text: "unused-parameter"
+      path: "_test\\.go$"
+    # Exclude unused-parameter in examples (lambdas with unused params)
+    - linters:
+        - revive
+      text: "unused-parameter"
+      path: "examples/"
+    # Exclude var-naming for specific reasonable package names
+    - linters:
+        - revive
+      text: "var-naming.*meaningless package names"

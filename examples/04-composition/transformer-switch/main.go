@@ -23,10 +23,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Transformer Switch Composition Example ===")
-	log.Log("Demonstrates: transformer.Switch() for multi-branch transformations")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Transformer Switch Composition Example ===")
+	l.Log("Demonstrates: transformer.Switch() for multi-branch transformations")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -93,17 +93,17 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects with environment-specific transformations:\n", len(objects))
-	log.Log("  - Production: critical labels, SLA annotations, 'prod-' prefix")
-	log.Log("  - Staging: monitoring labels, 'stg-' prefix")
-	log.Log("  - Default: dev labels, 'dev-' prefix")
+	l.Logf("Rendered %d objects with environment-specific transformations:\n", len(objects))
+	l.Log("  - Production: critical labels, SLA annotations, 'prod-' prefix")
+	l.Log("  - Staging: monitoring labels, 'stg-' prefix")
+	l.Log("  - Default: dev labels, 'dev-' prefix")
 
 	// Show the first object as example
 	if len(objects) > 0 {
 		obj := objects[0]
-		log.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
-		log.Logf("Labels: %v\n", obj.GetLabels())
-		log.Logf("Annotations: %v\n", obj.GetAnnotations())
+		l.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
+		l.Logf("Labels: %v\n", obj.GetLabels())
+		l.Logf("Annotations: %v\n", obj.GetAnnotations())
 	}
 
 	return nil

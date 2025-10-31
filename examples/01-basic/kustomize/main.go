@@ -18,10 +18,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Basic Kustomize Example ===")
-	log.Log("Demonstrates: Simple Kustomize directory rendering using engine.Kustomize() convenience function")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Basic Kustomize Example ===")
+	l.Log("Demonstrates: Simple Kustomize directory rendering using engine.Kustomize() convenience function")
+	l.Log("")
 
 	// Create an Engine with a single Kustomize renderer
 	// Point to a directory containing a kustomization.yaml file
@@ -39,16 +39,16 @@ func Run(ctx context.Context) error {
 	}
 
 	// Print summary
-	log.Logf("Successfully rendered %d Kubernetes objects from Kustomize\n\n", len(objects))
+	l.Logf("Successfully rendered %d Kubernetes objects from Kustomize\n\n", len(objects))
 
 	// Show what was rendered
-	log.Log("Rendered objects:")
+	l.Log("Rendered objects:")
 	for i, obj := range objects {
-		log.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
+		l.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
 		if obj.GetNamespace() != "" {
-			log.Logf(" (namespace: %s)", obj.GetNamespace())
+			l.Logf(" (namespace: %s)", obj.GetNamespace())
 		}
-		log.Log("")
+		l.Log("")
 	}
 
 	return nil

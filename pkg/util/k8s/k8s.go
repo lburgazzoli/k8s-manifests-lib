@@ -81,6 +81,7 @@ func DecodeYAML(content []byte) ([]unstructured.Unstructured, error) {
 	return results, nil
 }
 
+// ToUnstructured converts any object to an unstructured.Unstructured representation.
 func ToUnstructured(obj any) (*unstructured.Unstructured, error) {
 	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {

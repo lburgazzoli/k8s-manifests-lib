@@ -22,10 +22,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Basic YAML Example ===")
-	log.Log("Demonstrates: Simple YAML file loading using engine.Yaml() convenience function")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Basic YAML Example ===")
+	l.Log("Demonstrates: Simple YAML file loading using engine.Yaml() convenience function")
+	l.Log("")
 
 	// Create an Engine with a single YAML renderer
 	// Using embedded filesystem for portability
@@ -44,16 +44,16 @@ func Run(ctx context.Context) error {
 	}
 
 	// Print summary
-	log.Logf("Successfully loaded %d Kubernetes objects from YAML files\n\n", len(objects))
+	l.Logf("Successfully loaded %d Kubernetes objects from YAML files\n\n", len(objects))
 
 	// Show what was loaded
-	log.Log("Loaded objects:")
+	l.Log("Loaded objects:")
 	for i, obj := range objects {
-		log.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
+		l.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
 		if obj.GetNamespace() != "" {
-			log.Logf(" (namespace: %s)", obj.GetNamespace())
+			l.Logf(" (namespace: %s)", obj.GetNamespace())
 		}
-		log.Log("")
+		l.Log("")
 	}
 
 	return nil

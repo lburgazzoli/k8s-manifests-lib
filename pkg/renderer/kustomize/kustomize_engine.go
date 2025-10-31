@@ -7,7 +7,6 @@ import (
 
 	goyaml "gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
-	"sigs.k8s.io/kustomize/api/resmap"
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
@@ -18,12 +17,14 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 )
 
+// Engine wraps a Kustomize kustomizer for rendering kustomization directories.
 type Engine struct {
 	kustomizer *krusty.Kustomizer
 	fs         filesys.FileSystem
 	opts       *RendererOptions
 }
 
+// NewEngine creates a new kustomize rendering engine.
 func NewEngine(fs filesys.FileSystem, opts *RendererOptions) *Engine {
 	return &Engine{
 		kustomizer: krusty.MakeKustomizer(&krusty.Options{
@@ -35,6 +36,7 @@ func NewEngine(fs filesys.FileSystem, opts *RendererOptions) *Engine {
 	}
 }
 
+// Run executes the kustomize build process for the given source and returns the rendered objects.
 func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Unstructured, error) {
 	restrictions := e.opts.LoadRestrictions
 	if input.LoadRestrictions != kustomizetypes.LoadRestrictionsUnknown {
@@ -107,10 +109,7 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 		}
 	}
 
-	return e.toUnstructured(resMap, input.Path, addedOriginAnnotations)
-}
-
-func (e *Engine) toUnstructured(resMap resmap.ResMap, path string, removeConfig bool) ([]unstructured.Unstructured, error) {
+	// Convert ResMap to unstructured objects
 	result := make([]unstructured.Unstructured, resMap.Size())
 
 	for i, res := range resMap.Resources() {
@@ -132,14 +131,14 @@ func (e *Engine) toUnstructured(resMap resmap.ResMap, path string, removeConfig 
 			}
 
 			annotations[types.AnnotationSourceType] = rendererType
-			annotations[types.AnnotationSourcePath] = path
+			annotations[types.AnnotationSourcePath] = input.Path
 
 			if origin, err := res.GetOrigin(); err == nil && origin != nil {
 				annotations[types.AnnotationSourceFile] = origin.Path
 			}
 
 			// Remove config.kubernetes.io/origin if we added OriginAnnotations ourselves
-			if removeConfig {
+			if addedOriginAnnotations {
 				delete(annotations, "config.kubernetes.io/origin")
 			}
 

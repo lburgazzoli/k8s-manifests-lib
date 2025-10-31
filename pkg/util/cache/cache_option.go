@@ -15,6 +15,7 @@ type Options struct {
 	TTL time.Duration
 }
 
+// ApplyTo applies the cache options to the target configuration.
 func (opts Options) ApplyTo(target *Options) {
 	if opts.TTL > 0 {
 		target.TTL = opts.TTL

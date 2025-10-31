@@ -21,10 +21,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Multiple Renderers Example ===")
-	log.Log("Demonstrates: Combining Helm, Kustomize, and YAML renderers")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Multiple Renderers Example ===")
+	l.Log("Demonstrates: Combining Helm, Kustomize, and YAML renderers")
+	l.Log()
 
 	// Create a Helm renderer
 	helmRenderer, err := helm.New([]helm.Source{
@@ -73,7 +73,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Successfully rendered %d total objects from all renderers\n\n", len(objects))
+	l.Logf("Successfully rendered %d total objects from all renderers\n\n", len(objects))
 
 	// Count objects by kind
 	kindCounts := make(map[string]int)
@@ -81,9 +81,9 @@ func Run(ctx context.Context) error {
 		kindCounts[obj.GetKind()]++
 	}
 
-	log.Log("Objects by kind:")
+	l.Log("Objects by kind:")
 	for kind, count := range kindCounts {
-		log.Logf("  - %d %s(s)\n", count, kind)
+		l.Logf("  - %d %s(s)\n", count, kind)
 	}
 
 	return nil

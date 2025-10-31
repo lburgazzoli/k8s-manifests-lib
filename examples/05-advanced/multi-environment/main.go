@@ -28,10 +28,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Multi-Environment Deployment Pipeline Example ===")
-	log.Log("Demonstrates: Combined filtering and environment-specific transformations")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Multi-Environment Deployment Pipeline Example ===")
+	l.Log("Demonstrates: Combined filtering and environment-specific transformations")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -107,22 +107,22 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
-	log.Log("\nEnvironment-specific transformations applied:")
-	log.Log("  Production: critical labels + SLA annotations + 'prod-' prefix")
-	log.Log("  Staging: monitoring labels + 'stg-' prefix")
-	log.Log("  Dev: basic labels + 'dev-' prefix")
+	l.Logf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
+	l.Log("\nEnvironment-specific transformations applied:")
+	l.Log("  Production: critical labels + SLA annotations + 'prod-' prefix")
+	l.Log("  Staging: monitoring labels + 'stg-' prefix")
+	l.Log("  Dev: basic labels + 'dev-' prefix")
 
 	// Show examples of rendered objects
 	for i, obj := range objects {
 		if i >= 3 {
 			break
 		}
-		log.Logf("\n%d. %s/%s\n", i+1, obj.GetKind(), obj.GetName())
-		log.Logf("   Namespace: %s\n", obj.GetNamespace())
-		log.Logf("   Labels: %v\n", obj.GetLabels())
+		l.Logf("\n%d. %s/%s\n", i+1, obj.GetKind(), obj.GetName())
+		l.Logf("   Namespace: %s\n", obj.GetNamespace())
+		l.Logf("   Labels: %v\n", obj.GetLabels())
 		if len(obj.GetAnnotations()) > 0 {
-			log.Logf("   Annotations: %v\n", obj.GetAnnotations())
+			l.Logf("   Annotations: %v\n", obj.GetAnnotations())
 		}
 	}
 

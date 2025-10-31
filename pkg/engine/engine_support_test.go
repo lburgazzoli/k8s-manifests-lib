@@ -249,19 +249,14 @@ func BenchmarkEngineRenderParallel(b *testing.B) {
 	benchmarkEngineRender(b, true)
 }
 
-func benchmarkEngineHelm(b *testing.B, parallel bool) {
+func runEngineHelmSequentialBenchmark(b *testing.B) {
 	b.Helper()
 	ctx := b.Context()
-
-	prefix := "bench-seq"
-	if parallel {
-		prefix = "bench-par"
-	}
 
 	helmRenderer1, err := helm.New([]helm.Source{
 		{
 			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
-			ReleaseName: prefix + "-1",
+			ReleaseName: "bench-seq-1",
 			Values: helm.Values(map[string]any{
 				"shared": map[string]any{
 					"appId": "bench-app-1",
@@ -276,7 +271,7 @@ func benchmarkEngineHelm(b *testing.B, parallel bool) {
 	helmRenderer2, err := helm.New([]helm.Source{
 		{
 			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
-			ReleaseName: prefix + "-2",
+			ReleaseName: "bench-seq-2",
 			Values: helm.Values(map[string]any{
 				"shared": map[string]any{
 					"appId": "bench-app-2",
@@ -291,7 +286,7 @@ func benchmarkEngineHelm(b *testing.B, parallel bool) {
 	helmRenderer3, err := helm.New([]helm.Source{
 		{
 			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
-			ReleaseName: prefix + "-3",
+			ReleaseName: "bench-seq-3",
 			Values: helm.Values(map[string]any{
 				"shared": map[string]any{
 					"appId": "bench-app-3",
@@ -307,7 +302,80 @@ func benchmarkEngineHelm(b *testing.B, parallel bool) {
 		engine.WithRenderer(helmRenderer1),
 		engine.WithRenderer(helmRenderer2),
 		engine.WithRenderer(helmRenderer3),
-		engine.WithParallel(parallel),
+		engine.WithParallel(false),
+	)
+	if err != nil {
+		b.Fatalf("failed to create engine: %v", err)
+	}
+
+	// Warm up cache
+	_, _ = e.Render(ctx)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for range b.N {
+		_, err := e.Render(ctx)
+		if err != nil {
+			b.Fatalf("failed to render: %v", err)
+		}
+	}
+}
+
+func runEngineHelmParallelBenchmark(b *testing.B) {
+	b.Helper()
+	ctx := b.Context()
+
+	helmRenderer1, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: "bench-par-1",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-1",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 1: %v", err)
+	}
+
+	helmRenderer2, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: "bench-par-2",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-2",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 2: %v", err)
+	}
+
+	helmRenderer3, err := helm.New([]helm.Source{
+		{
+			Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			ReleaseName: "bench-par-3",
+			Values: helm.Values(map[string]any{
+				"shared": map[string]any{
+					"appId": "bench-app-3",
+				},
+			}),
+		},
+	}, helm.WithCache())
+	if err != nil {
+		b.Fatalf("failed to create helm renderer 3: %v", err)
+	}
+
+	e, err := engine.New(
+		engine.WithRenderer(helmRenderer1),
+		engine.WithRenderer(helmRenderer2),
+		engine.WithRenderer(helmRenderer3),
+		engine.WithParallel(true),
 	)
 	if err != nil {
 		b.Fatalf("failed to create engine: %v", err)
@@ -328,9 +396,9 @@ func benchmarkEngineHelm(b *testing.B, parallel bool) {
 }
 
 func BenchmarkEngineHelmSequential(b *testing.B) {
-	benchmarkEngineHelm(b, false)
+	runEngineHelmSequentialBenchmark(b)
 }
 
 func BenchmarkEngineHelmParallel(b *testing.B) {
-	benchmarkEngineHelm(b, true)
+	runEngineHelmParallelBenchmark(b)
 }

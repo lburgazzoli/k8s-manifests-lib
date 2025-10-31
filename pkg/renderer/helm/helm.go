@@ -21,6 +21,7 @@ import (
 
 const rendererType = "helm"
 
+// Source defines a Helm chart source for rendering.
 type Source struct {
 	// Repo is the repository URL for chart lookup. Optional for local or OCI charts.
 	Repo string

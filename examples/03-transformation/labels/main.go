@@ -20,10 +20,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Label Transformation Example ===")
-	log.Log("Demonstrates: Adding, updating, and removing labels")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Label Transformation Example ===")
+	l.Log("Demonstrates: Adding, updating, and removing labels")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -36,7 +36,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Add/Update labels
-	log.Log("1. Set - Add or update labels")
+	l.Log("1. Set - Add or update labels")
 	setTransformer := labels.Set(map[string]string{
 		"env":                          "production",
 		"tier":                         "frontend",
@@ -57,13 +57,13 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (added 4 labels)\n", len(objects1))
+	l.Logf("   Transformed %d objects (added 4 labels)\n", len(objects1))
 	if len(objects1) > 0 {
-		log.Logf("   Example labels: %v\n\n", objects1[0].GetLabels())
+		l.Logf("   Example labels: %v\n\n", objects1[0].GetLabels())
 	}
 
 	// Example 2: Remove specific labels
-	log.Log("2. Remove - Remove specific label keys")
+	l.Log("2. Remove - Remove specific label keys")
 	removeTransformer := labels.Remove("temp", "debug", "test-only")
 
 	e2, err := engine.New(
@@ -79,10 +79,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (removed temp/debug/test-only labels)\n\n", len(objects2))
+	l.Logf("   Transformed %d objects (removed temp/debug/test-only labels)\n\n", len(objects2))
 
 	// Example 3: Remove labels conditionally
-	log.Log("3. RemoveIf - Remove labels matching a condition")
+	l.Log("3. RemoveIf - Remove labels matching a condition")
 	removeIfTransformer := labels.RemoveIf(func(key string, value string) bool {
 		// Remove all labels with 'temp-' prefix
 		return strings.HasPrefix(key, "temp-")
@@ -101,7 +101,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (removed labels with 'temp-' prefix)\n", len(objects3))
+	l.Logf("   Transformed %d objects (removed labels with 'temp-' prefix)\n", len(objects3))
 
 	return nil
 }

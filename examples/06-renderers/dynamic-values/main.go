@@ -21,10 +21,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Dynamic Values Example ===")
-	log.Log("Demonstrates: Using dynamic values function for runtime configuration")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Dynamic Values Example ===")
+	l.Log("Demonstrates: Using dynamic values function for runtime configuration")
+	l.Log()
 
 	// Create a Helm renderer with dynamic values
 	// The values function is called at render time, allowing for runtime configuration
@@ -41,7 +41,7 @@ func Run(ctx context.Context) error {
 				// - Environment variables
 				// - Vault/secrets manager
 
-				log.Log("Fetching dynamic configuration...")
+				l.Log("Fetching dynamic configuration...")
 
 				return map[string]any{
 					"replicaCount": 3,
@@ -69,24 +69,24 @@ func Run(ctx context.Context) error {
 	}
 
 	// First render
-	log.Log("\n=== First Render ===")
+	l.Log("\n=== First Render ===")
 	objects1, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with dynamic values\n", len(objects1))
+	l.Logf("Rendered %d objects with dynamic values\n", len(objects1))
 
 	// Wait a bit
 	time.Sleep(1 * time.Second)
 
 	// Second render - values function is called again
-	log.Log("\n=== Second Render ===")
+	l.Log("\n=== Second Render ===")
 	objects2, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with new dynamic values\n", len(objects2))
-	log.Log("\nNote: Each render calls the values function, allowing for fresh configuration")
+	l.Logf("Rendered %d objects with new dynamic values\n", len(objects2))
+	l.Log("\nNote: Each render calls the values function, allowing for fresh configuration")
 
 	return nil
 }

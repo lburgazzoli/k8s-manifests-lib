@@ -30,11 +30,11 @@ type Engine struct {
 	variables []variable
 }
 
-// EngineOption is a generic option for Engine.
-type EngineOption = util.Option[Engine]
+// Option is a generic option for Engine.
+type Option = util.Option[Engine]
 
-// EngineOptions is a struct-based option that can set multiple engine options at once.
-type EngineOptions struct {
+// Options is a struct-based option that can set multiple engine options at once.
+type Options struct {
 	// Functions are custom JQ functions to register with the engine.
 	Functions []function
 
@@ -42,13 +42,14 @@ type EngineOptions struct {
 	Variables []variable
 }
 
-func (opts EngineOptions) ApplyTo(target *Engine) {
+// ApplyTo applies the JQ engine options to the target engine.
+func (opts Options) ApplyTo(target *Engine) {
 	target.functions = opts.Functions
 	target.variables = opts.Variables
 }
 
 // WithFunction adds a custom function to the JQ engine.
-func WithFunction(name string, minarity, maxarity int, impl func(any, []any) any) EngineOption {
+func WithFunction(name string, minarity, maxarity int, impl func(any, []any) any) Option {
 	return util.FunctionalOption[Engine](func(e *Engine) {
 		e.functions = append(e.functions, function{
 			name:     name,
@@ -60,7 +61,7 @@ func WithFunction(name string, minarity, maxarity int, impl func(any, []any) any
 }
 
 // WithVariable adds a variable to the JQ engine.
-func WithVariable(name string, value any) EngineOption {
+func WithVariable(name string, value any) Option {
 	return util.FunctionalOption[Engine](func(e *Engine) {
 		// Ensure variable name starts with $
 		if name[0] != '$' {
@@ -75,7 +76,7 @@ func WithVariable(name string, value any) EngineOption {
 }
 
 // NewEngine creates a new JQ engine with the given expression and options.
-func NewEngine(expression string, opts ...EngineOption) (*Engine, error) {
+func NewEngine(expression string, opts ...Option) (*Engine, error) {
 	e := &Engine{
 		functions: make([]function, 0),
 		variables: make([]variable, 0),

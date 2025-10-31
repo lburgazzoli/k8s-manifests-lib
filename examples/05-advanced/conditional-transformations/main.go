@@ -27,10 +27,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Conditional Transformations Example ===")
-	log.Log("Demonstrates: transformer.If() for applying transformations conditionally")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Conditional Transformations Example ===")
+	l.Log("Demonstrates: transformer.If() for applying transformations conditionally")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -86,21 +86,21 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects with conditional transformations:\n", len(objects))
-	log.Log("  1. Default namespace ensured (always)")
-	log.Log("  2. Managed-by label added (always)")
-	log.Log("  3. Monitoring labels added (only if production namespace)")
-	log.Log("  4. Cost-center annotation added (only for Deployments and StatefulSets)")
+	l.Logf("Rendered %d objects with conditional transformations:\n", len(objects))
+	l.Log("  1. Default namespace ensured (always)")
+	l.Log("  2. Managed-by label added (always)")
+	l.Log("  3. Monitoring labels added (only if production namespace)")
+	l.Log("  4. Cost-center annotation added (only for Deployments and StatefulSets)")
 
 	// Show examples of rendered objects
 	for i, obj := range objects {
 		if i >= 3 {
 			break
 		}
-		log.Logf("\n%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
-		log.Logf("   Labels: %v\n", obj.GetLabels())
+		l.Logf("\n%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
+		l.Logf("   Labels: %v\n", obj.GetLabels())
 		if len(obj.GetAnnotations()) > 0 {
-			log.Logf("   Annotations: %v\n", obj.GetAnnotations())
+			l.Logf("   Annotations: %v\n", obj.GetAnnotations())
 		}
 	}
 

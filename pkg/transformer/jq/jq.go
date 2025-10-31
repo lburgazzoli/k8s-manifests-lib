@@ -13,7 +13,7 @@ import (
 )
 
 // Transform creates a new JQ transformer with the given expression and options.
-func Transform(expression string, opts ...jq.EngineOption) (types.Transformer, error) {
+func Transform(expression string, opts ...jq.Option) (types.Transformer, error) {
 	// Create a new JQ engine
 	engine, err := jq.NewEngine(expression, opts...)
 	if err != nil {
@@ -23,7 +23,7 @@ func Transform(expression string, opts ...jq.EngineOption) (types.Transformer, e
 	return func(ctx context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		v, err := engine.Run(obj.Object)
 		if err != nil {
-			return unstructured.Unstructured{}, &transformer.TransformerError{
+			return unstructured.Unstructured{}, &transformer.Error{
 				Object: obj,
 				Err:    fmt.Errorf("error execuring jq expression: %w", err),
 			}
@@ -35,7 +35,7 @@ func Transform(expression string, opts ...jq.EngineOption) (types.Transformer, e
 		case map[string]any:
 			data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&v)
 			if err != nil {
-				return ret, &transformer.TransformerError{
+				return ret, &transformer.Error{
 					Object: obj,
 					Err:    fmt.Errorf("failed to convert jq result to unstructured: %w", err),
 				}
@@ -45,7 +45,7 @@ func Transform(expression string, opts ...jq.EngineOption) (types.Transformer, e
 
 			return ret, nil
 		default:
-			return ret, &transformer.TransformerError{
+			return ret, &transformer.Error{
 				Object: obj,
 				Err:    fmt.Errorf("jq expression must return an object, got %T", v),
 			}

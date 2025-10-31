@@ -20,10 +20,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Basic Caching Example ===")
-	log.Log("Demonstrates: Enabling cache with TTL for improved performance")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Basic Caching Example ===")
+	l.Log("Demonstrates: Enabling cache with TTL for improved performance")
+	l.Log()
 
 	// Create a Helm renderer with caching enabled
 	helmRenderer, err := helm.New(
@@ -49,47 +49,47 @@ func Run(ctx context.Context) error {
 	}
 
 	// First render: cache miss
-	log.Log("1. First render (cache miss - fetches from source)")
+	l.Log("1. First render (cache miss - fetches from source)")
 	start := time.Now()
 	objects1, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 	duration1 := time.Since(start)
-	log.Logf("   Rendered %d objects in %v\n\n", len(objects1), duration1)
+	l.Logf("   Rendered %d objects in %v\n\n", len(objects1), duration1)
 
 	// Second render: cache hit
-	log.Log("2. Second render (cache hit - returns cached results)")
+	l.Log("2. Second render (cache hit - returns cached results)")
 	start = time.Now()
 	objects2, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 	duration2 := time.Since(start)
-	log.Logf("   Rendered %d objects in %v\n\n", len(objects2), duration2)
+	l.Logf("   Rendered %d objects in %v\n\n", len(objects2), duration2)
 
 	// Modify the cached result - won't affect cache due to automatic deep cloning
-	log.Log("3. Modifying returned objects (won't affect cache)")
+	l.Log("3. Modifying returned objects (won't affect cache)")
 	if len(objects2) > 0 {
 		originalName := objects2[0].GetName()
 		objects2[0].SetName("modified-name")
-		log.Logf("   Changed name from '%s' to '%s'\n\n", originalName, objects2[0].GetName())
+		l.Logf("   Changed name from '%s' to '%s'\n\n", originalName, objects2[0].GetName())
 	}
 
 	// Third render: still gets original cached values
-	log.Log("4. Third render (cache still has original values)")
+	l.Log("4. Third render (cache still has original values)")
 	start = time.Now()
 	objects3, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 	duration3 := time.Since(start)
-	log.Logf("   Rendered %d objects in %v\n", len(objects3), duration3)
+	l.Logf("   Rendered %d objects in %v\n", len(objects3), duration3)
 	if len(objects3) > 0 {
-		log.Logf("   First object name: '%s' (not modified)\n", objects3[0].GetName())
+		l.Logf("   First object name: '%s' (not modified)\n", objects3[0].GetName())
 	}
 
-	log.Logf("\n Performance improvement: ~%.1fx faster with cache\n",
+	l.Logf("\n Performance improvement: ~%.1fx faster with cache\n",
 		float64(duration1)/float64(duration2))
 
 	return nil

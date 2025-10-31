@@ -23,10 +23,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Transformer Chain Composition Example ===")
-	log.Log("Demonstrates: transformer.Chain() for sequential transformations")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Transformer Chain Composition Example ===")
+	l.Log("Demonstrates: transformer.Chain() for sequential transformations")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -80,20 +80,20 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects with chained transformations:\n", len(objects))
-	log.Log("  1. Default namespace ensured")
-	log.Log("  2. Managed-by label added")
-	log.Log("  3. Environment labels added")
-	log.Log("  4. Annotations added")
-	log.Log("  5. Name prefix 'prod-' added")
+	l.Logf("Rendered %d objects with chained transformations:\n", len(objects))
+	l.Log("  1. Default namespace ensured")
+	l.Log("  2. Managed-by label added")
+	l.Log("  3. Environment labels added")
+	l.Log("  4. Annotations added")
+	l.Log("  5. Name prefix 'prod-' added")
 
 	// Example object to show the transformations
 	if len(objects) > 0 {
 		obj := objects[0]
-		log.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
-		log.Logf("Namespace: %s\n", obj.GetNamespace())
-		log.Logf("Labels: %v\n", obj.GetLabels())
-		log.Logf("Annotations: %v\n", obj.GetAnnotations())
+		l.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
+		l.Logf("Namespace: %s\n", obj.GetNamespace())
+		l.Logf("Labels: %v\n", obj.GetLabels())
+		l.Logf("Annotations: %v\n", obj.GetAnnotations())
 	}
 
 	return nil

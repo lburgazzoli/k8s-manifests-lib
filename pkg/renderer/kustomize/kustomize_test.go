@@ -898,6 +898,8 @@ func TestSourceAnnotations(t *testing.T) {
 			case "resources/configs/secret.yaml":
 				foundSecret = true
 				g.Expect(obj.GetKind()).Should(Equal("Secret"))
+			default:
+				// Other source files are ignored in this test
 			}
 		}
 

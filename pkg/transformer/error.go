@@ -7,14 +7,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// TransformerError represents an error that occurred during transformer application.
+// Error represents an error that occurred during transformer application.
 // It provides context about which object failed and the underlying error.
-type TransformerError struct {
+type Error struct {
 	Object unstructured.Unstructured
 	Err    error
 }
 
-func (e *TransformerError) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf(
 		"transformer error for %s:%s %s (namespace: %s): %v",
 		e.Object.GroupVersionKind().GroupVersion(),
@@ -25,24 +25,24 @@ func (e *TransformerError) Error() string {
 	)
 }
 
-func (e *TransformerError) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-// Error wraps an error with transformer context.
-// If err is already a TransformerError, it returns it as-is to avoid double-wrapping.
-// Otherwise, it wraps err in a new TransformerError with the provided object context.
-func Error(obj unstructured.Unstructured, err error) error {
+// Wrap wraps an error with transformer context.
+// If err is already an Error, it returns it as-is to avoid double-wrapping.
+// Otherwise, it wraps err in a new Error with the provided object context.
+func Wrap(obj unstructured.Unstructured, err error) error {
 	if err == nil {
 		return nil
 	}
 
-	var transformerErr *TransformerError
+	var transformerErr *Error
 	if errors.As(err, &transformerErr) {
 		return err
 	}
 
-	return &TransformerError{
+	return &Error{
 		Object: obj,
 		Err:    err,
 	}

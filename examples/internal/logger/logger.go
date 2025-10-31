@@ -30,10 +30,12 @@ func FromContext(ctx context.Context) Logger {
 // StdoutLogger writes to os.Stdout.
 type StdoutLogger struct{}
 
+// Log prints arguments to stdout.
 func (l *StdoutLogger) Log(args ...any) {
 	_, _ = fmt.Fprintln(os.Stdout, args...)
 }
 
+// Logf prints formatted string to stdout.
 func (l *StdoutLogger) Logf(format string, args ...any) {
 	_, _ = fmt.Fprintln(os.Stdout, fmt.Sprintf(format, args...))
 }

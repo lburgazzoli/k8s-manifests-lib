@@ -18,10 +18,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Render-Time Values Example ===")
-	log.Log("Demonstrates: Overriding configured values at render-time with deep merging")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Render-Time Values Example ===")
+	l.Log("Demonstrates: Overriding configured values at render-time with deep merging")
+	l.Log()
 
 	// Create a Helm renderer with initial configuration values
 	helmRenderer, err := helm.New([]helm.Source{
@@ -52,17 +52,17 @@ func Run(ctx context.Context) error {
 	}
 
 	// First render: Use configured values
-	log.Log("=== Render 1: Using Configured Values ===")
+	l.Log("=== Render 1: Using Configured Values ===")
 	objects1, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with configured values (replicaCount=2, tag=1.25.0)\n", len(objects1))
+	l.Logf("Rendered %d objects with configured values (replicaCount=2, tag=1.25.0)\n", len(objects1))
 
 	// Second render: Override values at render-time
 	// Render-time values are deep merged with configured values
 	// Only the specified keys are overridden; others remain unchanged
-	log.Log("\n=== Render 2: Overriding Values at Render-Time ===")
+	l.Log("\n=== Render 2: Overriding Values at Render-Time ===")
 	objects2, err := e.Render(ctx,
 		engine.WithValues(map[string]any{
 			"replicaCount": 5, // Override replicaCount
@@ -75,10 +75,10 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with overridden values (replicaCount=5, tag=1.26.0)\n", len(objects2))
+	l.Logf("Rendered %d objects with overridden values (replicaCount=5, tag=1.26.0)\n", len(objects2))
 
 	// Third render: Different overrides
-	log.Log("\n=== Render 3: Different Overrides ===")
+	l.Log("\n=== Render 3: Different Overrides ===")
 	objects3, err := e.Render(ctx,
 		engine.WithValues(map[string]any{
 			"replicaCount": 10,
@@ -91,21 +91,21 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with different overrides (replicaCount=10, service.type=LoadBalancer)\n", len(objects3))
+	l.Logf("Rendered %d objects with different overrides (replicaCount=10, service.type=LoadBalancer)\n", len(objects3))
 
 	// Fourth render: Back to configured values (no overrides)
-	log.Log("\n=== Render 4: Back to Configured Values ===")
+	l.Log("\n=== Render 4: Back to Configured Values ===")
 	objects4, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
-	log.Logf("Rendered %d objects with configured values again (replicaCount=2, tag=1.25.0)\n", len(objects4))
+	l.Logf("Rendered %d objects with configured values again (replicaCount=2, tag=1.25.0)\n", len(objects4))
 
-	log.Log("\n=== Key Points ===")
-	log.Log("✓ Render-time values override configured values for each Render() call")
-	log.Log("✓ Deep merging: Only specified keys are overridden, others remain unchanged")
-	log.Log("✓ Each render is independent - overrides don't affect subsequent renders")
-	log.Log("✓ Useful for: environment-specific configs, testing, dynamic parameters")
+	l.Log("\n=== Key Points ===")
+	l.Log("✓ Render-time values override configured values for each Render() call")
+	l.Log("✓ Deep merging: Only specified keys are overridden, others remain unchanged")
+	l.Log("✓ Each render is independent - overrides don't affect subsequent renders")
+	l.Log("✓ Useful for: environment-specific configs, testing, dynamic parameters")
 
 	return nil
 }

@@ -24,10 +24,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Source Annotations Example ===")
-	log.Log("Demonstrates: Tracking the source of rendered objects with automatic annotations")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Source Annotations Example ===")
+	l.Log("Demonstrates: Tracking the source of rendered objects with automatic annotations")
+	l.Log()
 
 	// Create multiple renderers with source annotations enabled
 	// Source annotations are enabled at the renderer level
@@ -68,39 +68,39 @@ func Run(ctx context.Context) error {
 	}
 
 	// Render with source annotations
-	log.Log("=== Rendering with Source Annotations ===")
+	l.Log("=== Rendering with Source Annotations ===")
 	objects, err := e.Render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
 	// Display objects with their source annotations
-	log.Logf("Rendered %d objects with source tracking:\n\n", len(objects))
+	l.Logf("Rendered %d objects with source tracking:\n\n", len(objects))
 	for i, obj := range objects {
-		log.Logf("%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
+		l.Logf("%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
 
 		annotations := obj.GetAnnotations()
 		if annotations != nil {
-			log.Log("   Source Annotations:")
+			l.Log("   Source Annotations:")
 			if sourceType, ok := annotations[types.AnnotationSourceType]; ok {
-				log.Logf("   - Type: %s\n", sourceType)
+				l.Logf("   - Type: %s\n", sourceType)
 			}
 			if sourcePath, ok := annotations[types.AnnotationSourcePath]; ok {
-				log.Logf("   - Path: %s\n", sourcePath)
+				l.Logf("   - Path: %s\n", sourcePath)
 			}
 			if sourceFile, ok := annotations[types.AnnotationSourceFile]; ok {
-				log.Logf("   - File: %s\n", sourceFile)
+				l.Logf("   - File: %s\n", sourceFile)
 			}
 		}
-		log.Log()
+		l.Log()
 	}
 
-	log.Log("=== Use Cases ===")
-	log.Log("✓ Track which renderer produced each object")
-	log.Log("✓ Debug multi-source configurations")
-	log.Log("✓ Audit and compliance tracking")
-	log.Log("✓ Filter or process objects based on source")
-	log.Log("✓ Understand object provenance in complex pipelines")
+	l.Log("=== Use Cases ===")
+	l.Log("✓ Track which renderer produced each object")
+	l.Log("✓ Debug multi-source configurations")
+	l.Log("✓ Audit and compliance tracking")
+	l.Log("✓ Filter or process objects based on source")
+	l.Log("✓ Understand object provenance in complex pipelines")
 
 	return nil
 }

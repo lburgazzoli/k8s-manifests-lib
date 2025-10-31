@@ -291,7 +291,7 @@ func TestFilterError(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	t.Run("should return FilterError with object and error context", func(t *testing.T) {
+	t.Run("should return Error with object and error context", func(t *testing.T) {
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Service", "svc1", "kube-system"),
@@ -306,7 +306,7 @@ func TestFilterError(t *testing.T) {
 		g.Expect(result).To(BeNil())
 		g.Expect(err).To(HaveOccurred())
 
-		var filterErr *filter.FilterError
+		var filterErr *filter.Error
 		g.Expect(errors.As(err, &filterErr)).To(BeTrue())
 		g.Expect(filterErr.Object.GetName()).To(Equal("pod1"))
 		g.Expect(filterErr.Object.GetNamespace()).To(Equal("default"))
@@ -327,20 +327,20 @@ func TestFilterError(t *testing.T) {
 
 		g.Expect(err).To(HaveOccurred())
 
-		var filterErr *filter.FilterError
+		var filterErr *filter.Error
 		g.Expect(errors.As(err, &filterErr)).To(BeTrue())
 		g.Expect(errors.Is(err, underlyingErr)).To(BeTrue())
 	})
 
-	t.Run("should not double-wrap FilterError", func(t *testing.T) {
+	t.Run("should not double-wrap Error", func(t *testing.T) {
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "original-pod", "original-ns"),
 		}
 
-		// Filter that returns a FilterError with specific object context
+		// Filter that returns a Error with specific object context
 		originalErr := errors.New("original error")
 		failingFilter := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
-			return false, &filter.FilterError{
+			return false, &filter.Error{
 				Object: obj,
 				Err:    originalErr,
 			}
@@ -350,14 +350,14 @@ func TestFilterError(t *testing.T) {
 
 		g.Expect(err).To(HaveOccurred())
 
-		var filterErr *filter.FilterError
+		var filterErr *filter.Error
 		g.Expect(errors.As(err, &filterErr)).To(BeTrue())
 		// Should preserve the original object context, not double-wrap
 		g.Expect(filterErr.Object.GetName()).To(Equal("original-pod"))
 		g.Expect(filterErr.Object.GetNamespace()).To(Equal("original-ns"))
 		g.Expect(filterErr.Err).To(Equal(originalErr))
-		// The wrapped error should be the original error, not another FilterError
-		g.Expect(filterErr.Err).ToNot(BeAssignableToTypeOf(&filter.FilterError{}))
+		// The wrapped error should be the original error, not another Error
+		g.Expect(filterErr.Err).ToNot(BeAssignableToTypeOf(&filter.Error{}))
 	})
 }
 
@@ -365,7 +365,7 @@ func TestTransformerError(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	t.Run("should return TransformerError with object and error context", func(t *testing.T) {
+	t.Run("should return Error with object and error context", func(t *testing.T) {
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Service", "svc1", "kube-system"),
@@ -380,7 +380,7 @@ func TestTransformerError(t *testing.T) {
 		g.Expect(result).To(BeNil())
 		g.Expect(err).To(HaveOccurred())
 
-		var transformerErr *transformer.TransformerError
+		var transformerErr *transformer.Error
 		g.Expect(errors.As(err, &transformerErr)).To(BeTrue())
 		g.Expect(transformerErr.Object.GetName()).To(Equal("pod1"))
 		g.Expect(transformerErr.Object.GetNamespace()).To(Equal("default"))
@@ -406,7 +406,7 @@ func TestTransformerError(t *testing.T) {
 		g.Expect(result).To(BeNil())
 		g.Expect(err).To(HaveOccurred())
 
-		var transformerErr *transformer.TransformerError
+		var transformerErr *transformer.Error
 		g.Expect(errors.As(err, &transformerErr)).To(BeTrue())
 		g.Expect(transformerErr.Object.GetKind()).To(Equal("Deployment"))
 		g.Expect(transformerErr.Object.GetName()).To(Equal("deploy1"))
@@ -426,20 +426,20 @@ func TestTransformerError(t *testing.T) {
 
 		g.Expect(err).To(HaveOccurred())
 
-		var transformerErr *transformer.TransformerError
+		var transformerErr *transformer.Error
 		g.Expect(errors.As(err, &transformerErr)).To(BeTrue())
 		g.Expect(errors.Is(err, underlyingErr)).To(BeTrue())
 	})
 
-	t.Run("should not double-wrap TransformerError", func(t *testing.T) {
+	t.Run("should not double-wrap Error", func(t *testing.T) {
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "original-pod", "original-ns"),
 		}
 
-		// Transformer that returns a TransformerError with specific object context
+		// Transformer that returns a Error with specific object context
 		originalErr := errors.New("original error")
 		failingTransformer := func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
-			return unstructured.Unstructured{}, &transformer.TransformerError{
+			return unstructured.Unstructured{}, &transformer.Error{
 				Object: obj,
 				Err:    originalErr,
 			}
@@ -449,14 +449,14 @@ func TestTransformerError(t *testing.T) {
 
 		g.Expect(err).To(HaveOccurred())
 
-		var transformerErr *transformer.TransformerError
+		var transformerErr *transformer.Error
 		g.Expect(errors.As(err, &transformerErr)).To(BeTrue())
 		// Should preserve the original object context, not double-wrap
 		g.Expect(transformerErr.Object.GetName()).To(Equal("original-pod"))
 		g.Expect(transformerErr.Object.GetNamespace()).To(Equal("original-ns"))
 		g.Expect(transformerErr.Err).To(Equal(originalErr))
-		// The wrapped error should be the original error, not another TransformerError
-		g.Expect(transformerErr.Err).ToNot(BeAssignableToTypeOf(&transformer.TransformerError{}))
+		// The wrapped error should be the original error, not another Error
+		g.Expect(transformerErr.Err).ToNot(BeAssignableToTypeOf(&transformer.Error{}))
 	})
 }
 

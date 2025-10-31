@@ -19,10 +19,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Namespace Transformation Example ===")
-	log.Log("Demonstrates: Setting and ensuring namespaces on objects")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Namespace Transformation Example ===")
+	l.Log("Demonstrates: Setting and ensuring namespaces on objects")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -35,7 +35,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Force namespace unconditionally
-	log.Log("1. Set - Force namespace to 'production'")
+	l.Log("1. Set - Force namespace to 'production'")
 	setTransformer := namespace.Set("production")
 
 	e1, err := engine.New(
@@ -51,14 +51,14 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (namespace → production)\n", len(objects1))
+	l.Logf("   Transformed %d objects (namespace → production)\n", len(objects1))
 	if len(objects1) > 0 {
-		log.Logf("   Example: %s/%s now in '%s' namespace\n\n",
+		l.Logf("   Example: %s/%s now in '%s' namespace\n\n",
 			objects1[0].GetKind(), objects1[0].GetName(), objects1[0].GetNamespace())
 	}
 
 	// Example 2: Set default namespace only if empty
-	log.Log("2. EnsureDefault - Set namespace only if not already set")
+	l.Log("2. EnsureDefault - Set namespace only if not already set")
 	ensureTransformer := namespace.EnsureDefault("default")
 
 	e2, err := engine.New(
@@ -74,9 +74,9 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (namespace → default if empty)\n", len(objects2))
-	log.Log("   Objects with existing namespaces are not modified")
-	log.Log("   Objects without namespace get 'default'")
+	l.Logf("   Transformed %d objects (namespace → default if empty)\n", len(objects2))
+	l.Log("   Objects with existing namespaces are not modified")
+	l.Log("   Objects without namespace get 'default'")
 
 	return nil
 }

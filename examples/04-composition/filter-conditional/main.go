@@ -24,10 +24,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Filter Conditional Composition Example ===")
-	log.Log("Demonstrates: filter.If() for conditional filtering")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Filter Conditional Composition Example ===")
+	l.Log("Demonstrates: filter.If() for conditional filtering")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -63,11 +63,11 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects\n", len(objects))
-	log.Log("(Production objects must have 'critical' label, others pass through)")
+	l.Logf("Rendered %d objects\n", len(objects))
+	l.Log("(Production objects must have 'critical' label, others pass through)")
 
 	// Show another example: combine multiple conditional filters
-	log.Log("\n=== Example 2: Multiple Conditional Filters ===")
+	l.Log("\n=== Example 2: Multiple Conditional Filters ===")
 
 	multiFilter := filter.And(
 		// All objects must be Deployments
@@ -97,7 +97,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d Deployments with environment-specific label requirements\n", len(objects2))
+	l.Logf("Rendered %d Deployments with environment-specific label requirements\n", len(objects2))
 
 	return nil
 }

@@ -19,10 +19,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Namespace Filtering Example ===")
-	log.Log("Demonstrates: Filtering objects by namespace")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Namespace Filtering Example ===")
+	l.Log("Demonstrates: Filtering objects by namespace")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -35,7 +35,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Include only specific namespaces
-	log.Log("1. Include Filter - Keep only objects in 'production' and 'staging'")
+	l.Log("1. Include Filter - Keep only objects in 'production' and 'staging'")
 	includeFilter := namespace.Filter("production", "staging")
 
 	e1, err := engine.New(
@@ -51,10 +51,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects from production/staging namespaces\n\n", len(objects1))
+	l.Logf("   Rendered %d objects from production/staging namespaces\n\n", len(objects1))
 
 	// Example 2: Exclude specific namespaces
-	log.Log("2. Exclude Filter - Exclude system namespaces")
+	l.Log("2. Exclude Filter - Exclude system namespaces")
 	excludeFilter := namespace.Exclude("kube-system", "kube-public", "kube-node-lease")
 
 	e2, err := engine.New(
@@ -70,7 +70,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects (excluding system namespaces)\n", len(objects2))
+	l.Logf("   Rendered %d objects (excluding system namespaces)\n", len(objects2))
 
 	return nil
 }

@@ -20,10 +20,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== JQ Filtering Example ===")
-	log.Log("Demonstrates: Filtering objects using JQ expressions")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== JQ Filtering Example ===")
+	l.Log("Demonstrates: Filtering objects using JQ expressions")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -36,7 +36,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Filter by API version
-	log.Log("1. API Version - Keep only apps/v1 resources")
+	l.Log("1. API Version - Keep only apps/v1 resources")
 	appsV1Filter, err := jq.Filter(`.apiVersion == "apps/v1"`)
 	if err != nil {
 		return fmt.Errorf("failed to create filter: %w", err)
@@ -55,10 +55,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d apps/v1 objects\n\n", len(objects1))
+	l.Logf("   Rendered %d apps/v1 objects\n\n", len(objects1))
 
 	// Example 2: Complex boolean expression
-	log.Log("2. Boolean Logic - Keep Deployments OR Services")
+	l.Log("2. Boolean Logic - Keep Deployments OR Services")
 	orFilter, err := jq.Filter(`.kind == "Deployment" or .kind == "Service"`)
 	if err != nil {
 		return fmt.Errorf("failed to create filter: %w", err)
@@ -77,10 +77,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects (Deployments or Services)\n\n", len(objects2))
+	l.Logf("   Rendered %d objects (Deployments or Services)\n\n", len(objects2))
 
 	// Example 3: JQ with variables
-	log.Log("3. With Variables - Filter by dynamic kind")
+	l.Log("3. With Variables - Filter by dynamic kind")
 	varFilter, err := jq.Filter(
 		`.kind == $expectedKind`,
 		jqutil.WithVariable("expectedKind", "Deployment"),
@@ -102,7 +102,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d Deployments (using JQ variable)\n", len(objects3))
+	l.Logf("   Rendered %d Deployments (using JQ variable)\n", len(objects3))
 
 	return nil
 }

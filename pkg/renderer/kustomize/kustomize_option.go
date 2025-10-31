@@ -37,6 +37,7 @@ type RendererOptions struct {
 	LoadRestrictions kustomizetypes.LoadRestrictions
 }
 
+// ApplyTo applies the renderer options to the target configuration.
 func (opts RendererOptions) ApplyTo(target *RendererOptions) {
 	target.Filters = opts.Filters
 	target.Transformers = opts.Transformers

@@ -19,10 +19,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Name Transformation Example ===")
-	log.Log("Demonstrates: Modifying object names with prefix, suffix, and replace")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Name Transformation Example ===")
+	l.Log("Demonstrates: Modifying object names with prefix, suffix, and replace")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -35,7 +35,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Add prefix to names
-	log.Log("1. SetPrefix - Add 'prod-' prefix to all object names")
+	l.Log("1. SetPrefix - Add 'prod-' prefix to all object names")
 	prefixTransformer := name.SetPrefix("prod-")
 
 	e1, err := engine.New(
@@ -51,13 +51,13 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (added 'prod-' prefix)\n", len(objects1))
+	l.Logf("   Transformed %d objects (added 'prod-' prefix)\n", len(objects1))
 	if len(objects1) > 0 {
-		log.Logf("   Example: %s\n\n", objects1[0].GetName())
+		l.Logf("   Example: %s\n\n", objects1[0].GetName())
 	}
 
 	// Example 2: Add suffix to names
-	log.Log("2. SetSuffix - Add '-v2' suffix to all object names")
+	l.Log("2. SetSuffix - Add '-v2' suffix to all object names")
 	suffixTransformer := name.SetSuffix("-v2")
 
 	e2, err := engine.New(
@@ -73,13 +73,13 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (added '-v2' suffix)\n", len(objects2))
+	l.Logf("   Transformed %d objects (added '-v2' suffix)\n", len(objects2))
 	if len(objects2) > 0 {
-		log.Logf("   Example: %s\n\n", objects2[0].GetName())
+		l.Logf("   Example: %s\n\n", objects2[0].GetName())
 	}
 
 	// Example 3: Replace substring in names
-	log.Log("3. Replace - Replace 'staging' with 'production' in names")
+	l.Log("3. Replace - Replace 'staging' with 'production' in names")
 	replaceTransformer := name.Replace("staging", "production")
 
 	e3, err := engine.New(
@@ -95,9 +95,9 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (replaced 'staging' → 'production')\n", len(objects3))
+	l.Logf("   Transformed %d objects (replaced 'staging' → 'production')\n", len(objects3))
 	if len(objects3) > 0 {
-		log.Logf("   Example: %s\n", objects3[0].GetName())
+		l.Logf("   Example: %s\n", objects3[0].GetName())
 	}
 
 	return nil

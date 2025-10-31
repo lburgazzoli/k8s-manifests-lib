@@ -19,10 +19,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Annotation Transformation Example ===")
-	log.Log("Demonstrates: Adding, updating, and removing annotations")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Annotation Transformation Example ===")
+	l.Log("Demonstrates: Adding, updating, and removing annotations")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -35,7 +35,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Add/Update annotations
-	log.Log("1. Set - Add or update annotations")
+	l.Log("1. Set - Add or update annotations")
 	setTransformer := annotations.Set(map[string]string{
 		"description":          "NGINX web server",
 		"contact":              "team@example.com",
@@ -57,13 +57,13 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (added 5 annotations)\n", len(objects1))
+	l.Logf("   Transformed %d objects (added 5 annotations)\n", len(objects1))
 	if len(objects1) > 0 {
-		log.Logf("   Example annotations: %v\n\n", objects1[0].GetAnnotations())
+		l.Logf("   Example annotations: %v\n\n", objects1[0].GetAnnotations())
 	}
 
 	// Example 2: Remove specific annotations
-	log.Log("2. Remove - Remove specific annotation keys")
+	l.Log("2. Remove - Remove specific annotation keys")
 	removeTransformer := annotations.Remove("temp-note", "debug-info")
 
 	e2, err := engine.New(
@@ -79,10 +79,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (removed temp annotations)\n\n", len(objects2))
+	l.Logf("   Transformed %d objects (removed temp annotations)\n\n", len(objects2))
 
 	// Example 3: Remove annotations conditionally
-	log.Log("3. RemoveIf - Remove annotations matching a condition")
+	l.Log("3. RemoveIf - Remove annotations matching a condition")
 	removeIfTransformer := annotations.RemoveIf(func(key string, value string) bool {
 		// Remove annotations with "delete-me" or "temporary" values
 		return value == "delete-me" || value == "temporary"
@@ -101,7 +101,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Transformed %d objects (removed temp-value annotations)\n", len(objects3))
+	l.Logf("   Transformed %d objects (removed temp-value annotations)\n", len(objects3))
 
 	return nil
 }

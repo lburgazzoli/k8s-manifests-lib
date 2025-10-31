@@ -16,12 +16,12 @@ import (
 
 // Engine represents the core manifest rendering and processing engine.
 type Engine struct {
-	options EngineOptions
+	options Options
 }
 
 // New creates a new Engine with the given options.
-func New(opts ...EngineOption) (*Engine, error) {
-	options := EngineOptions{
+func New(opts ...Option) (*Engine, error) {
+	options := Options{
 		Renderers:    make([]types.Renderer, 0),
 		Filters:      make([]types.Filter, 0),
 		Transformers: make([]types.Transformer, 0),

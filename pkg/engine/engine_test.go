@@ -610,7 +610,7 @@ func TestParallelRendering(t *testing.T) {
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
-		e, err := engine.New(&engine.EngineOptions{
+		e, err := engine.New(&engine.Options{
 			Renderers: []types.Renderer{renderer1, renderer2},
 			Parallel:  true,
 		})

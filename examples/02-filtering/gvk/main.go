@@ -22,10 +22,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== GVK (Group/Version/Kind) Filtering Example ===")
-	log.Log("Demonstrates: Filtering objects by Kind and API version")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== GVK (Group/Version/Kind) Filtering Example ===")
+	l.Log("Demonstrates: Filtering objects by Kind and API version")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -38,7 +38,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Filter by single Kind
-	log.Log("1. Single Kind - Keep only Deployments")
+	l.Log("1. Single Kind - Keep only Deployments")
 	deploymentFilter := gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 
 	e1, err := engine.New(
@@ -54,10 +54,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d Deployment objects\n\n", len(objects1))
+	l.Logf("   Rendered %d Deployment objects\n\n", len(objects1))
 
 	// Example 2: Filter by multiple Kinds
-	log.Log("2. Multiple Kinds - Keep Deployments and Services")
+	l.Log("2. Multiple Kinds - Keep Deployments and Services")
 	multiKindFilter := gvk.Filter(
 		appsv1.SchemeGroupVersion.WithKind("Deployment"),
 		corev1.SchemeGroupVersion.WithKind("Service"),
@@ -76,7 +76,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects (Deployments and Services)\n", len(objects2))
+	l.Logf("   Rendered %d objects (Deployments and Services)\n", len(objects2))
 
 	// Show what kinds were rendered
 	kindCounts := make(map[string]int)
@@ -84,7 +84,7 @@ func Run(ctx context.Context) error {
 		kindCounts[obj.GetKind()]++
 	}
 	for kind, count := range kindCounts {
-		log.Logf("   - %d %s(s)\n", count, kind)
+		l.Logf("   - %d %s(s)\n", count, kind)
 	}
 
 	return nil

@@ -118,13 +118,13 @@ func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeV
 		}
 
 		// If source values are a map, convert to map[string]any for merging
-		if vMap, ok := v.(map[string]any); ok {
-			sourceValues = vMap
-		} else {
+		vMap, ok := v.(map[string]any)
+		if !ok {
 			// If not a map, return as-is (can't merge with render-time values)
 			// Render-time values would be ignored in this case
 			return v, nil
 		}
+		sourceValues = vMap
 	}
 
 	// Deep merge with render-time values taking precedence

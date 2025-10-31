@@ -25,10 +25,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Filter Boolean Composition Example ===")
-	log.Log("Demonstrates: filter.And(), filter.Or(), filter.Not()")
-	log.Log()
+	l := logger.FromContext(ctx)
+	l.Log("=== Filter Boolean Composition Example ===")
+	l.Log("Demonstrates: filter.And(), filter.Or(), filter.Not()")
+	l.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -71,10 +71,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
+	l.Logf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
 
 	// Show another example: production Deployments with specific labels OR staging Services
-	log.Log("\n=== Example 2: Complex OR Logic ===")
+	l.Log("\n=== Example 2: Complex OR Logic ===")
 
 	complexFilter := filter.Or(
 		filter.And(
@@ -101,7 +101,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("Rendered %d objects (production critical Deployments OR staging Services)\n", len(objects2))
+	l.Logf("Rendered %d objects (production critical Deployments OR staging Services)\n", len(objects2))
 
 	return nil
 }

@@ -15,6 +15,7 @@ type RenderMetric struct {
 	TotalObjects  int
 }
 
+// Observe records a render operation's metrics.
 func (m *RenderMetric) Observe(_ context.Context, duration time.Duration, objectCount int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -41,6 +42,7 @@ func (m *RenderMetric) Summary() RenderSummary {
 	}
 }
 
+// RenderSummary provides a snapshot of render metrics.
 type RenderSummary struct {
 	TotalRenders    int
 	AverageDuration time.Duration
@@ -53,6 +55,7 @@ type RendererMetric struct {
 	Renderers map[string]*RendererStats
 }
 
+// RendererStats holds statistics for a specific renderer type.
 type RendererStats struct {
 	Executions int
 	Duration   time.Duration
@@ -60,12 +63,14 @@ type RendererStats struct {
 	Errors     int
 }
 
+// NewRendererMetric creates a new renderer metrics collector.
 func NewRendererMetric() *RendererMetric {
 	return &RendererMetric{
 		Renderers: make(map[string]*RendererStats),
 	}
 }
 
+// Observe records a renderer execution's metrics.
 func (m *RendererMetric) Observe(_ context.Context, rendererType string, duration time.Duration, objectCount int, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -106,6 +111,7 @@ func (m *RendererMetric) Summary() map[string]RendererSummary {
 	return result
 }
 
+// RendererSummary provides a snapshot of metrics for a specific renderer.
 type RendererSummary struct {
 	Executions      int
 	AverageDuration time.Duration

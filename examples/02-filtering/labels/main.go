@@ -19,10 +19,10 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	log.Log("=== Label Filtering Example ===")
-	log.Log("Demonstrates: Filtering objects by labels")
-	log.Log("")
+	l := logger.FromContext(ctx)
+	l.Log("=== Label Filtering Example ===")
+	l.Log("Demonstrates: Filtering objects by labels")
+	l.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -35,7 +35,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// Example 1: Check if label exists
-	log.Log("1. HasLabel - Keep objects with 'app' label")
+	l.Log("1. HasLabel - Keep objects with 'app' label")
 	hasLabelFilter := labels.HasLabel("app")
 
 	e1, err := engine.New(
@@ -51,10 +51,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects with 'app' label\n\n", len(objects1))
+	l.Logf("   Rendered %d objects with 'app' label\n\n", len(objects1))
 
 	// Example 2: Match specific label values
-	log.Log("2. MatchLabels - Keep objects matching exact labels")
+	l.Log("2. MatchLabels - Keep objects matching exact labels")
 	matchFilter := labels.MatchLabels(map[string]string{
 		"app":     "nginx",
 		"version": "1.0",
@@ -73,10 +73,10 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects with app=nginx AND version=1.0\n\n", len(objects2))
+	l.Logf("   Rendered %d objects with app=nginx AND version=1.0\n\n", len(objects2))
 
 	// Example 3: Kubernetes label selector syntax
-	log.Log("3. Selector - Use Kubernetes label selector syntax")
+	l.Log("3. Selector - Use Kubernetes label selector syntax")
 	selectorFilter, err := labels.Selector("app=nginx,tier in (frontend,backend)")
 	if err != nil {
 		return fmt.Errorf("failed to create selector: %w", err)
@@ -95,7 +95,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	log.Logf("   Rendered %d objects matching selector\n", len(objects3))
+	l.Logf("   Rendered %d objects matching selector\n", len(objects3))
 
 	return nil
 }

@@ -24,7 +24,7 @@ func main() {
 }
 
 func Run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
+	l := logger.FromContext(ctx)
 	// Create a Helm renderer for the Dapr chart from OCI registry
 	helmRenderer, err := helm.New(
 		[]helm.Source{
@@ -103,8 +103,8 @@ func Run(ctx context.Context) error {
 	}
 
 	// Print the results
-	log.Logf("\nFiltered Results (only DaemonSet or StatefulSet):\n")
-	log.Logf("Found %d object(s):\n\n", len(objects))
+	l.Logf("\nFiltered Results (only DaemonSet or StatefulSet):\n")
+	l.Logf("Found %d object(s):\n\n", len(objects))
 
 	for _, obj := range objects {
 		out, err := yaml.Marshal(obj.Object)
@@ -112,7 +112,7 @@ func Run(ctx context.Context) error {
 			return fmt.Errorf("failed to marshal: %w", err)
 		}
 
-		log.Log(string(out))
+		l.Log(string(out))
 	}
 
 	return nil
