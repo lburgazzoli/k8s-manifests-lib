@@ -35,7 +35,6 @@ func TestExact(t *testing.T) {
 	})
 }
 
-//nolint:dupl // Test patterns are intentionally similar
 func TestPrefix(t *testing.T) {
 	g := NewWithT(t)
 
@@ -60,7 +59,6 @@ func TestPrefix(t *testing.T) {
 	})
 }
 
-//nolint:dupl // Test patterns are intentionally similar
 func TestSuffix(t *testing.T) {
 	g := NewWithT(t)
 

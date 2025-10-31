@@ -9,18 +9,34 @@ linters:
     - funlen
     - ireturn
     - lll
-    - err113
     - depguard
     - paralleltest
     - nlreturn
-    - mnd
-    - forcetypeassert
     - noinlineerr
-    - cyclop
-    - gocognit
-    - maintidx
-    - nestif
-    - dupl
+  exclusions:
+    rules:
+      # Test files (includes benchmarks since they're in *_test.go files)
+      - path: '.*_test\.go$'
+        linters:
+          - err113
+          - forcetypeassert
+          - mnd
+          - cyclop
+          - gocognit
+          - maintidx
+          - nestif
+          - dupl
+      # Examples directory
+      - path: 'examples/.*'
+        linters:
+          - err113
+          - forcetypeassert
+          - mnd
+          - cyclop
+          - gocognit
+          - maintidx
+          - nestif
+          - dupl
   settings:
     revive:
       enable-all-rules: true
