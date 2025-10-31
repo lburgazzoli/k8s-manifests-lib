@@ -90,10 +90,13 @@ func New(inputs []Source, opts ...RendererOption) (*Renderer, error) {
 	}
 
 	r := &Renderer{
-		settings:   settings,
-		inputs:     holders,
-		helmEngine: engine.Engine{},
-		opts:       rendererOpts,
+		settings: settings,
+		inputs:   holders,
+		helmEngine: engine.Engine{
+			LintMode: rendererOpts.LintMode,
+			Strict:   rendererOpts.Strict,
+		},
+		opts: rendererOpts,
 	}
 
 	return r, nil

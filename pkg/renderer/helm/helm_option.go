@@ -30,6 +30,14 @@ type RendererOptions struct {
 
 	// SourceAnnotations enables automatic addition of source tracking annotations.
 	SourceAnnotations bool
+
+	// LintMode allows some 'required' template values to be missing without failing.
+	// This is useful during linting when not all values are available.
+	LintMode bool
+
+	// Strict enables strict template rendering mode.
+	// When enabled, template rendering will fail if a template references a value that was not passed in.
+	Strict bool
 }
 
 func (opts RendererOptions) ApplyTo(target *RendererOptions) {
@@ -45,6 +53,8 @@ func (opts RendererOptions) ApplyTo(target *RendererOptions) {
 	}
 
 	target.SourceAnnotations = opts.SourceAnnotations
+	target.LintMode = opts.LintMode
+	target.Strict = opts.Strict
 }
 
 // WithFilter adds a renderer-specific filter to this Helm renderer's processing chain.
@@ -88,5 +98,25 @@ func WithCache(opts ...cache.Option) RendererOption {
 func WithSourceAnnotations(enabled bool) RendererOption {
 	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
 		opts.SourceAnnotations = enabled
+	})
+}
+
+// WithLintMode enables or disables lint mode during template rendering.
+// When enabled, some 'required' template values may be missing without causing rendering to fail.
+// This is useful during linting when not all values are available.
+// Default: false (disabled).
+func WithLintMode(enabled bool) RendererOption {
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.LintMode = enabled
+	})
+}
+
+// WithStrict enables or disables strict template rendering mode.
+// When enabled, template rendering will fail if a template references a value that was not passed in.
+// This helps catch missing values early during development.
+// Default: false (disabled).
+func WithStrict(enabled bool) RendererOption {
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.Strict = enabled
 	})
 }
