@@ -24,6 +24,26 @@ go run examples/02-filtering/namespace/main.go
 go run examples/04-composition/transformer-chain/main.go
 ```
 
+## Testing Examples
+
+All examples include tests to ensure they work correctly:
+
+```bash
+# Test a specific example
+go test ./examples/01-basic/helm
+
+# Test all examples
+go test ./examples/...
+
+# Test with verbose output
+go test -v ./examples/01-basic/yaml
+```
+
+Each example follows a testable pattern:
+- `main()` calls `Run(context.Background())` and handles errors
+- `Run(ctx)` contains the actual logic and returns errors
+- `main_test.go` (package `main_test`) tests the `Run()` function
+
 ## Categories
 
 ### 1. Basic Usage ([01-basic/](01-basic/))
@@ -228,14 +248,15 @@ transformer.If(
 
 ## Contributing Examples
 
-When adding new examples:
+All examples must follow a standard testable pattern. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-1. Create a new directory in the appropriate category
-2. Add a standalone `main.go` that can be run directly
+**Quick checklist**:
+1. Create `main.go` with exported `Run(ctx context.Context) error` function
+2. Create `main_test.go` (package `main_test`) that tests `Run()`
 3. Include clear comments explaining what's demonstrated
 4. Update this README.md with a link to your example
 5. Keep examples focused on one concept
-6. Make examples self-contained and runnable
+6. Ensure the example is self-contained and runnable
 
 ## Additional Resources
 
