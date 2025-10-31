@@ -72,27 +72,3 @@ formatters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    # Exclude package-comments for all files
-    - linters:
-        - revive
-      text: "package-comments"
-    # Exclude dot-imports for test files (common Gomega practice)
-    - linters:
-        - revive
-      text: "dot-imports"
-      path: "_test\\.go$"
-    # Exclude unused-parameter in test files (common in subtests)
-    - linters:
-        - revive
-      text: "unused-parameter"
-      path: "_test\\.go$"
-    # Exclude unused-parameter in examples (lambdas with unused params)
-    - linters:
-        - revive
-      text: "unused-parameter"
-      path: "examples/"
-    # Exclude var-naming for specific reasonable package names
-    - linters:
-        - revive
-      text: "var-naming.*meaningless package names"
