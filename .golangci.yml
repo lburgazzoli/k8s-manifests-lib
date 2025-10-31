@@ -72,3 +72,8 @@ formatters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    # Exclude mnd for examples (magic numbers acceptable in demo code)
+    - path: "examples/.*\\.go"
+      linters:
+        - mnd
