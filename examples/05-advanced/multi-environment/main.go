@@ -35,14 +35,10 @@ func Run(ctx context.Context) error {
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
-			Chart:       "oci://registry.example.com/myapp:1.0.0",
+			Chart:       "oci://registry-1.docker.io/bitnamicharts/nginx",
 			ReleaseName: "myapp",
 			Values: helm.Values(map[string]any{
 				"replicaCount": 3,
-				"image": map[string]any{
-					"repository": "myapp",
-					"tag":        "latest",
-				},
 			}),
 		},
 	})
