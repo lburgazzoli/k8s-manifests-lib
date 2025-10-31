@@ -8,6 +8,7 @@ import (
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/jq"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
@@ -16,6 +17,14 @@ import (
 )
 
 func main() {
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
 	// Create a Helm renderer for the Dapr chart from OCI registry
 	helmRenderer, err := helm.New(
 		[]helm.Source{
@@ -41,14 +50,14 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to create Helm renderer: %v", err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Create a JQ filter to only keep objects from apps/v1 API group
 	// This will be applied at engine-level (after renderer processing)
 	appsV1Filter, err := jq.Filter(`.apiVersion == "apps/v1"`)
 	if err != nil {
-		log.Fatalf("Failed to create apps/v1 filter: %v", err)
+		return fmt.Errorf("failed to create apps/v1 filter: %w", err)
 	}
 
 	// Create the engine with the apps/v1 filter applied at engine-level
@@ -63,16 +72,13 @@ func main() {
 		})),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
-
-	// Create a context
-	ctx := context.Background()
 
 	// Create a JQ filter to only keep DaemonSet or StatefulSet objects
 	appFilter, err := jq.Filter(`.kind == "DaemonSet" or .kind == "StatefulSet"`)
 	if err != nil {
-		log.Fatalf("Failed to create Deployment filter: %v", err)
+		return fmt.Errorf("failed to create deployment filter: %w", err)
 	}
 
 	// Render with additional render-time options (using struct-based options)
@@ -93,19 +99,21 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
 	// Print the results
-	fmt.Printf("\nFiltered Results (only DaemonSet or StatefulSet):\n")
-	fmt.Printf("Found %d object(s):\n\n", len(objects))
+	log.Logf("\nFiltered Results (only DaemonSet or StatefulSet):\n")
+	log.Logf("Found %d object(s):\n\n", len(objects))
 
 	for _, obj := range objects {
 		out, err := yaml.Marshal(obj.Object)
 		if err != nil {
-			log.Fatalf("Failed to marshal: %v", err)
+			return fmt.Errorf("failed to marshal: %w", err)
 		}
 
-		fmt.Println(string(out))
+		log.Log(string(out))
 	}
+
+	return nil
 }

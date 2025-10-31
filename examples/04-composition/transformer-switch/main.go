@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/namespace"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
@@ -15,9 +16,17 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Transformer Switch Composition Example ===")
-	fmt.Println("Demonstrates: transformer.Switch() for multi-branch transformations")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Transformer Switch Composition Example ===")
+	log.Log("Demonstrates: transformer.Switch() for multi-branch transformations")
+	log.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -29,7 +38,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Switch applies different transformations based on namespace
@@ -76,24 +85,26 @@ func main() {
 		engine.WithTransformer(t),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d objects with environment-specific transformations:\n", len(objects))
-	fmt.Println("  - Production: critical labels, SLA annotations, 'prod-' prefix")
-	fmt.Println("  - Staging: monitoring labels, 'stg-' prefix")
-	fmt.Println("  - Default: dev labels, 'dev-' prefix")
+	log.Logf("Rendered %d objects with environment-specific transformations:\n", len(objects))
+	log.Log("  - Production: critical labels, SLA annotations, 'prod-' prefix")
+	log.Log("  - Staging: monitoring labels, 'stg-' prefix")
+	log.Log("  - Default: dev labels, 'dev-' prefix")
 
 	// Show the first object as example
 	if len(objects) > 0 {
 		obj := objects[0]
-		fmt.Printf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
-		fmt.Printf("Labels: %v\n", obj.GetLabels())
-		fmt.Printf("Annotations: %v\n", obj.GetAnnotations())
+		log.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
+		log.Logf("Labels: %v\n", obj.GetLabels())
+		log.Logf("Annotations: %v\n", obj.GetAnnotations())
 	}
+
+	return nil
 }

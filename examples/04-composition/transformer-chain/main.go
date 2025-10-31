@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer"
@@ -15,9 +16,17 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Transformer Chain Composition Example ===")
-	fmt.Println("Demonstrates: transformer.Chain() for sequential transformations")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Transformer Chain Composition Example ===")
+	log.Log("Demonstrates: transformer.Chain() for sequential transformations")
+	log.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -29,7 +38,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Chain multiple transformers to be applied in sequence
@@ -63,27 +72,29 @@ func main() {
 		engine.WithTransformer(t),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d objects with chained transformations:\n", len(objects))
-	fmt.Println("  1. Default namespace ensured")
-	fmt.Println("  2. Managed-by label added")
-	fmt.Println("  3. Environment labels added")
-	fmt.Println("  4. Annotations added")
-	fmt.Println("  5. Name prefix 'prod-' added")
+	log.Logf("Rendered %d objects with chained transformations:\n", len(objects))
+	log.Log("  1. Default namespace ensured")
+	log.Log("  2. Managed-by label added")
+	log.Log("  3. Environment labels added")
+	log.Log("  4. Annotations added")
+	log.Log("  5. Name prefix 'prod-' added")
 
 	// Example object to show the transformations
 	if len(objects) > 0 {
 		obj := objects[0]
-		fmt.Printf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
-		fmt.Printf("Namespace: %s\n", obj.GetNamespace())
-		fmt.Printf("Labels: %v\n", obj.GetLabels())
-		fmt.Printf("Annotations: %v\n", obj.GetAnnotations())
+		log.Logf("\nFirst object: %s/%s\n", obj.GetKind(), obj.GetName())
+		log.Logf("Namespace: %s\n", obj.GetNamespace())
+		log.Logf("Labels: %v\n", obj.GetLabels())
+		log.Logf("Annotations: %v\n", obj.GetAnnotations())
 	}
+
+	return nil
 }

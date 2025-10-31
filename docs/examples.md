@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"log"
 	
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	// ... other imports
 )
 
 func main() {
-	if err := Run(context.Background()); err != nil {
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
 }
@@ -33,9 +35,10 @@ func main() {
 // Run contains the example logic and is exported for testing.
 // It accepts a context for cancellation/timeout and returns errors instead of calling log.Fatal.
 func Run(ctx context.Context) error {
-	fmt.Println("=== Example Title ===")
-	fmt.Println("Demonstrates: What this example shows")
-	fmt.Println()
+	log := logger.FromContext(ctx)
+	log.Log("=== Example Title ===")
+	log.Log("Demonstrates: What this example shows")
+	log.Log("")
 	
 	// Create renderer
 	renderer, err := someRenderer.New(...)
@@ -59,7 +62,7 @@ func Run(ctx context.Context) error {
 	}
 	
 	// Print results
-	fmt.Printf("Rendered %d objects\n", len(objects))
+	log.Logf("Rendered %d objects\n", len(objects))
 	
 	return nil
 }
@@ -75,12 +78,15 @@ import (
 	"testing"
 	"time"
 	
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	example "github.com/lburgazzoli/k8s-manifests-lib/examples/<category>/<name>"
 )
 
 func TestRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	
+	ctx = logger.WithLogger(ctx, t)
 	
 	if err := example.Run(ctx); err != nil {
 		t.Fatalf("Run() failed: %v", err)
@@ -164,7 +170,33 @@ func Run(ctx context.Context) error {
 }
 ```
 
-### 5. Error Wrapping
+### 6. Logger Interface
+
+Use the logger from context instead of `fmt.Println` or `fmt.Printf`.
+
+❌ Bad:
+```go
+func Run(ctx context.Context) error {
+	fmt.Println("=== Example ===")
+	fmt.Printf("Rendered %d objects\n", count)
+}
+```
+
+✅ Good:
+```go
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Example ===")
+	log.Logf("Rendered %d objects\n", count)
+}
+```
+
+**Why?** The logger interface enables:
+- Test output captured by `testing.T` (visible with `go test -v`)
+- Production output goes to `os.Stdout` via `StdoutLogger`
+- Consistent logging API across all examples
+
+### 7. Error Wrapping
 
 Use `fmt.Errorf` with `%w` to wrap errors with context.
 
@@ -192,6 +224,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/yaml"
 )
@@ -200,15 +233,17 @@ import (
 var manifestsFS embed.FS
 
 func main() {
-	if err := Run(context.Background()); err != nil {
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
 }
 
 func Run(ctx context.Context) error {
-	fmt.Println("=== Basic YAML Example ===")
-	fmt.Println("Demonstrates: Simple YAML file loading")
-	fmt.Println()
+	log := logger.FromContext(ctx)
+	log.Log("=== Basic YAML Example ===")
+	log.Log("Demonstrates: Simple YAML file loading")
+	log.Log("")
 
 	e, err := engine.Yaml(yaml.Source{
 		FS:   manifestsFS,
@@ -223,7 +258,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Successfully loaded %d objects\n", len(objects))
+	log.Logf("Successfully loaded %d objects\n", len(objects))
 
 	return nil
 }
@@ -238,12 +273,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	example "github.com/lburgazzoli/k8s-manifests-lib/examples/01-basic/yaml"
 )
 
 func TestRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	ctx = logger.WithLogger(ctx, t)
 
 	if err := example.Run(ctx); err != nil {
 		t.Fatalf("Run() failed: %v", err)
@@ -309,6 +347,16 @@ func Run(ctx context.Context) error {
 
 This causes the entire test process to exit instead of reporting test failure.
 
+### 5. Using fmt.Println Instead of Logger
+
+```go
+func Run(ctx context.Context) error {
+	fmt.Println("Output")  // ❌ Not captured in tests
+}
+```
+
+This prevents test output from being captured by the testing framework. Use `logger.FromContext(ctx)` instead.
+
 ## Pattern Benefits
 
 Following this pattern provides:
@@ -324,8 +372,63 @@ Following this pattern provides:
 If you have questions about the example pattern or need help:
 
 1. Check existing examples for reference
-2. Review the [examples README](README.md)
+2. Review the main [README](../README.md)
 3. Open an issue on GitHub
+
+## Logger Interface Details
+
+The logger interface (`examples/internal/logger/logger.go`) provides flexible output routing:
+
+```go
+type Logger interface {
+    Log(args ...interface{})
+    Logf(format string, args ...interface{})
+}
+```
+
+**Key features**:
+- `testing.T` satisfies the `Logger` interface (has `Log` and `Logf` methods)
+- `StdoutLogger` implementation writes to `os.Stdout` for production use
+- Context helpers: `WithLogger(ctx, logger)` and `FromContext(ctx)`
+- Default behavior: Returns `StdoutLogger` if no logger in context
+
+**Usage in production**:
+```go
+func main() {
+    ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+    if err := Run(ctx); err != nil {
+        log.Fatalf("Error: %v", err)
+    }
+}
+```
+
+**Usage in tests**:
+```go
+func TestRun(t *testing.T) {
+    ctx := logger.WithLogger(context.Background(), t)  // testing.T as Logger
+    if err := example.Run(ctx); err != nil {
+        t.Fatalf("Run() failed: %v", err)
+    }
+}
+```
+
+**Helper functions with context**:
+
+When creating helper functions that need logging, always pass context as the **first** parameter:
+
+```go
+// ✅ Good: Context as first parameter
+func benchmarkRender(ctx context.Context, name string, e *engine.Engine, iterations int) error {
+    log := logger.FromContext(ctx)
+    log.Logf("Running benchmark: %s\n", name)
+    // ...
+}
+
+// ❌ Bad: Context not first
+func benchmarkRender(name string, e *engine.Engine, iterations int, ctx context.Context) error {
+    // ...
+}
+```
 
 ## Refactoring Existing Examples
 
@@ -335,8 +438,13 @@ If you're updating an older example to follow this pattern:
 2. Replace `log.Fatal` calls with `return fmt.Errorf(...)`
 3. Change `context.Background()` to use the provided `ctx`
 4. Update `main()` to call `Run()` and handle errors
-5. Create `main_test.go` with `package main_test`
-6. Run tests to verify it works
+5. **Add logger to imports**: `"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"`
+6. **Set up logger in `main()`**: `ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})`
+7. **Extract logger in `Run()`**: `log := logger.FromContext(ctx)`
+8. **Replace `fmt.Println/Printf`**: Use `log.Log/Logf` instead
+9. Create `main_test.go` with `package main_test`
+10. **Add logger to test context**: `ctx = logger.WithLogger(ctx, t)`
+11. Run tests to verify it works
 
-See completed examples in `01-basic/` and `02-filtering/` for reference.
+See all examples in `01-basic/` through `10-source-annotations/` for reference.
 

@@ -7,15 +7,24 @@ import (
 
 	kustomizetypes "sigs.k8s.io/kustomize/api/types"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 )
 
 func main() {
-	fmt.Println("=== Kustomize Hierarchy with Source Annotations ===")
-	fmt.Println("Demonstrates: Tracking source files in hierarchical Kustomize structures with relative path imports")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Kustomize Hierarchy with Source Annotations ===")
+	log.Log("Demonstrates: Tracking source files in hierarchical Kustomize structures with relative path imports")
+	log.Log()
 
 	renderer, err := kustomize.New(
 		[]kustomize.Source{
@@ -26,65 +35,65 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Failed to create Kustomize renderer: %v", err)
+		return fmt.Errorf("failed to create kustomize renderer: %w", err)
 	}
 
 	e, err := engine.New(
 		engine.WithRenderer(renderer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	ctx := context.Background()
-
-	fmt.Println("=== Rendering Kustomize Hierarchy ===")
-	fmt.Println("Structure:")
-	fmt.Println("  base/kustomization.yaml")
-	fmt.Println("  ├── resources:")
-	fmt.Println("  │   ├── deployment.yaml")
-	fmt.Println("  │   └── service.yaml")
-	fmt.Println("  └── imports: ../addons/kustomization.yaml")
-	fmt.Println("      └── resources:")
-	fmt.Println("          └── configmap.yaml")
-	fmt.Println()
+	log.Log("=== Rendering Kustomize Hierarchy ===")
+	log.Log("Structure:")
+	log.Log("  base/kustomization.yaml")
+	log.Log("  ├── resources:")
+	log.Log("  │   ├── deployment.yaml")
+	log.Log("  │   └── service.yaml")
+	log.Log("  └── imports: ../addons/kustomization.yaml")
+	log.Log("      └── resources:")
+	log.Log("          └── configmap.yaml")
+	log.Log()
 
 	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Successfully rendered %d objects with source tracking:\n\n", len(objects))
+	log.Logf("Successfully rendered %d objects with source tracking:\n\n", len(objects))
 
 	for i, obj := range objects {
-		fmt.Printf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
+		log.Logf("%d. %s/%s", i+1, obj.GetKind(), obj.GetName())
 		if obj.GetNamespace() != "" {
-			fmt.Printf(" (namespace: %s)", obj.GetNamespace())
+			log.Logf(" (namespace: %s)", obj.GetNamespace())
 		}
-		fmt.Println()
+		log.Log()
 
 		annotations := obj.GetAnnotations()
 		if annotations != nil {
-			fmt.Println("   Source Annotations:")
+			log.Log("   Source Annotations:")
 			if sourceType, ok := annotations[types.AnnotationSourceType]; ok {
-				fmt.Printf("   - Type: %s\n", sourceType)
+				log.Logf("   - Type: %s\n", sourceType)
 			}
 			if sourcePath, ok := annotations[types.AnnotationSourcePath]; ok {
-				fmt.Printf("   - Path: %s\n", sourcePath)
+				log.Logf("   - Path: %s\n", sourcePath)
 			}
 			if sourceFile, ok := annotations[types.AnnotationSourceFile]; ok {
-				fmt.Printf("   - File: %s\n", sourceFile)
+				log.Logf("   - File: %s\n", sourceFile)
 			}
 		}
-		fmt.Println()
+		log.Log()
 	}
 
-	fmt.Println("=== Key Observations ===")
-	fmt.Println("✓ base/kustomization.yaml imports ../addons/kustomization.yaml using relative path")
-	fmt.Println("✓ Source annotations show the exact file each manifest originated from")
-	fmt.Println("✓ Files from addons/ show relative path: ../addons/configmap.yaml")
-	fmt.Println("✓ Files from base/ show relative path: deployment.yaml, service.yaml")
-	fmt.Println("✓ All objects track the base path as the source (render entry point)")
-	fmt.Println()
-	fmt.Println("Note: LoadRestrictionsNone is required to allow importing resources from ../addons/")
+	log.Log("=== Key Observations ===")
+	log.Log("✓ base/kustomization.yaml imports ../addons/kustomization.yaml using relative path")
+	log.Log("✓ Source annotations show the exact file each manifest originated from")
+	log.Log("✓ Files from addons/ show relative path: ../addons/configmap.yaml")
+	log.Log("✓ Files from base/ show relative path: deployment.yaml, service.yaml")
+	log.Log("✓ All objects track the base path as the source (render entry point)")
+	log.Log()
+	log.Log("Note: LoadRestrictionsNone is required to allow importing resources from ../addons/")
+
+	return nil
 }

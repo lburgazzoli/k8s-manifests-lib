@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
@@ -17,9 +18,17 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Filter Boolean Composition Example ===")
-	fmt.Println("Demonstrates: filter.And(), filter.Or(), filter.Not()")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Filter Boolean Composition Example ===")
+	log.Log("Demonstrates: filter.And(), filter.Or(), filter.Not()")
+	log.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -31,7 +40,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Complex filter using boolean composition:
@@ -54,18 +63,18 @@ func main() {
 		engine.WithFilter(f),
 	)
 	if err != nil {
-		log.Fatalf("Failed to create engine: %v", err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
+	log.Logf("Rendered %d objects (Deployments and Services, excluding system namespaces)\n", len(objects))
 
 	// Show another example: production Deployments with specific labels OR staging Services
-	fmt.Println("\n=== Example 2: Complex OR Logic ===")
+	log.Log("\n=== Example 2: Complex OR Logic ===")
 
 	complexFilter := filter.Or(
 		filter.And(
@@ -84,13 +93,15 @@ func main() {
 		engine.WithFilter(complexFilter),
 	)
 	if err != nil {
-		log.Fatalf("Failed to create engine: %v", err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects2, err := e2.Render(context.Background())
+	objects2, err := e2.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d objects (production critical Deployments OR staging Services)\n", len(objects2))
+	log.Logf("Rendered %d objects (production critical Deployments OR staging Services)\n", len(objects2))
+
+	return nil
 }

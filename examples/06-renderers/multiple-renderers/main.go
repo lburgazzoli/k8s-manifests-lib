@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize"
@@ -13,9 +14,17 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Multiple Renderers Example ===")
-	fmt.Println("Demonstrates: Combining Helm, Kustomize, and YAML renderers")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Multiple Renderers Example ===")
+	log.Log("Demonstrates: Combining Helm, Kustomize, and YAML renderers")
+	log.Log()
 
 	// Create a Helm renderer
 	helmRenderer, err := helm.New([]helm.Source{
@@ -25,7 +34,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create Helm renderer: %v", err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Create a Kustomize renderer
@@ -35,7 +44,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create Kustomize renderer: %v", err)
+		return fmt.Errorf("failed to create kustomize renderer: %w", err)
 	}
 
 	// Create a YAML renderer
@@ -46,7 +55,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create YAML renderer: %v", err)
+		return fmt.Errorf("failed to create yaml renderer: %w", err)
 	}
 
 	// Combine all three renderers in a single engine
@@ -56,15 +65,15 @@ func main() {
 		engine.WithRenderer(yamlRenderer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Successfully rendered %d total objects from all renderers\n\n", len(objects))
+	log.Logf("Successfully rendered %d total objects from all renderers\n\n", len(objects))
 
 	// Count objects by kind
 	kindCounts := make(map[string]int)
@@ -72,8 +81,10 @@ func main() {
 		kindCounts[obj.GetKind()]++
 	}
 
-	fmt.Println("Objects by kind:")
+	log.Log("Objects by kind:")
 	for kind, count := range kindCounts {
-		fmt.Printf("  - %d %s(s)\n", count, kind)
+		log.Logf("  - %d %s(s)\n", count, kind)
 	}
+
+	return nil
 }

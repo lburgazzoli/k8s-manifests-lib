@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/labels"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 )
 
 func main() {
-	fmt.Println("=== Label Filtering Example ===")
-	fmt.Println("Demonstrates: Filtering objects by labels")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Label Filtering Example ===")
+	log.Log("Demonstrates: Filtering objects by labels")
+	log.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -22,11 +31,11 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Example 1: Check if label exists
-	fmt.Println("1. HasLabel - Keep objects with 'app' label")
+	log.Log("1. HasLabel - Keep objects with 'app' label")
 	hasLabelFilter := labels.HasLabel("app")
 
 	e1, err := engine.New(
@@ -34,18 +43,18 @@ func main() {
 		engine.WithFilter(hasLabelFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects1, err := e1.Render(context.Background())
+	objects1, err := e1.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Rendered %d objects with 'app' label\n\n", len(objects1))
+	log.Logf("   Rendered %d objects with 'app' label\n\n", len(objects1))
 
 	// Example 2: Match specific label values
-	fmt.Println("2. MatchLabels - Keep objects matching exact labels")
+	log.Log("2. MatchLabels - Keep objects matching exact labels")
 	matchFilter := labels.MatchLabels(map[string]string{
 		"app":     "nginx",
 		"version": "1.0",
@@ -56,21 +65,21 @@ func main() {
 		engine.WithFilter(matchFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects2, err := e2.Render(context.Background())
+	objects2, err := e2.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Rendered %d objects with app=nginx AND version=1.0\n\n", len(objects2))
+	log.Logf("   Rendered %d objects with app=nginx AND version=1.0\n\n", len(objects2))
 
 	// Example 3: Kubernetes label selector syntax
-	fmt.Println("3. Selector - Use Kubernetes label selector syntax")
+	log.Log("3. Selector - Use Kubernetes label selector syntax")
 	selectorFilter, err := labels.Selector("app=nginx,tier in (frontend,backend)")
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create selector: %w", err)
 	}
 
 	e3, err := engine.New(
@@ -78,13 +87,15 @@ func main() {
 		engine.WithFilter(selectorFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects3, err := e3.Render(context.Background())
+	objects3, err := e3.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Rendered %d objects matching selector\n", len(objects3))
+	log.Logf("   Rendered %d objects matching selector\n", len(objects3))
+
+	return nil
 }

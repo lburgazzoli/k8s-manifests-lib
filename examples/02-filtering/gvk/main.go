@@ -8,15 +8,24 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 )
 
 func main() {
-	fmt.Println("=== GVK (Group/Version/Kind) Filtering Example ===")
-	fmt.Println("Demonstrates: Filtering objects by Kind and API version")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== GVK (Group/Version/Kind) Filtering Example ===")
+	log.Log("Demonstrates: Filtering objects by Kind and API version")
+	log.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -25,11 +34,11 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Example 1: Filter by single Kind
-	fmt.Println("1. Single Kind - Keep only Deployments")
+	log.Log("1. Single Kind - Keep only Deployments")
 	deploymentFilter := gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 
 	e1, err := engine.New(
@@ -37,18 +46,18 @@ func main() {
 		engine.WithFilter(deploymentFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects1, err := e1.Render(context.Background())
+	objects1, err := e1.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Rendered %d Deployment objects\n\n", len(objects1))
+	log.Logf("   Rendered %d Deployment objects\n\n", len(objects1))
 
 	// Example 2: Filter by multiple Kinds
-	fmt.Println("2. Multiple Kinds - Keep Deployments and Services")
+	log.Log("2. Multiple Kinds - Keep Deployments and Services")
 	multiKindFilter := gvk.Filter(
 		appsv1.SchemeGroupVersion.WithKind("Deployment"),
 		corev1.SchemeGroupVersion.WithKind("Service"),
@@ -59,15 +68,15 @@ func main() {
 		engine.WithFilter(multiKindFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects2, err := e2.Render(context.Background())
+	objects2, err := e2.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Rendered %d objects (Deployments and Services)\n", len(objects2))
+	log.Logf("   Rendered %d objects (Deployments and Services)\n", len(objects2))
 
 	// Show what kinds were rendered
 	kindCounts := make(map[string]int)
@@ -75,6 +84,8 @@ func main() {
 		kindCounts[obj.GetKind()]++
 	}
 	for kind, count := range kindCounts {
-		fmt.Printf("   - %d %s(s)\n", count, kind)
+		log.Logf("   - %d %s(s)\n", count, kind)
 	}
+
+	return nil
 }

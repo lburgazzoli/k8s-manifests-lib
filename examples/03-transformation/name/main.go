@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer/meta/name"
 )
 
 func main() {
-	fmt.Println("=== Name Transformation Example ===")
-	fmt.Println("Demonstrates: Modifying object names with prefix, suffix, and replace")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Name Transformation Example ===")
+	log.Log("Demonstrates: Modifying object names with prefix, suffix, and replace")
+	log.Log("")
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -22,11 +31,11 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Example 1: Add prefix to names
-	fmt.Println("1. SetPrefix - Add 'prod-' prefix to all object names")
+	log.Log("1. SetPrefix - Add 'prod-' prefix to all object names")
 	prefixTransformer := name.SetPrefix("prod-")
 
 	e1, err := engine.New(
@@ -34,21 +43,21 @@ func main() {
 		engine.WithTransformer(prefixTransformer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects1, err := e1.Render(context.Background())
+	objects1, err := e1.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Transformed %d objects (added 'prod-' prefix)\n", len(objects1))
+	log.Logf("   Transformed %d objects (added 'prod-' prefix)\n", len(objects1))
 	if len(objects1) > 0 {
-		fmt.Printf("   Example: %s\n\n", objects1[0].GetName())
+		log.Logf("   Example: %s\n\n", objects1[0].GetName())
 	}
 
 	// Example 2: Add suffix to names
-	fmt.Println("2. SetSuffix - Add '-v2' suffix to all object names")
+	log.Log("2. SetSuffix - Add '-v2' suffix to all object names")
 	suffixTransformer := name.SetSuffix("-v2")
 
 	e2, err := engine.New(
@@ -56,21 +65,21 @@ func main() {
 		engine.WithTransformer(suffixTransformer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects2, err := e2.Render(context.Background())
+	objects2, err := e2.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Transformed %d objects (added '-v2' suffix)\n", len(objects2))
+	log.Logf("   Transformed %d objects (added '-v2' suffix)\n", len(objects2))
 	if len(objects2) > 0 {
-		fmt.Printf("   Example: %s\n\n", objects2[0].GetName())
+		log.Logf("   Example: %s\n\n", objects2[0].GetName())
 	}
 
 	// Example 3: Replace substring in names
-	fmt.Println("3. Replace - Replace 'staging' with 'production' in names")
+	log.Log("3. Replace - Replace 'staging' with 'production' in names")
 	replaceTransformer := name.Replace("staging", "production")
 
 	e3, err := engine.New(
@@ -78,16 +87,18 @@ func main() {
 		engine.WithTransformer(replaceTransformer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects3, err := e3.Render(context.Background())
+	objects3, err := e3.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("   Transformed %d objects (replaced 'staging' → 'production')\n", len(objects3))
+	log.Logf("   Transformed %d objects (replaced 'staging' → 'production')\n", len(objects3))
 	if len(objects3) > 0 {
-		fmt.Printf("   Example: %s\n", objects3[0].GetName())
+		log.Logf("   Example: %s\n", objects3[0].GetName())
 	}
+
+	return nil
 }

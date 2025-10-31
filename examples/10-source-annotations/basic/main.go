@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/yaml"
@@ -16,9 +17,17 @@ import (
 var manifestsFS embed.FS
 
 func main() {
-	fmt.Println("=== Source Annotations Example ===")
-	fmt.Println("Demonstrates: Tracking the source of rendered objects with automatic annotations")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Source Annotations Example ===")
+	log.Log("Demonstrates: Tracking the source of rendered objects with automatic annotations")
+	log.Log()
 
 	// Create multiple renderers with source annotations enabled
 	// Source annotations are enabled at the renderer level
@@ -33,7 +42,7 @@ func main() {
 		helm.WithSourceAnnotations(true), // Enable source tracking for Helm
 	)
 	if err != nil {
-		log.Fatalf("Failed to create Helm renderer: %v", err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	yamlRenderer, err := yaml.New(
@@ -46,7 +55,7 @@ func main() {
 		yaml.WithSourceAnnotations(true), // Enable source tracking for YAML
 	)
 	if err != nil {
-		log.Fatalf("Failed to create YAML renderer: %v", err)
+		return fmt.Errorf("failed to create yaml renderer: %w", err)
 	}
 
 	// Create engine with renderers
@@ -55,43 +64,43 @@ func main() {
 		engine.WithRenderer(yamlRenderer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	ctx := context.Background()
-
 	// Render with source annotations
-	fmt.Println("=== Rendering with Source Annotations ===")
+	log.Log("=== Rendering with Source Annotations ===")
 	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
 	// Display objects with their source annotations
-	fmt.Printf("Rendered %d objects with source tracking:\n\n", len(objects))
+	log.Logf("Rendered %d objects with source tracking:\n\n", len(objects))
 	for i, obj := range objects {
-		fmt.Printf("%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
+		log.Logf("%d. %s/%s (namespace: %s)\n", i+1, obj.GetKind(), obj.GetName(), obj.GetNamespace())
 
 		annotations := obj.GetAnnotations()
 		if annotations != nil {
-			fmt.Println("   Source Annotations:")
+			log.Log("   Source Annotations:")
 			if sourceType, ok := annotations[types.AnnotationSourceType]; ok {
-				fmt.Printf("   - Type: %s\n", sourceType)
+				log.Logf("   - Type: %s\n", sourceType)
 			}
 			if sourcePath, ok := annotations[types.AnnotationSourcePath]; ok {
-				fmt.Printf("   - Path: %s\n", sourcePath)
+				log.Logf("   - Path: %s\n", sourcePath)
 			}
 			if sourceFile, ok := annotations[types.AnnotationSourceFile]; ok {
-				fmt.Printf("   - File: %s\n", sourceFile)
+				log.Logf("   - File: %s\n", sourceFile)
 			}
 		}
-		fmt.Println()
+		log.Log()
 	}
 
-	fmt.Println("=== Use Cases ===")
-	fmt.Println("✓ Track which renderer produced each object")
-	fmt.Println("✓ Debug multi-source configurations")
-	fmt.Println("✓ Audit and compliance tracking")
-	fmt.Println("✓ Filter or process objects based on source")
-	fmt.Println("✓ Understand object provenance in complex pipelines")
+	log.Log("=== Use Cases ===")
+	log.Log("✓ Track which renderer produced each object")
+	log.Log("✓ Debug multi-source configurations")
+	log.Log("✓ Audit and compliance tracking")
+	log.Log("✓ Filter or process objects based on source")
+	log.Log("✓ Understand object provenance in complex pipelines")
+
+	return nil
 }

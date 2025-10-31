@@ -7,14 +7,23 @@ import (
 
 	"github.com/rs/xid"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 )
 
 func main() {
-	fmt.Println("=== Multiple Helm Sources Example ===")
-	fmt.Println("Demonstrates: Rendering multiple Helm charts with a single renderer")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Multiple Helm Sources Example ===")
+	log.Log("Demonstrates: Rendering multiple Helm charts with a single renderer")
+	log.Log()
 
 	// Create a Helm renderer with multiple source charts
 	// Each chart is processed independently and results are aggregated
@@ -40,20 +49,20 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create Helm renderer: %v", err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	e, err := engine.New(engine.WithRenderer(helmRenderer))
 	if err != nil {
-		log.Fatalf("Failed to create engine: %v", err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Successfully rendered %d objects from %d Helm charts\n\n", len(objects), 2)
+	log.Logf("Successfully rendered %d objects from %d Helm charts\n\n", len(objects), 2)
 
 	// Count objects per release
 	releaseCounts := make(map[string]int)
@@ -64,8 +73,10 @@ func main() {
 		}
 	}
 
-	fmt.Println("Objects per release:")
+	log.Log("Objects per release:")
 	for release, count := range releaseCounts {
-		fmt.Printf("  - %s: %d objects\n", release, count)
+		log.Logf("  - %s: %d objects\n", release, count)
 	}
+
+	return nil
 }

@@ -5,14 +5,23 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/helm"
 )
 
 func main() {
-	fmt.Println("=== Render-Time Values Example ===")
-	fmt.Println("Demonstrates: Overriding configured values at render-time with deep merging")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Render-Time Values Example ===")
+	log.Log("Demonstrates: Overriding configured values at render-time with deep merging")
+	log.Log()
 
 	// Create a Helm renderer with initial configuration values
 	helmRenderer, err := helm.New([]helm.Source{
@@ -34,27 +43,26 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("Failed to create Helm renderer: %v", err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	e, err := engine.New(engine.WithRenderer(helmRenderer))
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
-	ctx := context.Background()
 
 	// First render: Use configured values
-	fmt.Println("=== Render 1: Using Configured Values ===")
+	log.Log("=== Render 1: Using Configured Values ===")
 	objects1, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
-	fmt.Printf("Rendered %d objects with configured values (replicaCount=2, tag=1.25.0)\n", len(objects1))
+	log.Logf("Rendered %d objects with configured values (replicaCount=2, tag=1.25.0)\n", len(objects1))
 
 	// Second render: Override values at render-time
 	// Render-time values are deep merged with configured values
 	// Only the specified keys are overridden; others remain unchanged
-	fmt.Println("\n=== Render 2: Overriding Values at Render-Time ===")
+	log.Log("\n=== Render 2: Overriding Values at Render-Time ===")
 	objects2, err := e.Render(ctx,
 		engine.WithValues(map[string]any{
 			"replicaCount": 5, // Override replicaCount
@@ -65,12 +73,12 @@ func main() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
-	fmt.Printf("Rendered %d objects with overridden values (replicaCount=5, tag=1.26.0)\n", len(objects2))
+	log.Logf("Rendered %d objects with overridden values (replicaCount=5, tag=1.26.0)\n", len(objects2))
 
 	// Third render: Different overrides
-	fmt.Println("\n=== Render 3: Different Overrides ===")
+	log.Log("\n=== Render 3: Different Overrides ===")
 	objects3, err := e.Render(ctx,
 		engine.WithValues(map[string]any{
 			"replicaCount": 10,
@@ -81,21 +89,23 @@ func main() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
-	fmt.Printf("Rendered %d objects with different overrides (replicaCount=10, service.type=LoadBalancer)\n", len(objects3))
+	log.Logf("Rendered %d objects with different overrides (replicaCount=10, service.type=LoadBalancer)\n", len(objects3))
 
 	// Fourth render: Back to configured values (no overrides)
-	fmt.Println("\n=== Render 4: Back to Configured Values ===")
+	log.Log("\n=== Render 4: Back to Configured Values ===")
 	objects4, err := e.Render(ctx)
 	if err != nil {
-		log.Fatalf("Failed to render: %v", err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
-	fmt.Printf("Rendered %d objects with configured values again (replicaCount=2, tag=1.25.0)\n", len(objects4))
+	log.Logf("Rendered %d objects with configured values again (replicaCount=2, tag=1.25.0)\n", len(objects4))
 
-	fmt.Println("\n=== Key Points ===")
-	fmt.Println("✓ Render-time values override configured values for each Render() call")
-	fmt.Println("✓ Deep merging: Only specified keys are overridden, others remain unchanged")
-	fmt.Println("✓ Each render is independent - overrides don't affect subsequent renders")
-	fmt.Println("✓ Useful for: environment-specific configs, testing, dynamic parameters")
+	log.Log("\n=== Key Points ===")
+	log.Log("✓ Render-time values override configured values for each Render() call")
+	log.Log("✓ Deep merging: Only specified keys are overridden, others remain unchanged")
+	log.Log("✓ Each render is independent - overrides don't affect subsequent renders")
+	log.Log("✓ Useful for: environment-specific configs, testing, dynamic parameters")
+
+	return nil
 }

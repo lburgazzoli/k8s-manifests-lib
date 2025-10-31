@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/engine"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/gvk"
@@ -16,9 +17,17 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Filter Conditional Composition Example ===")
-	fmt.Println("Demonstrates: filter.If() for conditional filtering")
-	fmt.Println()
+	ctx := logger.WithLogger(context.Background(), &logger.StdoutLogger{})
+	if err := Run(ctx); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func Run(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	log.Log("=== Filter Conditional Composition Example ===")
+	log.Log("Demonstrates: filter.If() for conditional filtering")
+	log.Log()
 
 	helmRenderer, err := helm.New([]helm.Source{
 		{
@@ -30,7 +39,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create helm renderer: %w", err)
 	}
 
 	// Conditional filter: only apply label filter if in production namespace
@@ -46,19 +55,19 @@ func main() {
 		engine.WithFilter(f),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects, err := e.Render(context.Background())
+	objects, err := e.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d objects\n", len(objects))
-	fmt.Println("(Production objects must have 'critical' label, others pass through)")
+	log.Logf("Rendered %d objects\n", len(objects))
+	log.Log("(Production objects must have 'critical' label, others pass through)")
 
 	// Show another example: combine multiple conditional filters
-	fmt.Println("\n=== Example 2: Multiple Conditional Filters ===")
+	log.Log("\n=== Example 2: Multiple Conditional Filters ===")
 
 	multiFilter := filter.And(
 		// All objects must be Deployments
@@ -80,13 +89,15 @@ func main() {
 		engine.WithFilter(multiFilter),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	objects2, err := e2.Render(context.Background())
+	objects2, err := e2.Render(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to render: %w", err)
 	}
 
-	fmt.Printf("Rendered %d Deployments with environment-specific label requirements\n", len(objects2))
+	log.Logf("Rendered %d Deployments with environment-specific label requirements\n", len(objects2))
+
+	return nil
 }

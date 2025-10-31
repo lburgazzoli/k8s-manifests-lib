@@ -150,22 +150,92 @@ This example demonstrates:
 
 ## Examples
 
-For specific use cases and patterns, see the [examples directory](examples/):
+### Quick Start
 
-- **[01-basic/](examples/01-basic/)** - Simple single-renderer examples ([helm](examples/01-basic/helm/main.go), [kustomize](examples/01-basic/kustomize/main.go), [yaml](examples/01-basic/yaml/main.go), [gotemplate](examples/01-basic/gotemplate/main.go))
-- **[02-filtering/](examples/02-filtering/)** - Filtering by [namespace](examples/02-filtering/namespace/main.go), [labels](examples/02-filtering/labels/main.go), [GVK](examples/02-filtering/gvk/main.go), [JQ](examples/02-filtering/jq/main.go)
-- **[03-transformation/](examples/03-transformation/)** - Transforming [labels](examples/03-transformation/labels/main.go), [annotations](examples/03-transformation/annotations/main.go), [namespace](examples/03-transformation/namespace/main.go), [name](examples/03-transformation/name/main.go)
-- **[04-composition/](examples/04-composition/)** - [Boolean logic](examples/04-composition/filter-boolean/main.go), [conditionals](examples/04-composition/filter-conditional/main.go), [chaining](examples/04-composition/transformer-chain/main.go), [switch](examples/04-composition/transformer-switch/main.go)
-- **[05-advanced/](examples/05-advanced/)** - [Three-level pipeline](examples/05-advanced/three-level-pipeline/main.go), [multi-environment](examples/05-advanced/multi-environment/main.go), [conditional transformations](examples/05-advanced/conditional-transformations/main.go), [complex nested](examples/05-advanced/complex-nested/main.go)
-- **[06-renderers/](examples/06-renderers/)** - [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go), [render-time values](examples/06-renderers/render-time-values/main.go)
-- **[07-caching/](examples/07-caching/)** - [Basic cache](examples/07-caching/basic/main.go), [performance benchmarks](examples/07-caching/performance/main.go)
-- **[08-parallel/](examples/08-parallel/)** - [Parallel rendering](examples/08-parallel/main.go)
-- **[09-metrics/](examples/09-metrics/)** - [Basic metrics](examples/09-metrics/basic/main.go)
-- **[10-source-annotations/](examples/10-source-annotations/)** - [Source tracking](examples/10-source-annotations/basic/main.go)
+If you're new to the library, start with [01-basic/helm](examples/01-basic/helm/main.go) - the simplest possible usage:
 
-See the [Examples README](examples/README.md) for a complete catalog with a recommended learning path.
+```bash
+go run examples/01-basic/helm/main.go
+```
 
-Each example is runnable: `go run examples/<category>/<name>/main.go`
+### Running Examples
+
+Each example is a standalone Go program:
+
+```bash
+go run examples/<category>/<name>/main.go
+```
+
+All examples include tests:
+
+```bash
+# Test a specific example
+go test ./examples/01-basic/helm
+
+# Test all examples
+go test ./examples/...
+```
+
+### Example Categories
+
+**[01-basic/](examples/01-basic/)** - Single-renderer examples
+- [helm](examples/01-basic/helm/main.go), [kustomize](examples/01-basic/kustomize/main.go), [yaml](examples/01-basic/yaml/main.go), [gotemplate](examples/01-basic/gotemplate/main.go)
+
+**[02-filtering/](examples/02-filtering/)** - Filtering objects
+- [namespace](examples/02-filtering/namespace/main.go), [labels](examples/02-filtering/labels/main.go), [GVK](examples/02-filtering/gvk/main.go), [JQ](examples/02-filtering/jq/main.go)
+
+**[03-transformation/](examples/03-transformation/)** - Transforming objects
+- [labels](examples/03-transformation/labels/main.go), [annotations](examples/03-transformation/annotations/main.go), [namespace](examples/03-transformation/namespace/main.go), [name](examples/03-transformation/name/main.go)
+
+**[04-composition/](examples/04-composition/)** - Composing logic
+- [Boolean logic](examples/04-composition/filter-boolean/main.go), [conditionals](examples/04-composition/filter-conditional/main.go), [chaining](examples/04-composition/transformer-chain/main.go), [switch](examples/04-composition/transformer-switch/main.go)
+
+**[05-advanced/](examples/05-advanced/)** - Complex scenarios
+- [Three-level pipeline](examples/05-advanced/three-level-pipeline/main.go), [multi-environment](examples/05-advanced/multi-environment/main.go), [conditional transformations](examples/05-advanced/conditional-transformations/main.go), [complex nested](examples/05-advanced/complex-nested/main.go)
+
+**[06-renderers/](examples/06-renderers/)** - Advanced renderer usage
+- [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go), [render-time values](examples/06-renderers/render-time-values/main.go)
+
+**[07-caching/](examples/07-caching/)** - Performance optimization
+- [Basic cache](examples/07-caching/basic/main.go), [performance benchmarks](examples/07-caching/performance/main.go)
+
+**[08-parallel/](examples/08-parallel/)** - Parallel rendering
+- [Parallel execution](examples/08-parallel/main.go)
+
+**[09-metrics/](examples/09-metrics/)** - Metrics collection
+- [Basic metrics](examples/09-metrics/basic/main.go)
+
+**[10-source-annotations/](examples/10-source-annotations/)** - Source tracking
+- [Source tracking](examples/10-source-annotations/basic/main.go)
+
+### Learning Path
+
+1. **Start Here**: [01-basic/helm](examples/01-basic/helm/main.go) - Simplest usage
+2. **Add Filtering**: [02-filtering/namespace](examples/02-filtering/namespace/main.go) - Filter by namespace
+3. **Add Transformation**: [03-transformation/labels](examples/03-transformation/labels/main.go) - Modify labels
+4. **Compose Logic**: [04-composition/filter-boolean](examples/04-composition/filter-boolean/main.go) - Boolean composition
+5. **Advanced Patterns**: [05-advanced/multi-environment](examples/05-advanced/multi-environment/main.go) - Real-world scenario
+6. **Optimize**: [07-caching/basic](examples/07-caching/basic/main.go) - Add caching
+
+### Common Patterns
+
+**Environment-Specific Processing**: Apply different transformations per environment ([example](examples/05-advanced/multi-environment/main.go))
+
+**Progressive Filtering**: Filter at renderer, engine, and render-time levels ([example](examples/05-advanced/three-level-pipeline/main.go))
+
+**Conditional Transformations**: Transform objects based on conditions ([example](examples/05-advanced/conditional-transformations/main.go))
+
+### Troubleshooting
+
+**"Failed to render Helm chart"** - Ensure network access to OCI registries; some examples use public charts with rate limits
+
+**"Kustomization directory not found"** - Some examples reference local directories; create them or modify the path
+
+**"No objects rendered"** - Check your filters; try running without filters first
+
+### Contributing Examples
+
+Examples follow a testable pattern with `main.go` containing an exported `Run(ctx)` function and `main_test.go` testing it. See [docs/examples.md](docs/examples.md) for detailed guidelines.
 
 ## Renderer-Specific Features
 
