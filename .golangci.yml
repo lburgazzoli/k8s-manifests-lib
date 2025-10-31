@@ -20,6 +20,7 @@ linters:
     - gocognit
     - maintidx
     - nestif
+    - dupl
   settings:
     revive:
       enable-all-rules: true
