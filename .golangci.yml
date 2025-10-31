@@ -97,3 +97,7 @@ issues:
     - linters:
         - revive
       text: "var-naming.*meaningless package names"
+    # Exclude err113 for test files (dynamic errors are acceptable in tests)
+    - path: "_test\\.go$"
+      linters:
+        - err113
