@@ -19,6 +19,12 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
+const (
+	// maxReleaseNameLength is the maximum allowed length for a Helm release name.
+	// This limit is imposed by Kubernetes label value constraints.
+	maxReleaseNameLength = 53
+)
+
 // Values returns a Values function that always returns the provided static values.
 // This is a convenience helper for the common case of non-dynamic values.
 func Values(values map[string]any) func(context.Context) (map[string]any, error) {
@@ -48,8 +54,8 @@ func (h *sourceHolder) Validate() error {
 	if len(releaseName) == 0 {
 		return errors.New("release name cannot be empty or whitespace-only")
 	}
-	if len(releaseName) > 53 {
-		return fmt.Errorf("release name must not exceed 53 characters (got %d)", len(releaseName))
+	if len(releaseName) > maxReleaseNameLength {
+		return fmt.Errorf("release name must not exceed %d characters (got %d)", maxReleaseNameLength, len(releaseName))
 	}
 
 	return nil
