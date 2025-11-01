@@ -33,7 +33,6 @@ linters:
           - cyclop
           - gocognit
           - maintidx
-          - nestif
           - dupl
   settings:
     cyclop:
