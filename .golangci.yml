@@ -29,7 +29,7 @@ linters:
       - path: 'examples/.*'
         linters:
           - err113
-          - mnd
+          - mnd  # Magic numbers are acceptable in examples for clarity
           - cyclop
           - gocognit
           - maintidx
