@@ -83,7 +83,7 @@ func Run(ctx context.Context) error {
 
 	// Example 3: Remove labels conditionally
 	l.Log("3. RemoveIf - Remove labels matching a condition")
-	removeIfTransformer := labels.RemoveIf(func(key string, value string) bool {
+	removeIfTransformer := labels.RemoveIf(func(key string, _ string) bool {
 		// Remove all labels with 'temp-' prefix
 		return strings.HasPrefix(key, "temp-")
 	})

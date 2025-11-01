@@ -32,7 +32,7 @@ func Run(ctx context.Context) error {
 		{
 			Chart:       "oci://registry-1.docker.io/bitnamicharts/nginx",
 			ReleaseName: "dynamic-nginx",
-			Values: func(ctx context.Context) (map[string]any, error) {
+			Values: func(_ context.Context) (map[string]any, error) {
 				// Simulate fetching configuration at runtime
 				// This could fetch from:
 				// - External API

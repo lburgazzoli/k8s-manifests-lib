@@ -39,8 +39,6 @@ linters:
           disabled: true  # Package comments not critical for examples/main packages
         - name: dot-imports
           disabled: true  # Common practice for Gomega test assertions
-        - name: unused-parameter
-          disabled: true  # Common in test subtests and lambda functions
         - name: var-naming
           disabled: true  # "types" and "util" are reasonable package names
         - name: line-length-limit

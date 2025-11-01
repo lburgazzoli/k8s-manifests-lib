@@ -26,7 +26,7 @@ func Transform(expression string, opts ...jq.Option) (types.Transformer, error) 
 		return nil, fmt.Errorf("error creating jq engine: %w", err)
 	}
 
-	return func(ctx context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
+	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		v, err := engine.Run(obj.Object)
 		if err != nil {
 			return unstructured.Unstructured{}, &transformer.Error{

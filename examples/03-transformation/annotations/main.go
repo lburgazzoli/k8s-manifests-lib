@@ -83,7 +83,7 @@ func Run(ctx context.Context) error {
 
 	// Example 3: Remove annotations conditionally
 	l.Log("3. RemoveIf - Remove annotations matching a condition")
-	removeIfTransformer := annotations.RemoveIf(func(key string, value string) bool {
+	removeIfTransformer := annotations.RemoveIf(func(_ string, value string) bool {
 		// Remove annotations with "delete-me" or "temporary" values
 		return value == "delete-me" || value == "temporary"
 	})

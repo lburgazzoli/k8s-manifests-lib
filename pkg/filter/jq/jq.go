@@ -25,7 +25,7 @@ func Filter(expression string, opts ...jq.Option) (types.Filter, error) {
 		return nil, fmt.Errorf("error creating jq engine: %w", err)
 	}
 
-	return func(ctx context.Context, obj unstructured.Unstructured) (bool, error) {
+	return func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 		// Run the JQ program and get a single value
 		v, err := engine.Run(obj.Object)
 		if err != nil {
