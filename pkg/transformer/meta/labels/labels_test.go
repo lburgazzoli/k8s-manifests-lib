@@ -172,7 +172,7 @@ func TestRemoveIf(t *testing.T) {
 
 	t.Run("should handle no matches", func(t *testing.T) {
 		g := NewWithT(t)
-		transformer := labels.RemoveIf(func(key string, value string) bool {
+		transformer := labels.RemoveIf(func(_ string, _ string) bool {
 			return false
 		})
 

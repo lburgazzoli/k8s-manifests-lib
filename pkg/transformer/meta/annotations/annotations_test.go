@@ -172,7 +172,7 @@ func TestRemoveIf(t *testing.T) {
 
 	t.Run("should handle no matches", func(t *testing.T) {
 		g := NewWithT(t)
-		transformer := annotations.RemoveIf(func(key string, value string) bool {
+		transformer := annotations.RemoveIf(func(_ string, _ string) bool {
 			return false
 		})
 

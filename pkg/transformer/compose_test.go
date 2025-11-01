@@ -57,7 +57,7 @@ func TestChain(t *testing.T) {
 		g := NewWithT(t)
 		tr := transformer.Chain(
 			setLabel("count", "1"),
-			func(ctx context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
+			func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 				labels := obj.GetLabels()
 				if labels["count"] == "1" {
 					labels["count"] = "2"

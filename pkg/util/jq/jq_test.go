@@ -300,7 +300,7 @@ func TestEngineWithFunctions(t *testing.T) {
 
 	t.Run("should use custom function", func(t *testing.T) {
 		g := NewWithT(t)
-		double := func(input any, args []any) any {
+		double := func(input any, _ []any) any {
 			if num, ok := input.(float64); ok {
 				return num * 2
 			}
@@ -354,7 +354,7 @@ func TestEngineWithFunctions(t *testing.T) {
 
 	t.Run("should use multiple custom functions", func(t *testing.T) {
 		g := NewWithT(t)
-		add10 := func(input any, args []any) any {
+		add10 := func(input any, _ []any) any {
 			if num, ok := input.(float64); ok {
 				return num + 10
 			}
@@ -362,7 +362,7 @@ func TestEngineWithFunctions(t *testing.T) {
 			return input
 		}
 
-		double := func(input any, args []any) any {
+		double := func(input any, _ []any) any {
 			if num, ok := input.(float64); ok {
 				return num * 2
 			}
