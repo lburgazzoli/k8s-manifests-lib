@@ -29,7 +29,6 @@ linters:
       - path: 'examples/.*'
         linters:
           - err113
-          - forcetypeassert
           - mnd
           - cyclop
           - gocognit
