@@ -19,7 +19,6 @@ linters:
           - err113
           - forcetypeassert  # Type assertion panics are acceptable in tests
           - mnd
-          - cyclop
           - gocognit
           - maintidx
           - nestif  # Some nesting acceptable in test helpers
