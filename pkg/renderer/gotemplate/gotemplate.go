@@ -108,13 +108,21 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (any, error) {
+func (r *Renderer) values(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) (any, error) {
 	sourceValues := map[string]any{}
 
 	if holder.Values != nil {
 		v, err := holder.Values(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get values for template pattern %q: %w", holder.Path, err)
+			return nil, fmt.Errorf(
+				"failed to get values for template pattern %q: %w",
+				holder.Path,
+				err,
+			)
 		}
 
 		// If source values are a map, convert to map[string]any for merging
@@ -132,7 +140,11 @@ func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeV
 }
 
 // renderSingle performs the rendering for a single template input.
-func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) ([]unstructured.Unstructured, error) {
 	// Parse templates if not already parsed (thread-safe lazy loading)
 	templates, err := holder.LoadTemplates()
 	if err != nil {
@@ -142,7 +154,11 @@ func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, rende
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for pattern %q: %w", holder.Path, err)
+		return nil, fmt.Errorf(
+			"failed to get values for pattern %q: %w",
+			holder.Path,
+			err,
+		)
 	}
 
 	// Compute cache key from template path and values

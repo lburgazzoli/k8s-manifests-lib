@@ -140,13 +140,22 @@ func (r *Renderer) Name() string {
 	return rendererType
 }
 
-func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (map[string]any, error) {
+func (r *Renderer) values(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) (map[string]any, error) {
 	sourceValues := map[string]any{}
 
 	if holder.Values != nil {
 		v, err := holder.Values(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
+			return nil, fmt.Errorf(
+				"failed to get values for chart %q (release %q): %w",
+				holder.Chart,
+				holder.ReleaseName,
+				err,
+			)
 		}
 		sourceValues = v
 	}
@@ -157,17 +166,31 @@ func (r *Renderer) values(ctx context.Context, holder *sourceHolder, renderTimeV
 
 // prepareRenderValues gets values from the Values function, processes dependencies,
 // and prepares render values using chartutil.ToRenderValues.
-func (r *Renderer) prepareRenderValues(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) (chartutil.Values, error) {
+func (r *Renderer) prepareRenderValues(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) (chartutil.Values, error) {
 	// Get values dynamically (includes render-time values)
 	values, err := r.values(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
+		return nil, fmt.Errorf(
+			"failed to get values for chart %q (release %q): %w",
+			holder.Chart,
+			holder.ReleaseName,
+			err,
+		)
 	}
 
 	// Process dependencies if enabled
 	if holder.ProcessDependencies {
 		if err := chartutil.ProcessDependencies(holder.chart, values); err != nil {
-			return nil, fmt.Errorf("failed to process dependencies for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
+			return nil, fmt.Errorf(
+				"failed to process dependencies for chart %q (release %q): %w",
+				holder.Chart,
+				holder.ReleaseName,
+				err,
+			)
 		}
 	}
 
@@ -183,7 +206,12 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, holder *sourceHolder
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
+		return nil, fmt.Errorf(
+			"failed to prepare render values for chart %q (release %q): %w",
+			holder.Chart,
+			holder.ReleaseName,
+			err,
+		)
 	}
 
 	return renderValues, nil
@@ -192,7 +220,11 @@ func (r *Renderer) prepareRenderValues(ctx context.Context, holder *sourceHolder
 // renderSingle performs the rendering for a single Helm chart.
 // It processes dependencies, prepares render values, renders the templates,
 // and converts the output to unstructured objects.
-func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) ([]unstructured.Unstructured, error) {
 	// Load chart if not already loaded (thread-safe lazy loading)
 	chart, err := holder.LoadChart(r.settings)
 	if err != nil {
@@ -202,7 +234,12 @@ func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, rende
 	// Prepare render values (includes render-time values)
 	renderValues, err := r.prepareRenderValues(ctx, holder, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare render values for chart %q (release %q): %w", holder.Chart, holder.ReleaseName, err)
+		return nil, fmt.Errorf(
+			"failed to prepare render values for chart %q (release %q): %w",
+			holder.Chart,
+			holder.ReleaseName,
+			err,
+		)
 	}
 
 	// Compute cache key from chart identifier and render values

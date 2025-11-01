@@ -101,14 +101,23 @@ func (e *Engine) Render(ctx context.Context, opts ...RenderOption) ([]unstructur
 }
 
 // processRenderer executes a single renderer with timing, metrics, and error handling.
-func (e *Engine) processRenderer(ctx context.Context, renderer types.Renderer, values map[string]any) ([]unstructured.Unstructured, error) {
+func (e *Engine) processRenderer(
+	ctx context.Context,
+	renderer types.Renderer,
+	values map[string]any,
+) ([]unstructured.Unstructured, error) {
 	startTime := time.Now()
 	objects, err := renderer.Process(ctx, values)
 
 	metrics.ObserveRenderer(ctx, renderer.Name(), time.Since(startTime), len(objects), err)
 
 	if err != nil {
-		return nil, fmt.Errorf("error processing renderer %q (%T): %w", renderer.Name(), renderer, err)
+		return nil, fmt.Errorf(
+			"error processing renderer %q (%T): %w",
+			renderer.Name(),
+			renderer,
+			err,
+		)
 	}
 
 	return objects, nil

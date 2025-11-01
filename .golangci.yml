@@ -8,7 +8,6 @@ linters:
     - exhaustruct
     - funlen
     - ireturn
-    - lll
     - depguard
     - paralleltest
     - nlreturn
@@ -26,6 +25,7 @@ linters:
           - maintidx
           - nestif
           - dupl
+          - lll
       # Examples directory
       - path: 'examples/.*'
         linters:

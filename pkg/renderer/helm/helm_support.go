@@ -66,7 +66,12 @@ func (h *sourceHolder) Validate() error {
 		return ErrReleaseNameEmpty
 	}
 	if len(releaseName) > maxReleaseNameLength {
-		return fmt.Errorf("%w: must not exceed %d characters (got %d)", ErrReleaseNameTooLong, maxReleaseNameLength, len(releaseName))
+		return fmt.Errorf(
+			"%w: must not exceed %d characters (got %d)",
+			ErrReleaseNameTooLong,
+			maxReleaseNameLength,
+			len(releaseName),
+		)
 	}
 
 	return nil
@@ -174,7 +179,10 @@ func (r *Renderer) processCRDs(helmChart *chart.Chart, holder *sourceHolder) ([]
 
 // processRenderedTemplates extracts and processes rendered template files from Helm output.
 // Filters for YAML files, decodes them, and adds source annotations if enabled.
-func (r *Renderer) processRenderedTemplates(files map[string]string, holder *sourceHolder) ([]unstructured.Unstructured, error) {
+func (r *Renderer) processRenderedTemplates(
+	files map[string]string,
+	holder *sourceHolder,
+) ([]unstructured.Unstructured, error) {
 	result := make([]unstructured.Unstructured, 0)
 
 	for k, v := range files {
@@ -184,7 +192,11 @@ func (r *Renderer) processRenderedTemplates(files map[string]string, holder *sou
 
 		objects, err := k8s.DecodeYAML([]byte(v))
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode %s: %w", k, err)
+			return nil, fmt.Errorf(
+				"failed to decode %s: %w",
+				k,
+				err,
+			)
 		}
 
 		r.addSourceAnnotations(objects, holder.Chart, k)

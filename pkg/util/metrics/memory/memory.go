@@ -71,7 +71,13 @@ func NewRendererMetric() *RendererMetric {
 }
 
 // Observe records a renderer execution's metrics.
-func (m *RendererMetric) Observe(_ context.Context, rendererType string, duration time.Duration, objectCount int, err error) {
+func (m *RendererMetric) Observe(
+	_ context.Context,
+	rendererType string,
+	duration time.Duration,
+	objectCount int,
+	err error,
+) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

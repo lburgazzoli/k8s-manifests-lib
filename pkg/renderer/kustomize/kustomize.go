@@ -120,11 +120,19 @@ func (r *Renderer) Process(ctx context.Context, renderTimeValues map[string]any)
 }
 
 // renderSingle performs the rendering for a single kustomize path.
-func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, renderTimeValues map[string]any) ([]unstructured.Unstructured, error) {
+func (r *Renderer) renderSingle(
+	ctx context.Context,
+	holder *sourceHolder,
+	renderTimeValues map[string]any,
+) ([]unstructured.Unstructured, error) {
 	// Get values dynamically (includes render-time values)
 	values, err := computeValues(ctx, holder.Source, renderTimeValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values for path %q: %w", holder.Path, err)
+		return nil, fmt.Errorf(
+			"failed to get values for path %q: %w",
+			holder.Path,
+			err,
+		)
 	}
 
 	// Compute cache key from input Path and Values
