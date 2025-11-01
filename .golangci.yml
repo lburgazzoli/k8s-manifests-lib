@@ -30,7 +30,6 @@ linters:
         linters:
           - err113
           - mnd  # Magic numbers are acceptable in examples for clarity
-          - maintidx
   settings:
     cyclop:
       max-complexity: 15  # Increased from default 10
