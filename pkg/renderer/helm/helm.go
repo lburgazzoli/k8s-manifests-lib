@@ -3,7 +3,6 @@ package helm
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -16,7 +15,6 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/pipeline"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
-	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
 const rendererType = "helm"
@@ -243,60 +241,18 @@ func (r *Renderer) renderSingle(ctx context.Context, holder *sourceHolder, rende
 	result := make([]unstructured.Unstructured, 0)
 
 	// Process CRDs first
-	for _, crd := range chart.CRDObjects() {
-		objects, err := k8s.DecodeYAML(crd.File.Data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode CRD %s: %w", crd.Name, err)
-		}
-
-		// Add source annotations if enabled
-		if r.opts.SourceAnnotations {
-			for i := range objects {
-				annotations := objects[i].GetAnnotations()
-				if annotations == nil {
-					annotations = make(map[string]string)
-				}
-
-				annotations[types.AnnotationSourceType] = rendererType
-				annotations[types.AnnotationSourcePath] = holder.Chart
-				annotations[types.AnnotationSourceFile] = crd.Name
-
-				objects[i].SetAnnotations(annotations)
-			}
-		}
-
-		result = append(result, objects...)
+	crdObjects, err := r.processCRDs(chart, holder)
+	if err != nil {
+		return nil, err
 	}
+	result = append(result, crdObjects...)
 
 	// Process rendered templates
-	for k, v := range files {
-		if !strings.HasSuffix(k, ".yaml") && !strings.HasSuffix(k, ".yml") {
-			continue
-		}
-
-		objects, err := k8s.DecodeYAML([]byte(v))
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode %s: %w", k, err)
-		}
-
-		// Add source annotations if enabled
-		if r.opts.SourceAnnotations {
-			for i := range objects {
-				annotations := objects[i].GetAnnotations()
-				if annotations == nil {
-					annotations = make(map[string]string)
-				}
-
-				annotations[types.AnnotationSourceType] = rendererType
-				annotations[types.AnnotationSourcePath] = holder.Chart
-				annotations[types.AnnotationSourceFile] = k
-
-				objects[i].SetAnnotations(annotations)
-			}
-		}
-
-		result = append(result, objects...)
+	templateObjects, err := r.processRenderedTemplates(files, holder)
+	if err != nil {
+		return nil, err
 	}
+	result = append(result, templateObjects...)
 
 	// Cache result (if enabled)
 	if r.opts.Cache != nil {

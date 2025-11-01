@@ -12,6 +12,11 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/k8s"
 )
 
 // Values returns a Values function that always returns the provided static values.
@@ -109,4 +114,65 @@ func createChartPathOptions(source *Source) (action.ChartPathOptions, error) {
 	opt.Version = source.ReleaseVersion
 
 	return opt, nil
+}
+
+// addSourceAnnotations adds source tracking annotations to a slice of unstructured objects.
+// Only modifies objects if source annotations are enabled in renderer options.
+func (r *Renderer) addSourceAnnotations(objects []unstructured.Unstructured, chartPath, fileName string) {
+	if !r.opts.SourceAnnotations {
+		return
+	}
+
+	for i := range objects {
+		annotations := objects[i].GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+
+		annotations[types.AnnotationSourceType] = rendererType
+		annotations[types.AnnotationSourcePath] = chartPath
+		annotations[types.AnnotationSourceFile] = fileName
+
+		objects[i].SetAnnotations(annotations)
+	}
+}
+
+// processCRDs extracts and processes CRD objects from a Helm chart.
+// Returns the decoded unstructured objects with source annotations added if enabled.
+func (r *Renderer) processCRDs(helmChart *chart.Chart, holder *sourceHolder) ([]unstructured.Unstructured, error) {
+	result := make([]unstructured.Unstructured, 0)
+
+	for _, crd := range helmChart.CRDObjects() {
+		objects, err := k8s.DecodeYAML(crd.File.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode CRD %s: %w", crd.Name, err)
+		}
+
+		r.addSourceAnnotations(objects, holder.Chart, crd.Name)
+		result = append(result, objects...)
+	}
+
+	return result, nil
+}
+
+// processRenderedTemplates extracts and processes rendered template files from Helm output.
+// Filters for YAML files, decodes them, and adds source annotations if enabled.
+func (r *Renderer) processRenderedTemplates(files map[string]string, holder *sourceHolder) ([]unstructured.Unstructured, error) {
+	result := make([]unstructured.Unstructured, 0)
+
+	for k, v := range files {
+		if !strings.HasSuffix(k, ".yaml") && !strings.HasSuffix(k, ".yml") {
+			continue
+		}
+
+		objects, err := k8s.DecodeYAML([]byte(v))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode %s: %w", k, err)
+		}
+
+		r.addSourceAnnotations(objects, holder.Chart, k)
+		result = append(result, objects...)
+	}
+
+	return result, nil
 }
