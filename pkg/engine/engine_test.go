@@ -441,7 +441,9 @@ func podFilter() func(context.Context, unstructured.Unstructured) (bool, error) 
 }
 
 // addLabels returns a transformer that adds the given labels to objects.
-func addLabels(labels map[string]string) func(context.Context, unstructured.Unstructured) (unstructured.Unstructured, error) {
+func addLabels(
+	labels map[string]string,
+) func(context.Context, unstructured.Unstructured) (unstructured.Unstructured, error) {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		existingLabels := obj.GetLabels()
 		if existingLabels == nil {

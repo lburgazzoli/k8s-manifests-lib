@@ -738,7 +738,10 @@ func TestSourceAnnotations(t *testing.T) {
 		for _, obj := range objects {
 			annotations := obj.GetAnnotations()
 			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourceType, "helm"))
-			g.Expect(annotations).Should(HaveKeyWithValue(types.AnnotationSourcePath, "oci://registry-1.docker.io/daprio/dapr-shared-chart"))
+			g.Expect(annotations).Should(HaveKeyWithValue(
+				types.AnnotationSourcePath,
+				"oci://registry-1.docker.io/daprio/dapr-shared-chart",
+			))
 			g.Expect(annotations).Should(HaveKey(types.AnnotationSourceFile))
 			// File should be a template path
 			g.Expect(annotations[types.AnnotationSourceFile]).ShouldNot(BeEmpty())
