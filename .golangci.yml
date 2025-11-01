@@ -33,7 +33,6 @@ linters:
           - cyclop
           - gocognit
           - maintidx
-          - dupl
   settings:
     cyclop:
       max-complexity: 15  # Increased from default 10
