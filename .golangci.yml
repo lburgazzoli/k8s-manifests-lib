@@ -11,6 +11,7 @@ linters:
     - depguard
     - paralleltest
     - noinlineerr
+    - whitespace  # Extra empty lines acceptable for readability
   exclusions:
     rules:
       # Test files (includes benchmarks since they're in *_test.go files)
@@ -57,6 +58,8 @@ linters:
           disabled: true  # main_test pattern is intentional for example tests
         - name: unused-receiver
           disabled: true  # Interface methods often don't need the receiver
+        - name: empty-lines
+          disabled: true  # Extra empty lines in test functions are acceptable
 
 formatters:
   enable:
