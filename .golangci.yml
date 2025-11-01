@@ -30,7 +30,6 @@ linters:
         linters:
           - err113
           - mnd  # Magic numbers are acceptable in examples for clarity
-          - gocognit
           - maintidx
   settings:
     cyclop:
