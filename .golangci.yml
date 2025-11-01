@@ -22,7 +22,7 @@ linters:
           - cyclop
           - gocognit
           - maintidx
-          - nestif
+          - nestif  # Some nesting acceptable in test helpers
           - dupl
           - lll
       # Examples directory
