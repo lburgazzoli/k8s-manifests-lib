@@ -23,8 +23,7 @@ linters:
           - gocognit
           - maintidx
           - nestif  # Some nesting acceptable in test helpers
-          - dupl
-          - lll
+          - dupl  # Similar test patterns are acceptable
       # Examples directory
       - path: 'examples/.*'
         linters:
