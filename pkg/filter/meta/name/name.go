@@ -44,7 +44,9 @@ func Regex(pattern string) (types.Filter, error) {
 		return nil, fmt.Errorf("invalid regex pattern: %w", err)
 	}
 
-	return func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
+	f := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 		return re.MatchString(obj.GetName()), nil
-	}, nil
+	}
+
+	return f, nil
 }

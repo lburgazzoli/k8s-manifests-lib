@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kustomize-config
-  namespace: default
-data:
-  source: kustomize
-  example: multiple-renderers
-

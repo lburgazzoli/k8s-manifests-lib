@@ -150,92 +150,77 @@ This example demonstrates:
 
 ## Examples
 
-### Quick Start
+### Runnable Examples
 
-If you're new to the library, start with [01-basic/helm](examples/01-basic/helm/main.go) - the simplest possible usage:
-
-```bash
-go run examples/01-basic/helm/main.go
-```
-
-### Running Examples
-
-Each example is a standalone Go program:
+The library includes 5 comprehensive runnable examples. Each is a standalone Go program with tests:
 
 ```bash
-go run examples/<category>/<name>/main.go
+# Run an example
+go run examples/quickstart/main.go
+
+# Test an example
+go test ./examples/quickstart
 ```
 
-All examples include tests:
+#### 1. [Quickstart](examples/quickstart/) - Get Started in 30 Seconds
+The simplest possible usage - render a Helm chart and see the results.
 
 ```bash
-# Test a specific example
-go test ./examples/01-basic/helm
-
-# Test all examples
-go test ./examples/...
+go run examples/quickstart/main.go
 ```
 
-### Example Categories
+#### 2. [Filtering & Transformation](examples/filtering-transformation/) - Core Pipeline
+Demonstrates the render → filter → transform workflow with JQ filters and label transformers.
 
-**[01-basic/](examples/01-basic/)** - Single-renderer examples
-- [helm](examples/01-basic/helm/main.go), [kustomize](examples/01-basic/kustomize/main.go), [yaml](examples/01-basic/yaml/main.go), [gotemplate](examples/01-basic/gotemplate/main.go)
+```bash
+go run examples/filtering-transformation/main.go
+```
 
-**[02-filtering/](examples/02-filtering/)** - Filtering objects
-- [namespace](examples/02-filtering/namespace/main.go), [labels](examples/02-filtering/labels/main.go), [GVK](examples/02-filtering/gvk/main.go), [JQ](examples/02-filtering/jq/main.go)
+#### 3. [Multiple Sources](examples/multiple-sources/) - Combine Renderers
+Shows how to combine Helm + Kustomize + YAML in a single engine - the library's key differentiator.
 
-**[03-transformation/](examples/03-transformation/)** - Transforming objects
-- [labels](examples/03-transformation/labels/main.go), [annotations](examples/03-transformation/annotations/main.go), [namespace](examples/03-transformation/namespace/main.go), [name](examples/03-transformation/name/main.go)
+```bash
+go run examples/multiple-sources/main.go
+```
 
-**[04-composition/](examples/04-composition/)** - Composing logic
-- [Boolean logic](examples/04-composition/filter-boolean/main.go), [conditionals](examples/04-composition/filter-conditional/main.go), [chaining](examples/04-composition/transformer-chain/main.go), [switch](examples/04-composition/transformer-switch/main.go)
+#### 4. [Production Features](examples/production-features/) - Real-World Usage
+Demonstrates caching, parallel rendering, metrics collection, and source tracking annotations.
 
-**[05-advanced/](examples/05-advanced/)** - Complex scenarios
-- [Three-level pipeline](examples/05-advanced/three-level-pipeline/main.go), [multi-environment](examples/05-advanced/multi-environment/main.go), [conditional transformations](examples/05-advanced/conditional-transformations/main.go), [complex nested](examples/05-advanced/complex-nested/main.go)
+```bash
+go run examples/production-features/main.go
+```
 
-**[06-renderers/](examples/06-renderers/)** - Advanced renderer usage
-- [Multiple sources](examples/06-renderers/multiple-sources/main.go), [multiple renderers](examples/06-renderers/multiple-renderers/main.go), [dynamic values](examples/06-renderers/dynamic-values/main.go), [render-time values](examples/06-renderers/render-time-values/main.go)
+#### 5. [Real-World Scenario](examples/real-world/) - Complete Example
+A complete multi-environment deployment pipeline showing all features working together.
 
-**[07-caching/](examples/07-caching/)** - Performance optimization
-- [Basic cache](examples/07-caching/basic/main.go), [performance benchmarks](examples/07-caching/performance/main.go)
+```bash
+go run examples/real-world/main.go
+```
 
-**[08-parallel/](examples/08-parallel/)** - Parallel rendering
-- [Parallel execution](examples/08-parallel/main.go)
+### More Examples
 
-**[09-metrics/](examples/09-metrics/)** - Metrics collection
-- [Basic metrics](examples/09-metrics/basic/main.go)
+For additional usage patterns, see the test files which demonstrate comprehensive API usage:
 
-**[10-source-annotations/](examples/10-source-annotations/)** - Source tracking
-- [Source tracking](examples/10-source-annotations/basic/main.go)
+- **Filters**: `pkg/filter/meta/namespace/namespace_test.go`, `pkg/filter/meta/labels/labels_test.go`, etc.
+- **Transformers**: `pkg/transformer/meta/labels/labels_test.go`, `pkg/transformer/meta/namespace/namespace_test.go`, etc.
+- **Renderers**: `pkg/renderer/helm/helm_test.go`, `pkg/renderer/yaml/yaml_test.go`, etc.
+- **Engine**: `pkg/engine/engine_test.go`
+
+These test files show real-world usage of filters, transformers, and composition patterns (Or, And, Not, Chain, Switch).
 
 ### Learning Path
 
-1. **Start Here**: [01-basic/helm](examples/01-basic/helm/main.go) - Simplest usage
-2. **Add Filtering**: [02-filtering/namespace](examples/02-filtering/namespace/main.go) - Filter by namespace
-3. **Add Transformation**: [03-transformation/labels](examples/03-transformation/labels/main.go) - Modify labels
-4. **Compose Logic**: [04-composition/filter-boolean](examples/04-composition/filter-boolean/main.go) - Boolean composition
-5. **Advanced Patterns**: [05-advanced/multi-environment](examples/05-advanced/multi-environment/main.go) - Real-world scenario
-6. **Optimize**: [07-caching/basic](examples/07-caching/basic/main.go) - Add caching
-
-### Common Patterns
-
-**Environment-Specific Processing**: Apply different transformations per environment ([example](examples/05-advanced/multi-environment/main.go))
-
-**Progressive Filtering**: Filter at renderer, engine, and render-time levels ([example](examples/05-advanced/three-level-pipeline/main.go))
-
-**Conditional Transformations**: Transform objects based on conditions ([example](examples/05-advanced/conditional-transformations/main.go))
+1. **Start**: Run [examples/quickstart](examples/quickstart/) - Simplest usage
+2. **Filter & Transform**: Run [examples/filtering-transformation](examples/filtering-transformation/) - Core pipeline
+3. **Combine Sources**: Run [examples/multiple-sources](examples/multiple-sources/) - Multi-renderer
+4. **Production**: Run [examples/production-features](examples/production-features/) - Caching, metrics, etc.
+5. **Real-World**: Run [examples/real-world](examples/real-world/) - Complete scenario
 
 ### Troubleshooting
 
 **"Failed to render Helm chart"** - Ensure network access to OCI registries; some examples use public charts with rate limits
 
-**"Kustomization directory not found"** - Some examples reference local directories; create them or modify the path
-
 **"No objects rendered"** - Check your filters; try running without filters first
-
-### Contributing Examples
-
-Examples follow a testable pattern with `main.go` containing an exported `Run(ctx)` function and `main_test.go` testing it. See [docs/examples.md](docs/examples.md) for detailed guidelines.
 
 ## Renderer-Specific Features
 

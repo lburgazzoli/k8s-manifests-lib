@@ -1,12 +1,21 @@
-# Contributing Examples
+# Examples Guide
 
-## Example Structure
+## Overview
 
-Every example in this directory must follow a standard, testable pattern. This ensures examples stay in sync with the library and don't break over time.
+k8s-manifests-lib provides comprehensive examples and documentation:
 
-### Required Files
+1. **Runnable Examples** (`examples/` directory) - 5 comprehensive, standalone programs
+2. **Test Files** (`pkg/**/*_test.go`) - Real usage patterns demonstrating API usage
 
-Each example directory must contain:
+All examples are fully testable and run automatically with `go test`.
+
+## Runnable Examples
+
+Located in `examples/`, these demonstrate complete workflows. Each example follows a standard, testable pattern.
+
+### Structure
+
+Each runnable example directory contains:
 1. `main.go` - The example implementation
 2. `main_test.go` - Test file that validates the example works
 
@@ -210,11 +219,19 @@ return err  // No context about what failed
 return fmt.Errorf("failed to create engine: %w", err)
 ```
 
+## Available Runnable Examples
+
+1. **`examples/quickstart/`** - Simplest possible usage (render a Helm chart)
+2. **`examples/filtering-transformation/`** - Core pipeline with JQ filtering and label transformation
+3. **`examples/multiple-sources/`** - Combining Helm + Kustomize + YAML
+4. **`examples/production-features/`** - Caching, parallel rendering, metrics, source annotations
+5. **`examples/real-world/`** - Complete multi-environment deployment scenario
+
 ## Complete Example
 
-Here's a complete example showing all requirements:
+Here's a complete runnable example showing all requirements:
 
-**examples/01-basic/yaml/main.go**:
+**examples/quickstart/main.go**:
 ```go
 package main
 
@@ -264,7 +281,7 @@ func Run(ctx context.Context) error {
 }
 ```
 
-**examples/01-basic/yaml/main_test.go**:
+**examples/quickstart/main_test.go**:
 ```go
 package main_test
 
@@ -274,7 +291,7 @@ import (
 	"time"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/examples/internal/logger"
-	example "github.com/lburgazzoli/k8s-manifests-lib/examples/01-basic/yaml"
+	example "github.com/lburgazzoli/k8s-manifests-lib/examples/quickstart"
 )
 
 func TestRun(t *testing.T) {
@@ -289,24 +306,70 @@ func TestRun(t *testing.T) {
 }
 ```
 
-## Testing Your Example
+## API Documentation & Test Files
 
-Before submitting, ensure your example:
+For detailed API usage, consult two resources:
 
-1. **Runs successfully**:
-   ```bash
-   go run examples/<category>/<name>/main.go
-   ```
+### 1. API Documentation via `go doc`
 
-2. **Tests pass**:
-   ```bash
-   go test ./examples/<category>/<name>
-   ```
+```bash
+# View package overview
+go doc github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/namespace
 
-3. **Compiles**:
-   ```bash
-   go build ./examples/<category>/<name>
-   ```
+# View all functions in a package
+go doc -all github.com/lburgazzoli/k8s-manifests-lib/pkg/filter
+
+# View specific function
+go doc github.com/lburgazzoli/k8s-manifests-lib/pkg/filter/meta/namespace.Filter
+```
+
+### 2. Test Files as Usage Examples
+
+Test files (`*_test.go`) demonstrate real usage patterns:
+
+```bash
+# View filter tests
+less pkg/filter/meta/namespace/namespace_test.go
+less pkg/filter/meta/labels/labels_test.go
+
+# View transformer tests  
+less pkg/transformer/meta/labels/labels_test.go
+less pkg/transformer/meta/namespace/namespace_test.go
+
+# View engine tests
+less pkg/engine/engine_test.go
+```
+
+These test files show:
+- How to construct filters and transformers
+- How to compose them with Or, And, Not, Chain, Switch
+- How to configure renderers
+- How to use the engine with various options
+
+## Testing Examples
+
+### Runnable Examples
+
+```bash
+# Run example
+go run examples/quickstart/main.go
+
+# Test example
+go test ./examples/quickstart
+
+# Test all runnable examples
+go test ./examples/...
+```
+
+### Package Tests
+
+```bash
+# Test a specific package
+go test ./pkg/filter/meta/namespace
+
+# Test all packages
+go test ./pkg/...
+```
 
 ## Common Mistakes
 

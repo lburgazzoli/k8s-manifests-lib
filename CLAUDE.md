@@ -8,9 +8,10 @@ k8s-manifests-lib is a Go library for rendering, filtering, and transforming Kub
 
 ## Documentation
 
-- **[README.md](README.md)** - Quick start, usage examples, and getting started guide
+- **[README.md](README.md)** - Quick start, 5 runnable examples, getting started guide
 - **[docs/design.md](docs/design.md)** - Architecture, design decisions, and patterns
 - **[docs/development.md](docs/development.md)** - Coding conventions, testing guidelines, and contribution guide
+- **[docs/examples.md](docs/examples.md)** - Examples guide (runnable examples and test file usage patterns)
 
 ## Quick Reference
 
@@ -42,7 +43,7 @@ objects, err := e.Render(ctx, engine.WithValues(map[string]any{
 }))
 ```
 
-See [README.md](README.md) for complete examples.
+See [examples/](examples/) for runnable examples and `pkg/**/*_test.go` files for usage patterns.
 
 ## Development
 

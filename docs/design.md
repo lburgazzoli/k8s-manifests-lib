@@ -1224,6 +1224,13 @@ The pipeline functions (`ApplyFilters`, `ApplyTransformers`) automatically wrap 
 
 ## 13. Usage Examples
 
+**Note**: For complete, runnable examples and API documentation, see:
+- **Runnable examples**: `examples/` directory (5 comprehensive examples)
+- **Test files**: `pkg/**/*_test.go` files (usage patterns and API examples)
+- **Examples guide**: [docs/examples.md](examples.md)
+
+The code snippets below demonstrate key patterns inline.
+
 ### 13.1. Basic Rendering with Convenience Functions
 
 For single-renderer scenarios, use convenience factory functions:
