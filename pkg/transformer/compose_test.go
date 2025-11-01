@@ -15,9 +15,9 @@ import (
 )
 
 func TestChain(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should apply transformers in sequence", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Chain(
 			setLabel("label1", "value1"),
 			setLabel("label2", "value2"),
@@ -32,6 +32,7 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("should return unchanged with no transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Chain()
 
 		original := makePod("test")
@@ -41,6 +42,7 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("should propagate error from transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Chain(
 			setLabel("label1", "value1"),
 			errorTransformer(),
@@ -52,6 +54,7 @@ func TestChain(t *testing.T) {
 	})
 
 	t.Run("should pass output of one transformer to next", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Chain(
 			setLabel("count", "1"),
 			func(ctx context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
@@ -72,9 +75,9 @@ func TestChain(t *testing.T) {
 }
 
 func TestIf(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should apply transformer when condition passes", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.If(
 			alwaysTrue(),
 			setLabel("applied", "true"),
@@ -86,6 +89,7 @@ func TestIf(t *testing.T) {
 	})
 
 	t.Run("should not apply transformer when condition fails", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.If(
 			alwaysFalse(),
 			setLabel("applied", "true"),
@@ -97,6 +101,7 @@ func TestIf(t *testing.T) {
 	})
 
 	t.Run("should propagate error from condition", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.If(
 			errorFilter(),
 			setLabel("applied", "true"),
@@ -108,6 +113,7 @@ func TestIf(t *testing.T) {
 	})
 
 	t.Run("should propagate error from transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.If(
 			alwaysTrue(),
 			errorTransformer(),
@@ -119,6 +125,7 @@ func TestIf(t *testing.T) {
 	})
 
 	t.Run("should use filter to check object properties", func(t *testing.T) {
+		g := NewWithT(t)
 		isPod := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 			return obj.GetKind() == "Pod", nil //nolint:goconst // Test code
 		}
@@ -135,9 +142,9 @@ func TestIf(t *testing.T) {
 }
 
 func TestSwitch(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should apply first matching case", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Switch(
 			[]transformer.Case{
 				{When: alwaysFalse(), Then: setLabel("case", "1")},
@@ -153,6 +160,7 @@ func TestSwitch(t *testing.T) {
 	})
 
 	t.Run("should apply default when no cases match", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Switch(
 			[]transformer.Case{
 				{When: alwaysFalse(), Then: setLabel("case", "1")},
@@ -167,6 +175,7 @@ func TestSwitch(t *testing.T) {
 	})
 
 	t.Run("should return unchanged when no cases match and no default", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Switch(
 			[]transformer.Case{
 				{When: alwaysFalse(), Then: setLabel("case", "1")},
@@ -180,6 +189,7 @@ func TestSwitch(t *testing.T) {
 	})
 
 	t.Run("should propagate error from filter", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Switch(
 			[]transformer.Case{
 				{When: errorFilter(), Then: setLabel("case", "1")},
@@ -193,6 +203,7 @@ func TestSwitch(t *testing.T) {
 	})
 
 	t.Run("should propagate error from transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Switch(
 			[]transformer.Case{
 				{When: alwaysTrue(), Then: errorTransformer()},
@@ -206,6 +217,7 @@ func TestSwitch(t *testing.T) {
 	})
 
 	t.Run("should handle real-world branching by kind", func(t *testing.T) {
+		g := NewWithT(t)
 		isPod := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 			return obj.GetKind() == "Pod", nil
 		}
@@ -228,9 +240,9 @@ func TestSwitch(t *testing.T) {
 }
 
 func TestNestedComposition(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should support Chain(If(...), If(...))", func(t *testing.T) {
+		g := NewWithT(t)
 		tr := transformer.Chain(
 			transformer.If(alwaysTrue(), setLabel("label1", "value1")),
 			transformer.If(alwaysTrue(), setLabel("label2", "value2")),
@@ -243,6 +255,7 @@ func TestNestedComposition(t *testing.T) {
 	})
 
 	t.Run("should support If with Switch", func(t *testing.T) {
+		g := NewWithT(t)
 		isPod := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 			return obj.GetKind() == "Pod", nil
 		}

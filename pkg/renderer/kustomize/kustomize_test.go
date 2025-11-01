@@ -307,9 +307,9 @@ resources:
 `
 
 func TestRenderer(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should render basic kustomization", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New([]kustomize.Source{
@@ -329,6 +329,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should render kustomization with overlay", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupOverlayKustomization(t)
 
 		overlayDir := filepath.Join(dir, "overlay")
@@ -349,6 +350,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply filters", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New(
@@ -364,6 +366,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New(
@@ -384,6 +387,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should process multiple inputs", func(t *testing.T) {
+		g := NewWithT(t)
 		dir1 := setupBasicKustomization(t)
 		dir2 := setupSecondKustomization(t)
 
@@ -399,6 +403,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should return error for non-existent path", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := kustomize.New([]kustomize.Source{
 			{Path: "/non/existent/path"},
 		})
@@ -410,6 +415,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply kustomize labels and namespace", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupKustomizationWithLabelsAndNamespace(t)
 
 		renderer, err := kustomize.New([]kustomize.Source{
@@ -429,9 +435,9 @@ func TestRenderer(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should reject input without path", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := kustomize.New([]kustomize.Source{{}})
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("path cannot be empty or whitespace-only"))
@@ -439,6 +445,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should reject input with whitespace-only path", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := kustomize.New([]kustomize.Source{{Path: "   "}})
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("path cannot be empty or whitespace-only"))
@@ -446,6 +453,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should accept valid input", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := kustomize.New([]kustomize.Source{
 			{Path: "/some/path"},
 		})
@@ -514,9 +522,9 @@ func writeFile(t *testing.T, dir string, name string, content string) {
 }
 
 func TestValuesConfigMap(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should write values as ConfigMap", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		values := map[string]string{
@@ -540,6 +548,7 @@ func TestValuesConfigMap(t *testing.T) {
 	})
 
 	t.Run("should work without values", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New([]kustomize.Source{
@@ -558,9 +567,9 @@ func TestValuesConfigMap(t *testing.T) {
 }
 
 func TestCacheIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache identical renders", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New([]kustomize.Source{
@@ -592,6 +601,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should miss cache on different values", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		callCount := 0
@@ -628,6 +638,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should work with cache disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New(
@@ -654,6 +665,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should return clones from cache", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := setupBasicKustomization(t)
 
 		renderer, err := kustomize.New([]kustomize.Source{
@@ -800,9 +812,9 @@ func writeFileB(b *testing.B, dir string, name string, content string) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := t.TempDir()
 
 		writeFile(t, dir, "kustomization.yaml", basicKustomization)
@@ -840,6 +852,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := t.TempDir()
 
 		writeFile(t, dir, "kustomization.yaml", basicKustomization)
@@ -865,6 +878,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should annotate nested resources with relative paths", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := t.TempDir()
 
 		writeFile(t, dir, "kustomization.yaml", nestedResourcesKustomization)
@@ -909,6 +923,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should annotate resources from base kustomization", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := t.TempDir()
 
 		writeFile(t, dir, "base/kustomization.yaml", annotationsBaseKustomization)
@@ -951,6 +966,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should annotate resources from multiple included kustomizations", func(t *testing.T) {
+		g := NewWithT(t)
 		dir := t.TempDir()
 
 		writeFile(t, dir, "components/frontend/kustomization.yaml", componentsFrontendKustomization)
@@ -992,9 +1008,9 @@ func TestSourceAnnotations(t *testing.T) {
 }
 
 func TestLoadRestrictions(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should use default LoadRestrictionsRootOnly", func(t *testing.T) {
+		g := NewWithT(t)
 		parentDir := t.TempDir()
 		childDir := filepath.Join(parentDir, "child")
 
@@ -1016,6 +1032,7 @@ func TestLoadRestrictions(t *testing.T) {
 	})
 
 	t.Run("should allow LoadRestrictionsNone via renderer option", func(t *testing.T) {
+		g := NewWithT(t)
 		parentDir := t.TempDir()
 		childDir := filepath.Join(parentDir, "child")
 
@@ -1041,6 +1058,7 @@ func TestLoadRestrictions(t *testing.T) {
 	})
 
 	t.Run("should allow per-Source LoadRestrictions override", func(t *testing.T) {
+		g := NewWithT(t)
 		parentDir := t.TempDir()
 		child1Dir := filepath.Join(parentDir, "child1")
 		child2Dir := filepath.Join(parentDir, "child2")
@@ -1078,6 +1096,7 @@ func TestLoadRestrictions(t *testing.T) {
 	})
 
 	t.Run("should respect Source override over renderer-wide default", func(t *testing.T) {
+		g := NewWithT(t)
 		parentDir := t.TempDir()
 		childDir := filepath.Join(parentDir, "child")
 

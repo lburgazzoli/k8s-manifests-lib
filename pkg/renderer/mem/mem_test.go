@@ -20,7 +20,6 @@ import (
 )
 
 func TestRenderer(t *testing.T) {
-	g := NewWithT(t)
 
 	// Test objects
 	pod := &corev1.Pod{
@@ -134,6 +133,7 @@ func TestRenderer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			// Convert typed objects to unstructured inline
 			unstructuredObjects := make([]unstructured.Unstructured, len(tt.objects))
 			for i, obj := range tt.objects {
@@ -161,7 +161,6 @@ func TestRenderer(t *testing.T) {
 }
 
 func TestMetricsIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -176,6 +175,7 @@ func TestMetricsIntegration(t *testing.T) {
 	// Metrics are now observed at the engine level, not in the renderer
 	// This test verifies that renderers work without metrics in context
 	t.Run("should work without metrics context", func(t *testing.T) {
+		g := NewWithT(t)
 		unstrPod, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
 
 		renderer, err := mem.New([]mem.Source{{
@@ -191,6 +191,7 @@ func TestMetricsIntegration(t *testing.T) {
 	})
 
 	t.Run("should implement Name() method", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := mem.New([]mem.Source{{}})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(renderer.Name()).To(Equal("mem"))
@@ -198,7 +199,6 @@ func TestMetricsIntegration(t *testing.T) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -219,6 +219,7 @@ func TestSourceAnnotations(t *testing.T) {
 	}
 
 	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		unstrPod, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -245,6 +246,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		unstrPod, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
 		g.Expect(err).ToNot(HaveOccurred())
 

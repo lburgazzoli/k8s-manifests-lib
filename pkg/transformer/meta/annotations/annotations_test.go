@@ -26,7 +26,6 @@ func toUnstructured(t *testing.T, obj runtime.Object) unstructured.Unstructured 
 }
 
 func TestTransform(t *testing.T) {
-	g := NewWithT(t)
 
 	tests := []struct {
 		name               string
@@ -89,6 +88,7 @@ func TestTransform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			transformer := annotations.Set(tt.annotationsToApply)
 			unstrObj := toUnstructured(t, tt.inputObject)
 			transformed, err := transformer(t.Context(), unstrObj)
@@ -100,9 +100,9 @@ func TestTransform(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should remove specific annotations", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := annotations.Remove("ann1", "ann3")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{
@@ -121,6 +121,7 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("should handle removing non-existent annotations", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := annotations.Remove("missing")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{
@@ -135,6 +136,7 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("should handle objects with no annotations", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := annotations.Remove("any")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{})
@@ -146,9 +148,9 @@ func TestRemove(t *testing.T) {
 }
 
 func TestRemoveIf(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should remove annotations matching predicate", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := annotations.RemoveIf(func(key string, value string) bool {
 			return key == "remove-me" || value == "delete"
 		})
@@ -169,6 +171,7 @@ func TestRemoveIf(t *testing.T) {
 	})
 
 	t.Run("should handle no matches", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := annotations.RemoveIf(func(key string, value string) bool {
 			return false
 		})

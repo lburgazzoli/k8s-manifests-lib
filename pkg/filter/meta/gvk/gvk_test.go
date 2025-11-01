@@ -14,10 +14,10 @@ import (
 )
 
 func TestFilter(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should filter single GVK", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(corev1.SchemeGroupVersion.WithKind("Pod"))
 
 		pod := makeObject("v1", "Pod", "test-pod")
@@ -32,6 +32,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter multiple GVKs", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(
 			corev1.SchemeGroupVersion.WithKind("Pod"),
 			corev1.SchemeGroupVersion.WithKind("Service"),
@@ -54,6 +55,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter apps/v1 resources", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(
 			appsv1.SchemeGroupVersion.WithKind("Deployment"),
 			appsv1.SchemeGroupVersion.WithKind("StatefulSet"),
@@ -76,6 +78,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should distinguish between different API versions", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 
 		appsV1Deployment := makeObject("apps/v1", "Deployment", "test-deployment")
@@ -91,6 +94,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should handle empty GVK list", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter()
 
 		pod := makeObject("v1", "Pod", "test-pod")
@@ -100,6 +104,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should handle custom resources", func(t *testing.T) {
+		g := NewWithT(t)
 		customGVK := schema.GroupVersionKind{
 			Group:   "example.com",
 			Version: "v1alpha1",
@@ -120,6 +125,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should handle objects without GVK", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(corev1.SchemeGroupVersion.WithKind("Pod"))
 
 		obj := unstructured.Unstructured{
@@ -136,6 +142,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter core v1 resources", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(
 			corev1.SchemeGroupVersion.WithKind("Pod"),
 			corev1.SchemeGroupVersion.WithKind("Service"),
@@ -170,6 +177,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should handle duplicate GVKs", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(
 			corev1.SchemeGroupVersion.WithKind("Pod"),
 			corev1.SchemeGroupVersion.WithKind("Pod"), // duplicate
@@ -182,6 +190,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should be case sensitive", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := gvk.Filter(corev1.SchemeGroupVersion.WithKind("Pod"))
 
 		// Correct case

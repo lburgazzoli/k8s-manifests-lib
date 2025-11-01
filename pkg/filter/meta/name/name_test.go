@@ -12,9 +12,9 @@ import (
 )
 
 func TestExact(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with exact name match", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Exact("nginx-pod", "apache-pod")
 
 		ok, err := filter(t.Context(), makePod("nginx-pod"))
@@ -27,6 +27,7 @@ func TestExact(t *testing.T) {
 	})
 
 	t.Run("should exclude objects without exact match", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Exact("nginx-pod")
 
 		ok, err := filter(t.Context(), makePod("nginx-deployment"))
@@ -36,9 +37,9 @@ func TestExact(t *testing.T) {
 }
 
 func TestPrefix(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with matching prefix", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Prefix("nginx-")
 
 		ok, err := filter(t.Context(), makePod("nginx-pod"))
@@ -51,6 +52,7 @@ func TestPrefix(t *testing.T) {
 	})
 
 	t.Run("should exclude objects without prefix", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Prefix("nginx-")
 
 		ok, err := filter(t.Context(), makePod("apache-pod"))
@@ -60,9 +62,9 @@ func TestPrefix(t *testing.T) {
 }
 
 func TestSuffix(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with matching suffix", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Suffix("-pod")
 
 		ok, err := filter(t.Context(), makePod("nginx-pod"))
@@ -75,6 +77,7 @@ func TestSuffix(t *testing.T) {
 	})
 
 	t.Run("should exclude objects without suffix", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := name.Suffix("-pod")
 
 		ok, err := filter(t.Context(), makePod("nginx-deployment"))
@@ -84,9 +87,9 @@ func TestSuffix(t *testing.T) {
 }
 
 func TestRegex(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects matching regex", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := name.Regex("^nginx-.*-[0-9]+$")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -100,6 +103,7 @@ func TestRegex(t *testing.T) {
 	})
 
 	t.Run("should exclude objects not matching regex", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := name.Regex("^nginx-")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -109,6 +113,7 @@ func TestRegex(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid regex", func(t *testing.T) {
+		g := NewWithT(t)
 		_, err := name.Regex("[invalid")
 		g.Expect(err).Should(HaveOccurred())
 	})

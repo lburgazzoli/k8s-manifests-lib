@@ -21,10 +21,10 @@ const (
 )
 
 func TestApplyFilters(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should return all objects when no filters", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 			makeObject("Service", "svc1"),
@@ -37,6 +37,7 @@ func TestApplyFilters(t *testing.T) {
 	})
 
 	t.Run("should filter objects with single filter", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 			makeObject("Service", "svc1"),
@@ -55,6 +56,7 @@ func TestApplyFilters(t *testing.T) {
 	})
 
 	t.Run("should apply multiple filters with AND logic", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Pod", "pod2", "kube-system"),
@@ -78,6 +80,7 @@ func TestApplyFilters(t *testing.T) {
 	})
 
 	t.Run("should return error when filter fails", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -93,6 +96,7 @@ func TestApplyFilters(t *testing.T) {
 	})
 
 	t.Run("should handle empty objects slice", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{}
 
 		filter := func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
@@ -105,6 +109,7 @@ func TestApplyFilters(t *testing.T) {
 	})
 
 	t.Run("should reject all objects if any filter rejects", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -124,10 +129,10 @@ func TestApplyFilters(t *testing.T) {
 }
 
 func TestApplyTransformers(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should return objects unchanged when no transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 			makeObject("Service", "svc1"),
@@ -140,6 +145,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should apply single transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -162,6 +168,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should chain multiple transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -196,6 +203,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should return error when transformer fails", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -211,6 +219,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should handle empty objects slice", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{}
 
 		transformer := func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
@@ -230,6 +239,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should stop on first transformer error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -256,6 +266,7 @@ func TestApplyTransformers(t *testing.T) {
 	})
 
 	t.Run("should preserve transformer order", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -295,10 +306,10 @@ func TestApplyTransformers(t *testing.T) {
 }
 
 func TestFilterError(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should return Error with object and error context", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Service", "svc1", "kube-system"),
@@ -321,6 +332,7 @@ func TestFilterError(t *testing.T) {
 	})
 
 	t.Run("should wrap underlying error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -340,6 +352,7 @@ func TestFilterError(t *testing.T) {
 	})
 
 	t.Run("should not double-wrap Error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "original-pod", "original-ns"),
 		}
@@ -369,10 +382,10 @@ func TestFilterError(t *testing.T) {
 }
 
 func TestTransformerError(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should return Error with object and error context", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Service", "svc1", "kube-system"),
@@ -395,6 +408,7 @@ func TestTransformerError(t *testing.T) {
 	})
 
 	t.Run("should preserve object identity in error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 			makeObject("Service", "svc1"),
@@ -421,6 +435,7 @@ func TestTransformerError(t *testing.T) {
 	})
 
 	t.Run("should wrap underlying error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -440,6 +455,7 @@ func TestTransformerError(t *testing.T) {
 	})
 
 	t.Run("should not double-wrap Error", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "original-pod", "original-ns"),
 		}
@@ -469,10 +485,10 @@ func TestTransformerError(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should apply filters then transformers in sequence", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObjectWithNamespace("Pod", "pod1", "default"),
 			makeObjectWithNamespace("Service", "svc1", "default"),
@@ -505,6 +521,7 @@ func TestApply(t *testing.T) {
 	})
 
 	t.Run("should stop on filter error without calling transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 		}
@@ -529,6 +546,7 @@ func TestApply(t *testing.T) {
 	})
 
 	t.Run("should handle empty result from filters", func(t *testing.T) {
+		g := NewWithT(t)
 		objects := []unstructured.Unstructured{
 			makeObject("Pod", "pod1"),
 			makeObject("Service", "svc1"),

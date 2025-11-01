@@ -12,10 +12,10 @@ import (
 )
 
 func TestFilter(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should filter by kind", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.kind == "Pod"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -49,6 +49,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter by namespace", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.metadata.namespace == "default"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -84,6 +85,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter by label", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.metadata.labels.app == "nginx"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -120,6 +122,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter by complex expression", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.kind == "Deployment" and .spec.replicas > 1`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -159,6 +162,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter with or logic", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.kind == "Pod" or .kind == "Service"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -194,6 +198,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter with has function", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`has("metadata") and (.metadata | has("labels"))`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -225,6 +230,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter with variable", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(
 			`.kind == $expectedKind`,
 			utiljq.WithVariable("expectedKind", "Pod"),
@@ -243,6 +249,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid expression", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`invalid jq expression[[[`)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("error creating jq engine"))
@@ -250,6 +257,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should return error for non-boolean result", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.kind`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -266,6 +274,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should return error for execution failure", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.value / 0`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -282,6 +291,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should filter by apiVersion", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.apiVersion == "apps/v1"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -309,6 +319,7 @@ func TestFilter(t *testing.T) {
 	})
 
 	t.Run("should handle null values gracefully", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := jq.Filter(`.metadata.annotations.special == null`)
 		g.Expect(err).ToNot(HaveOccurred())
 

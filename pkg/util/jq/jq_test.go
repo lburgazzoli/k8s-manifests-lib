@@ -9,15 +9,16 @@ import (
 )
 
 func TestNewEngine(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with valid expression", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.field`)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(engine).ToNot(BeNil())
 	})
 
 	t.Run("should return error for invalid expression", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`invalid jq expression[[[`)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("failed to parse JQ expression"))
@@ -25,12 +26,14 @@ func TestNewEngine(t *testing.T) {
 	})
 
 	t.Run("should create engine with complex expression", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.items[] | select(.type == "pod")`)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(engine).ToNot(BeNil())
 	})
 
 	t.Run("should create engine with identity expression", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.`)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(engine).ToNot(BeNil())
@@ -38,9 +41,9 @@ func TestNewEngine(t *testing.T) {
 }
 
 func TestEngineRun(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should extract field from object", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.name`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -55,6 +58,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should return entire object with identity", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -68,6 +72,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle nested fields", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.metadata.name`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -83,6 +88,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle array access", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.items[0]`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -96,6 +102,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle boolean expressions", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.count > 5`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -109,6 +116,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle string comparison", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.kind == "Pod"`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -122,6 +130,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle null values", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.missing`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -135,6 +144,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should return error for multiple results", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.items[]`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -149,6 +159,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle type conversion", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.count | tostring`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -162,6 +173,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle logical operators", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.enabled and .valid`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -176,6 +188,7 @@ func TestEngineRun(t *testing.T) {
 	})
 
 	t.Run("should handle pipe operations", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.value | . * 2`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -190,9 +203,9 @@ func TestEngineRun(t *testing.T) {
 }
 
 func TestEngineWithVariables(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should use variable in expression", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.name == $expected`, jq.WithVariable("expected", "test-pod"))
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -206,6 +219,7 @@ func TestEngineWithVariables(t *testing.T) {
 	})
 
 	t.Run("should handle variable without $ prefix", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.count > $threshold`, jq.WithVariable("threshold", 5))
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -219,6 +233,7 @@ func TestEngineWithVariables(t *testing.T) {
 	})
 
 	t.Run("should handle variable with $ prefix", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.value == $myvar`, jq.WithVariable("$myvar", "expected"))
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -232,6 +247,7 @@ func TestEngineWithVariables(t *testing.T) {
 	})
 
 	t.Run("should handle multiple variables", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(
 			`.value > $min and .value < $max`,
 			jq.WithVariable("min", 5),
@@ -249,6 +265,7 @@ func TestEngineWithVariables(t *testing.T) {
 	})
 
 	t.Run("should handle string variables", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.type == $targetType`, jq.WithVariable("targetType", "deployment"))
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -262,6 +279,7 @@ func TestEngineWithVariables(t *testing.T) {
 	})
 
 	t.Run("should handle complex variable types", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(
 			`.items | contains($expected)`,
 			jq.WithVariable("expected", []any{"test"}),
@@ -279,9 +297,9 @@ func TestEngineWithVariables(t *testing.T) {
 }
 
 func TestEngineWithFunctions(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should use custom function", func(t *testing.T) {
+		g := NewWithT(t)
 		double := func(input any, args []any) any {
 			if num, ok := input.(float64); ok {
 				return num * 2
@@ -306,6 +324,7 @@ func TestEngineWithFunctions(t *testing.T) {
 	})
 
 	t.Run("should use function with arguments", func(t *testing.T) {
+		g := NewWithT(t)
 		multiply := func(input any, args []any) any {
 			if num, ok := input.(float64); ok {
 				if len(args) > 0 {
@@ -334,6 +353,7 @@ func TestEngineWithFunctions(t *testing.T) {
 	})
 
 	t.Run("should use multiple custom functions", func(t *testing.T) {
+		g := NewWithT(t)
 		add10 := func(input any, args []any) any {
 			if num, ok := input.(float64); ok {
 				return num + 10
@@ -368,9 +388,9 @@ func TestEngineWithFunctions(t *testing.T) {
 }
 
 func TestEngineWithCombinedOptions(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should combine variables and functions", func(t *testing.T) {
+		g := NewWithT(t)
 		addValue := func(input any, args []any) any {
 			if num, ok := input.(float64); ok {
 				if len(args) > 0 {
@@ -404,9 +424,9 @@ func TestEngineWithCombinedOptions(t *testing.T) {
 }
 
 func TestEngineErrorCases(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should handle division by zero", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.value / 0`)
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -421,6 +441,7 @@ func TestEngineErrorCases(t *testing.T) {
 	})
 
 	t.Run("should handle type errors", func(t *testing.T) {
+		g := NewWithT(t)
 		engine, err := jq.NewEngine(`.value + "string"`)
 		g.Expect(err).ToNot(HaveOccurred())
 

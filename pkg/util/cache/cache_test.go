@@ -12,9 +12,9 @@ import (
 )
 
 func TestCache(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache and retrieve results", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key := "test-key"
@@ -42,6 +42,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should NOT clone cached results", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key := "clone-test"
@@ -70,6 +71,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should handle different keys separately", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key1 := "key1"
@@ -106,6 +108,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should expire entries after TTL", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(100 * time.Millisecond))
 
 		key := "expiring-key"
@@ -133,6 +136,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should handle empty values", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key := "empty-key"
@@ -146,6 +150,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should handle nil values", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key := "nil-key"
@@ -159,6 +164,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should use default TTL if invalid", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(0))
 		g.Expect(c).ToNot(BeNil())
 
@@ -167,6 +173,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("should update existing entry", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.New[[]unstructured.Unstructured](cache.WithTTL(5 * time.Minute))
 
 		key := "update-key"
@@ -200,9 +207,9 @@ func TestCache(t *testing.T) {
 }
 
 func TestRenderCache(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache and retrieve results", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(5 * time.Minute))
 
 		key := "test-key"
@@ -230,6 +237,7 @@ func TestRenderCache(t *testing.T) {
 	})
 
 	t.Run("should automatically clone on Get", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(5 * time.Minute))
 
 		key := "clone-get-test"
@@ -258,6 +266,7 @@ func TestRenderCache(t *testing.T) {
 	})
 
 	t.Run("should automatically clone on Set", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(5 * time.Minute))
 
 		key := "clone-set-test"
@@ -283,6 +292,7 @@ func TestRenderCache(t *testing.T) {
 	})
 
 	t.Run("should handle empty values", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(5 * time.Minute))
 
 		key := "empty-key"
@@ -296,6 +306,7 @@ func TestRenderCache(t *testing.T) {
 	})
 
 	t.Run("should handle nil values", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(5 * time.Minute))
 
 		key := "nil-key"
@@ -309,6 +320,7 @@ func TestRenderCache(t *testing.T) {
 	})
 
 	t.Run("should expire entries after TTL", func(t *testing.T) {
+		g := NewWithT(t)
 		c := cache.NewRenderCache(cache.WithTTL(100 * time.Millisecond))
 
 		key := "expiring-key"

@@ -10,10 +10,10 @@ import (
 )
 
 func TestRenderMetric(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should not panic", func(t *testing.T) {
+		g := NewWithT(t)
 		m := noop.RenderMetric{}
 		g.Expect(func() {
 			m.Observe(ctx, 100*time.Millisecond, 10)
@@ -22,10 +22,10 @@ func TestRenderMetric(t *testing.T) {
 }
 
 func TestRendererMetric(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should not panic", func(t *testing.T) {
+		g := NewWithT(t)
 		m := noop.RendererMetric{}
 		g.Expect(func() {
 			m.Observe(ctx, "helm", 100*time.Millisecond, 10, nil)

@@ -19,9 +19,9 @@ import (
 )
 
 func TestHelm(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with Helm renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Helm(helm.Source{
 			Chart:       "oci://registry-1.docker.io/bitnamicharts/nginx",
 			ReleaseName: "test-release",
@@ -32,6 +32,7 @@ func TestHelm(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid source", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Helm(helm.Source{
 			Chart: "", // Missing chart
 		})
@@ -42,9 +43,9 @@ func TestHelm(t *testing.T) {
 }
 
 func TestKustomize(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with Kustomize renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Kustomize(kustomize.Source{
 			Path: "/some/path",
 		})
@@ -54,6 +55,7 @@ func TestKustomize(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid source", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Kustomize(kustomize.Source{
 			Path: "", // Missing path
 		})
@@ -64,9 +66,9 @@ func TestKustomize(t *testing.T) {
 }
 
 func TestYaml(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with YAML renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Yaml(yaml.Source{
 			FS:   os.DirFS("."),
 			Path: "*.go",
@@ -77,6 +79,7 @@ func TestYaml(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid source", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Yaml(yaml.Source{
 			// Missing FS and Path
 		})
@@ -87,9 +90,9 @@ func TestYaml(t *testing.T) {
 }
 
 func TestGoTemplate(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with GoTemplate renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.GoTemplate(gotemplate.Source{
 			FS:   os.DirFS("."),
 			Path: "*.go",
@@ -100,6 +103,7 @@ func TestGoTemplate(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid source", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.GoTemplate(gotemplate.Source{
 			// Missing FS and Path
 		})
@@ -110,9 +114,9 @@ func TestGoTemplate(t *testing.T) {
 }
 
 func TestMem(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create engine with Mem renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
@@ -150,6 +154,7 @@ func TestMem(t *testing.T) {
 	})
 
 	t.Run("should create engine with empty objects", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.Mem(mem.Source{
 			Objects: []unstructured.Unstructured{},
 		})

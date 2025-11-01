@@ -61,10 +61,10 @@ data:
 `
 
 func TestRenderer(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should load single YAML file", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -85,6 +85,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should load multiple YAML files with glob", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
 			"configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
@@ -101,6 +102,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should load multi-document YAML", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"resources.yaml": &fstest.MapFile{Data: []byte(multiDocYAML)},
 		}
@@ -118,6 +120,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply filters", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
 			"configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
@@ -136,6 +139,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -160,6 +164,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should handle .yml extension", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -175,6 +180,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should return error for non-existent pattern", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -190,6 +196,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should process multiple inputs", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS1 := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -210,9 +217,9 @@ func TestRenderer(t *testing.T) {
 }
 
 func TestCacheIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache identical renders", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
 			"configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
@@ -242,6 +249,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should miss cache on different paths", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
 			"configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
@@ -275,6 +283,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should work with cache disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -298,6 +307,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should return clones from cache", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}
@@ -412,9 +422,9 @@ func BenchmarkYamlRenderCacheMiss(b *testing.B) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"manifests/pod.yaml":       &fstest.MapFile{Data: []byte(podYAML)},
 			"manifests/configmap.yaml": &fstest.MapFile{Data: []byte(configMapYAML)},
@@ -450,6 +460,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		testFS := fstest.MapFS{
 			"pod.yaml": &fstest.MapFile{Data: []byte(podYAML)},
 		}

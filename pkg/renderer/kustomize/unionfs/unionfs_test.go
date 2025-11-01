@@ -21,9 +21,9 @@ const (
 )
 
 func TestUnionFS(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should read from memory layer first", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile(testFile1, []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -39,6 +39,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should fallback to delegate for reads", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile(testFile1, []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -52,6 +53,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should write to memory layer only", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).Build()
@@ -73,6 +75,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should check existence in both layers", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile(testFile1, []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -93,6 +96,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should merge directory listings", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile("dir/file1.txt", []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -111,6 +115,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should merge glob results", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsOnDisk()
 		tmpDir := t.TempDir()
 
@@ -134,6 +139,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should deduplicate glob results with memory precedence", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsOnDisk()
 		tmpDir := t.TempDir()
 		testFile := filepath.Join(tmpDir, "test.txt")
@@ -157,6 +163,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should merge walk results", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile("dir/file1.txt", []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -182,6 +189,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should not allow RemoveAll", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).Build()
@@ -193,6 +201,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should create directories in memory layer", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).Build()
@@ -206,6 +215,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should open files from both layers", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.WriteFile(testFile1, []byte(testContent2))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -227,6 +237,7 @@ func TestUnionFS(t *testing.T) {
 	})
 
 	t.Run("should check IsDir in both layers", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 		err := delegate.MkdirAll("delegatedir")
 		g.Expect(err).ToNot(HaveOccurred())
@@ -244,9 +255,9 @@ func TestUnionFS(t *testing.T) {
 }
 
 func TestBuilder(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should build empty union FS", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).Build()
@@ -255,6 +266,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should add single override", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).
@@ -268,6 +280,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should add multiple overrides via WithOverride", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).
@@ -286,6 +299,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should add multiple overrides via WithOverrides", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		overrides := map[string][]byte{
@@ -308,6 +322,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should chain multiple WithOverrides calls", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		overrides1 := map[string][]byte{
@@ -328,6 +343,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should handle override with nested paths", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		ufs, err := unionfs.NewBuilder(delegate).
@@ -341,6 +357,7 @@ func TestBuilder(t *testing.T) {
 	})
 
 	t.Run("should return error on invalid write during build", func(t *testing.T) {
+		g := NewWithT(t)
 		delegate := filesys.MakeFsInMemory()
 
 		// Create a file in delegate to cause conflict

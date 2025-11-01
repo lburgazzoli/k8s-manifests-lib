@@ -85,7 +85,6 @@ data:
   value: "{{ . }}"`
 
 func TestRenderer(t *testing.T) {
-	g := NewWithT(t)
 
 	tests := []struct {
 		name          string
@@ -235,6 +234,7 @@ func TestRenderer(t *testing.T) {
 	for i := range tests {
 		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			sources := []gotemplate.Source{tt.data}
 			renderer, err := gotemplate.New(sources, tt.opts...)
 			g.Expect(err).ToNot(HaveOccurred())
@@ -259,7 +259,6 @@ func TestRenderer(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	g := NewWithT(t)
 
 	tests := []struct {
 		name        string
@@ -292,6 +291,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			renderer, err := gotemplate.New(tt.inputs)
 			if tt.expectError {
 				g.Expect(err).To(HaveOccurred())
@@ -305,9 +305,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestCacheIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache identical renders", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := gotemplate.New([]gotemplate.Source{
 			{
 				FS: fstest.MapFS{
@@ -341,6 +341,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should miss cache on different values", func(t *testing.T) {
+		g := NewWithT(t)
 		callCount := 0
 		dynamicValues := func(_ context.Context) (any, error) {
 			callCount++
@@ -379,6 +380,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should work with cache disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := gotemplate.New(
 			[]gotemplate.Source{
 				{
@@ -407,6 +409,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should return clones from cache", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := gotemplate.New([]gotemplate.Source{
 			{
 				FS: fstest.MapFS{
@@ -543,9 +546,9 @@ func BenchmarkGoTemplateRenderCacheMiss(b *testing.B) {
 }
 
 func TestRenderTimeValues(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should merge render-time values with source values", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
 				Data: []byte(mergeValuesTemplate),
@@ -589,6 +592,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should work with nil source values", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
 				Data: []byte(nilSourceValuesTemplate),
@@ -619,6 +623,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should work with empty render-time values", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
 				Data: []byte(simpleKeyTemplate),
@@ -648,6 +653,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should handle non-map source values", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
 				Data: []byte(nonMapValuesTemplate),
@@ -680,6 +686,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should update cache key with render-time values", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"template.yaml": &fstest.MapFile{
 				Data: []byte(simpleKeyTemplate),
@@ -725,9 +732,9 @@ func TestRenderTimeValues(t *testing.T) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"templates/pod.yaml.tpl":       &fstest.MapFile{Data: []byte(podTemplate)},
 			"templates/configmap.yaml.tpl": &fstest.MapFile{Data: []byte(configMapTemplate)},
@@ -770,6 +777,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		fs := fstest.MapFS{
 			"templates/pod.yaml.tpl": &fstest.MapFile{Data: []byte(podTemplate)},
 		}

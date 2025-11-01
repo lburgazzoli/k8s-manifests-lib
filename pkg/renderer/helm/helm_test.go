@@ -17,9 +17,9 @@ import (
 )
 
 func TestRenderer(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should render chart from OCI registry", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -50,6 +50,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should render chart from repository", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Repo:        "https://dapr.github.io/helm-charts",
@@ -72,6 +73,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should render with dynamic values", func(t *testing.T) {
+		g := NewWithT(t)
 		dynamicValues := func(_ context.Context) (map[string]any, error) {
 			return map[string]any{
 				"shared": map[string]any{
@@ -95,6 +97,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply filters", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New(
 			[]helm.Source{
 				{
@@ -125,6 +128,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should apply transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New(
 			[]helm.Source{
 				{
@@ -156,6 +160,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should process multiple charts", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -196,6 +201,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should render with release name in metadata", func(t *testing.T) {
+		g := NewWithT(t)
 		releaseName := "custom-release"
 		renderer, err := helm.New([]helm.Source{
 			{
@@ -229,6 +235,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should render with specific chart version", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Repo:           "https://dapr.github.io/helm-charts",
@@ -252,6 +259,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should handle values context cancellation", func(t *testing.T) {
+		g := NewWithT(t)
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel() // Cancel immediately
 
@@ -280,6 +288,7 @@ func TestRenderer(t *testing.T) {
 	})
 
 	t.Run("should combine filters and transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New(
 			[]helm.Source{
 				{
@@ -314,9 +323,9 @@ func TestRenderer(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should reject input without Chart", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				ReleaseName: "test",
@@ -328,6 +337,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should reject input with whitespace-only Chart", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "   ",
@@ -340,6 +350,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should reject input without ReleaseName", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart: "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -351,6 +362,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should reject input with whitespace-only ReleaseName", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -363,6 +375,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should reject input with ReleaseName exceeding 53 characters", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -375,6 +388,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should accept valid input", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -386,6 +400,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should return error for non-existent chart", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/non-existent/chart",
@@ -401,6 +416,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid chart path", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "/non/existent/path",
@@ -416,9 +432,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestValuesHelper(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should return static values", func(t *testing.T) {
+		g := NewWithT(t)
 		staticValues := map[string]any{
 			"key1": "value1",
 			"key2": 42,
@@ -432,6 +448,7 @@ func TestValuesHelper(t *testing.T) {
 	})
 
 	t.Run("should work with nil values", func(t *testing.T) {
+		g := NewWithT(t)
 		valuesFn := helm.Values(nil)
 		result, err := valuesFn(t.Context())
 
@@ -440,6 +457,7 @@ func TestValuesHelper(t *testing.T) {
 	})
 
 	t.Run("should work with empty map", func(t *testing.T) {
+		g := NewWithT(t)
 		valuesFn := helm.Values(map[string]any{})
 		result, err := valuesFn(t.Context())
 
@@ -449,9 +467,9 @@ func TestValuesHelper(t *testing.T) {
 }
 
 func TestCacheIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should cache identical renders", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -484,6 +502,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should miss cache on different values", func(t *testing.T) {
+		g := NewWithT(t)
 		callCount := 0
 		dynamicValues := func(_ context.Context) (map[string]any, error) {
 			callCount++
@@ -519,6 +538,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should work with cache disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New(
 			[]helm.Source{
 				{
@@ -546,6 +566,7 @@ func TestCacheIntegration(t *testing.T) {
 	})
 
 	t.Run("should return clones from cache", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -670,11 +691,11 @@ func BenchmarkHelmRenderCacheMiss(b *testing.B) {
 }
 
 func TestMetricsIntegration(t *testing.T) {
-	g := NewWithT(t)
 
 	// Metrics are now observed at the engine level, not in the renderer
 	// This test verifies that renderers work without metrics in context
 	t.Run("should work without metrics context", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -694,6 +715,7 @@ func TestMetricsIntegration(t *testing.T) {
 	})
 
 	t.Run("should implement Name() method", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",
@@ -711,9 +733,9 @@ func TestMetricsIntegration(t *testing.T) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should add source annotations when enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New(
 			[]helm.Source{
 				{
@@ -749,6 +771,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not add source annotations when disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer, err := helm.New([]helm.Source{
 			{
 				Chart:       "oci://registry-1.docker.io/daprio/dapr-shared-chart",

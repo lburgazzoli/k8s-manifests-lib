@@ -12,9 +12,9 @@ import (
 )
 
 func TestHasLabel(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with the label", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabel("app")
 
 		ok, err := filter(t.Context(), makePodWithLabels(map[string]string{"app": "nginx"}))
@@ -23,6 +23,7 @@ func TestHasLabel(t *testing.T) {
 	})
 
 	t.Run("should exclude objects without the label", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabel("app")
 
 		ok, err := filter(t.Context(), makePodWithLabels(map[string]string{"version": "1.0"}))
@@ -31,6 +32,7 @@ func TestHasLabel(t *testing.T) {
 	})
 
 	t.Run("should handle objects with no labels", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabel("app")
 
 		ok, err := filter(t.Context(), makePodWithLabels(nil))
@@ -40,9 +42,9 @@ func TestHasLabel(t *testing.T) {
 }
 
 func TestHasLabels(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with all labels", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabels("app", "version")
 
 		ok, err := filter(t.Context(), makePodWithLabels(map[string]string{
@@ -54,6 +56,7 @@ func TestHasLabels(t *testing.T) {
 	})
 
 	t.Run("should exclude objects missing any label", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabels("app", "version")
 
 		ok, err := filter(t.Context(), makePodWithLabels(map[string]string{
@@ -64,6 +67,7 @@ func TestHasLabels(t *testing.T) {
 	})
 
 	t.Run("should pass with empty label list", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.HasLabels()
 
 		ok, err := filter(t.Context(), makePodWithLabels(nil))
@@ -73,9 +77,9 @@ func TestHasLabels(t *testing.T) {
 }
 
 func TestMatchLabels(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should keep objects with matching labels", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.MatchLabels(map[string]string{
 			"app": "nginx",
 			"env": "prod",
@@ -91,6 +95,7 @@ func TestMatchLabels(t *testing.T) {
 	})
 
 	t.Run("should exclude objects with non-matching value", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.MatchLabels(map[string]string{
 			"app": "nginx",
 		})
@@ -103,6 +108,7 @@ func TestMatchLabels(t *testing.T) {
 	})
 
 	t.Run("should exclude objects missing label", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.MatchLabels(map[string]string{
 			"app": "nginx",
 		})
@@ -115,6 +121,7 @@ func TestMatchLabels(t *testing.T) {
 	})
 
 	t.Run("should pass with empty match labels", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := labels.MatchLabels(map[string]string{})
 
 		ok, err := filter(t.Context(), makePodWithLabels(nil))
@@ -124,9 +131,9 @@ func TestMatchLabels(t *testing.T) {
 }
 
 func TestSelector(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should support equality selector", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := labels.Selector("app=nginx")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -140,6 +147,7 @@ func TestSelector(t *testing.T) {
 	})
 
 	t.Run("should support inequality selector", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := labels.Selector("env!=prod")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -153,6 +161,7 @@ func TestSelector(t *testing.T) {
 	})
 
 	t.Run("should support set-based selectors", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := labels.Selector("env in (dev,staging)")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -166,6 +175,7 @@ func TestSelector(t *testing.T) {
 	})
 
 	t.Run("should support combined selectors", func(t *testing.T) {
+		g := NewWithT(t)
 		filter, err := labels.Selector("app=nginx,env!=prod")
 		g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -185,6 +195,7 @@ func TestSelector(t *testing.T) {
 	})
 
 	t.Run("should return error for invalid selector", func(t *testing.T) {
+		g := NewWithT(t)
 		_, err := labels.Selector("invalid=selector=syntax")
 		g.Expect(err).Should(HaveOccurred())
 	})

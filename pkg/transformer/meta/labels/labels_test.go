@@ -26,7 +26,6 @@ func toUnstructured(t *testing.T, obj runtime.Object) unstructured.Unstructured 
 }
 
 func TestTransform(t *testing.T) {
-	g := NewWithT(t)
 
 	tests := []struct {
 		name          string
@@ -89,6 +88,7 @@ func TestTransform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
 			transformer := labels.Set(tt.labelsToApply)
 			unstrObj := toUnstructured(t, tt.inputObject)
 			transformed, err := transformer(t.Context(), unstrObj)
@@ -100,9 +100,9 @@ func TestTransform(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should remove specific labels", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := labels.Remove("key1", "key3")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{
@@ -121,6 +121,7 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("should handle removing non-existent labels", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := labels.Remove("missing")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{
@@ -135,6 +136,7 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("should handle objects with no labels", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := labels.Remove("any")
 
 		obj := toUnstructured(t, &corev1.ConfigMap{})
@@ -146,9 +148,9 @@ func TestRemove(t *testing.T) {
 }
 
 func TestRemoveIf(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should remove labels matching predicate", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := labels.RemoveIf(func(key string, value string) bool {
 			return key == "remove-me" || value == "delete"
 		})
@@ -169,6 +171,7 @@ func TestRemoveIf(t *testing.T) {
 	})
 
 	t.Run("should handle no matches", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := labels.RemoveIf(func(key string, value string) bool {
 			return false
 		})

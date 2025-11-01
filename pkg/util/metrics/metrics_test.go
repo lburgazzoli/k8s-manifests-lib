@@ -13,10 +13,10 @@ import (
 )
 
 func TestMetricsContext(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should store and retrieve metrics from context", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &metrics.Metrics{
 			RenderMetric:   &memory.RenderMetric{},
 			RendererMetric: memory.NewRendererMetric(),
@@ -31,11 +31,13 @@ func TestMetricsContext(t *testing.T) {
 	})
 
 	t.Run("should return nil when metrics not in context", func(t *testing.T) {
+		g := NewWithT(t)
 		retrieved := metrics.FromContext(ctx)
 		g.Expect(retrieved).To(BeNil())
 	})
 
 	t.Run("should allow nil metrics fields", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &metrics.Metrics{
 			RenderMetric: &memory.RenderMetric{},
 		}
@@ -49,6 +51,7 @@ func TestMetricsContext(t *testing.T) {
 	})
 
 	t.Run("should work with noop metrics", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &metrics.Metrics{
 			RenderMetric:   noop.RenderMetric{},
 			RendererMetric: noop.RendererMetric{},
@@ -94,9 +97,9 @@ func TestObserveRenderNilSafety(t *testing.T) {
 }
 
 func TestThreadSafety(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should be thread-safe for concurrent renderer observations", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &metrics.Metrics{
 			RendererMetric: memory.NewRendererMetric(),
 		}
@@ -122,6 +125,7 @@ func TestThreadSafety(t *testing.T) {
 	})
 
 	t.Run("should be thread-safe for concurrent render observations", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &metrics.Metrics{
 			RenderMetric: &memory.RenderMetric{},
 		}

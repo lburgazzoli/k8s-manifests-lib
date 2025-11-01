@@ -11,10 +11,10 @@ import (
 )
 
 func TestRenderMetric(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should record single render", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &memory.RenderMetric{}
 		m.Observe(ctx, 100*time.Millisecond, 10)
 
@@ -25,6 +25,7 @@ func TestRenderMetric(t *testing.T) {
 	})
 
 	t.Run("should record multiple renders", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &memory.RenderMetric{}
 		m.Observe(ctx, 100*time.Millisecond, 10)
 		m.Observe(ctx, 200*time.Millisecond, 15)
@@ -37,6 +38,7 @@ func TestRenderMetric(t *testing.T) {
 	})
 
 	t.Run("should handle zero renders", func(t *testing.T) {
+		g := NewWithT(t)
 		m := &memory.RenderMetric{}
 
 		summary := m.Summary()
@@ -47,10 +49,10 @@ func TestRenderMetric(t *testing.T) {
 }
 
 func TestRendererMetric(t *testing.T) {
-	g := NewWithT(t)
 	ctx := t.Context()
 
 	t.Run("should record single renderer execution", func(t *testing.T) {
+		g := NewWithT(t)
 		m := memory.NewRendererMetric()
 		m.Observe(ctx, "helm", 100*time.Millisecond, 10, nil)
 
@@ -65,6 +67,7 @@ func TestRendererMetric(t *testing.T) {
 	})
 
 	t.Run("should record multiple renderer types", func(t *testing.T) {
+		g := NewWithT(t)
 		m := memory.NewRendererMetric()
 		m.Observe(ctx, "helm", 100*time.Millisecond, 10, nil)
 		m.Observe(ctx, "kustomize", 200*time.Millisecond, 15, nil)
@@ -78,6 +81,7 @@ func TestRendererMetric(t *testing.T) {
 	})
 
 	t.Run("should aggregate multiple executions of same renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		m := memory.NewRendererMetric()
 		m.Observe(ctx, "helm", 100*time.Millisecond, 10, nil)
 		m.Observe(ctx, "helm", 200*time.Millisecond, 20, nil)
@@ -93,6 +97,7 @@ func TestRendererMetric(t *testing.T) {
 	})
 
 	t.Run("should track errors", func(t *testing.T) {
+		g := NewWithT(t)
 		m := memory.NewRendererMetric()
 		m.Observe(ctx, "helm", 100*time.Millisecond, 0, errors.New("test error"))
 		m.Observe(ctx, "helm", 200*time.Millisecond, 10, nil)

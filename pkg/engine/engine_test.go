@@ -24,15 +24,16 @@ const (
 )
 
 func TestNew(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should create empty engine", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.New()
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(e).ToNot(BeNil())
 	})
 
 	t.Run("should create engine with renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("test-pod")})
 
 		e, err := engine.New(engine.WithRenderer(renderer))
@@ -41,6 +42,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should create engine with filter", func(t *testing.T) {
+		g := NewWithT(t)
 		filter := podFilter()
 		e, err := engine.New(engine.WithFilter(filter))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -48,6 +50,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("should create engine with transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		transformer := addLabels(map[string]string{"test": "value"})
 		e, err := engine.New(engine.WithTransformer(transformer))
 		g.Expect(err).ToNot(HaveOccurred())
@@ -56,9 +59,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestEngineRender(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should render with single renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePod("pod1"),
 			makePod("pod2"),
@@ -76,6 +79,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should render with multiple renderers", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
@@ -91,6 +95,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply engine-level filter", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePod("pod1"),
 			makeService(),
@@ -110,6 +115,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply engine-level transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		transformer := addLabels(map[string]string{
@@ -128,6 +134,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply render-time filter", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePod("pod1"),
 			makeService(),
@@ -144,6 +151,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply render-time transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		e, err := engine.New(engine.WithRenderer(renderer))
@@ -159,6 +167,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should combine engine-level and render-time filters", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePod("pod1"),
 			makeService(),
@@ -185,6 +194,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should combine engine-level and render-time transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		// Engine-level transformer
@@ -210,6 +220,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should handle empty renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{})
 
 		e, err := engine.New(engine.WithRenderer(renderer))
@@ -221,6 +232,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should handle no renderers", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.New()
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -230,6 +242,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should return error from failing renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		failingRenderer := &mockRenderer{
 			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 				return nil, errors.New("renderer failed")
@@ -246,6 +259,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should return error from failing filter", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		failingFilter := func(_ context.Context, _ unstructured.Unstructured) (bool, error) {
@@ -265,6 +279,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should return error from failing transformer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		failingTransformer := func(_ context.Context, _ unstructured.Unstructured) (unstructured.Unstructured, error) {
@@ -284,6 +299,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply multiple filters in sequence", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePodWithNamespace("pod1", defaultNamespace),
 			makePodWithNamespace("pod2", systemNamespace),
@@ -309,6 +325,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should apply multiple transformers in sequence", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		transformer1 := addLabels(map[string]string{"label1": "value1"})
@@ -329,6 +346,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should append struct-based RenderOptions filters to engine-level filters", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{
 			makePodWithNamespace("pod1", defaultNamespace),
 			makePodWithNamespace("pod2", systemNamespace),
@@ -355,6 +373,7 @@ func TestEngineRender(t *testing.T) {
 	})
 
 	t.Run("should append struct-based RenderOptions transformers to engine-level transformers", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 
 		engineTransformer := addLabels(map[string]string{"engine": "level"})
@@ -479,9 +498,9 @@ func (m *mockRenderer) Name() string {
 }
 
 func TestParallelRendering(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should render with parallel enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 		renderer3 := newMockRenderer([]unstructured.Unstructured{makePod("pod3")})
@@ -503,6 +522,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should render sequentially with parallel disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
@@ -521,6 +541,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should render sequentially by default", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
@@ -538,6 +559,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should handle error in parallel mode", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := &mockRenderer{
 			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
@@ -561,6 +583,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should apply filters after parallel rendering", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makeService()})
 		renderer3 := newMockRenderer([]unstructured.Unstructured{makePod("pod3")})
@@ -584,6 +607,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should apply transformers after parallel rendering", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
@@ -605,6 +629,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should handle empty renderers in parallel mode", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.New(engine.WithParallel(true))
 		g.Expect(err).ToNot(HaveOccurred())
 
@@ -614,6 +639,7 @@ func TestParallelRendering(t *testing.T) {
 	})
 
 	t.Run("should support struct-based option for parallel", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer1 := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer2 := newMockRenderer([]unstructured.Unstructured{makePod("pod2")})
 
@@ -630,9 +656,9 @@ func TestParallelRendering(t *testing.T) {
 }
 
 func TestRenderTimeValues(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should pass render-time values to renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		var capturedValues map[string]any
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
@@ -660,6 +686,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should pass empty map when no values provided", func(t *testing.T) {
+		g := NewWithT(t)
 		var capturedValues map[string]any
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
@@ -680,6 +707,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should pass same values to multiple renderers", func(t *testing.T) {
+		g := NewWithT(t)
 		var capturedValues1, capturedValues2 map[string]any
 
 		renderer1 := &mockRenderer{
@@ -719,6 +747,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should work with struct-based RenderOptions", func(t *testing.T) {
+		g := NewWithT(t)
 		var capturedValues map[string]any
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
@@ -745,6 +774,7 @@ func TestRenderTimeValues(t *testing.T) {
 	})
 
 	t.Run("should pass values in parallel mode", func(t *testing.T) {
+		g := NewWithT(t)
 		var capturedValues1, capturedValues2 map[string]any
 
 		renderer1 := &mockRenderer{
@@ -786,9 +816,9 @@ func TestRenderTimeValues(t *testing.T) {
 }
 
 func TestSourceAnnotations(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should render objects with source annotations when renderer has them enabled", func(t *testing.T) {
+		g := NewWithT(t)
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
@@ -828,6 +858,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should not have source annotations when renderer has them disabled", func(t *testing.T) {
+		g := NewWithT(t)
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
@@ -864,6 +895,7 @@ func TestSourceAnnotations(t *testing.T) {
 	})
 
 	t.Run("should work with multiple renderers with different annotation settings", func(t *testing.T) {
+		g := NewWithT(t)
 		pod1 := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
@@ -933,9 +965,9 @@ func TestSourceAnnotations(t *testing.T) {
 }
 
 func TestValidateRenderer(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should accept valid renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer.name = "test-renderer"
 
@@ -944,12 +976,14 @@ func TestValidateRenderer(t *testing.T) {
 	})
 
 	t.Run("should reject nil renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		err := types.ValidateRenderer(nil)
 		g.Expect(err).Should(HaveOccurred())
 		g.Expect(err.Error()).Should(ContainSubstring("renderer cannot be nil"))
 	})
 
 	t.Run("should reject renderer with empty name", func(t *testing.T) {
+		g := NewWithT(t)
 		// Create renderer with explicit empty string (not relying on default)
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
@@ -966,6 +1000,7 @@ func TestValidateRenderer(t *testing.T) {
 	})
 
 	t.Run("should reject renderer with whitespace-only name", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 				return []unstructured.Unstructured{makePod("pod1")}, nil
@@ -981,9 +1016,9 @@ func TestValidateRenderer(t *testing.T) {
 }
 
 func TestNewValidatesRenderers(t *testing.T) {
-	g := NewWithT(t)
 
 	t.Run("should reject engine creation with nil renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		e, err := engine.New(engine.WithRenderer(nil))
 		g.Expect(err).Should(HaveOccurred())
 		g.Expect(err.Error()).Should(ContainSubstring("invalid renderer"))
@@ -992,6 +1027,7 @@ func TestNewValidatesRenderers(t *testing.T) {
 	})
 
 	t.Run("should reject engine creation with renderer with empty name", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, _ map[string]any) ([]unstructured.Unstructured, error) {
 				return []unstructured.Unstructured{makePod("pod1")}, nil
@@ -1008,6 +1044,7 @@ func TestNewValidatesRenderers(t *testing.T) {
 	})
 
 	t.Run("should accept engine creation with valid renderer", func(t *testing.T) {
+		g := NewWithT(t)
 		renderer := newMockRenderer([]unstructured.Unstructured{makePod("pod1")})
 		renderer.name = "valid-renderer"
 
