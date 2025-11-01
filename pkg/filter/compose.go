@@ -63,6 +63,7 @@ func Not(filter types.Filter) types.Filter {
 		if err != nil {
 			return false, err
 		}
+
 		return !ok, nil
 	}
 }

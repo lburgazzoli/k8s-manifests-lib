@@ -344,6 +344,7 @@ func TestCacheIntegration(t *testing.T) {
 		callCount := 0
 		dynamicValues := func(_ context.Context) (any, error) {
 			callCount++
+
 			return map[string]any{
 				"Repo":      xid.New().String(),
 				"Component": "frontend",

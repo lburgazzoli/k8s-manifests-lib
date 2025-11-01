@@ -146,27 +146,33 @@ func cloneValue(v any) any {
 		for i, elem := range val {
 			clone[i] = cloneValue(elem)
 		}
+
 		return clone
 	// Common typed slices - use type switches for performance instead of reflection
 	case []string:
 		clone := make([]string, len(val))
 		copy(clone, val)
+
 		return clone
 	case []int:
 		clone := make([]int, len(val))
 		copy(clone, val)
+
 		return clone
 	case []int64:
 		clone := make([]int64, len(val))
 		copy(clone, val)
+
 		return clone
 	case []float64:
 		clone := make([]float64, len(val))
 		copy(clone, val)
+
 		return clone
 	case []bool:
 		clone := make([]bool, len(val))
 		copy(clone, val)
+
 		return clone
 	default:
 		// Handle other slice types using reflection to avoid shared memory
@@ -177,8 +183,10 @@ func cloneValue(v any) any {
 			for i := range sliceLen {
 				clone.Index(i).Set(rv.Index(i))
 			}
+
 			return clone.Interface()
 		}
+
 		return v
 	}
 }

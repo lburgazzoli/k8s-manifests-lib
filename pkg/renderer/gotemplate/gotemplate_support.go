@@ -37,6 +37,7 @@ func (h *sourceHolder) Validate() error {
 	if len(strings.TrimSpace(h.Path)) == 0 {
 		return utilerrors.ErrPathEmpty
 	}
+
 	return nil
 }
 
@@ -56,5 +57,6 @@ func (h *sourceHolder) LoadTemplates() (*template.Template, error) {
 	}
 
 	h.templates = tmpl.Option("missingkey=error")
+
 	return h.templates, nil
 }

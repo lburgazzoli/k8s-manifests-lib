@@ -174,6 +174,7 @@ func TestUnionFS(t *testing.T) {
 			if !info.IsDir() {
 				walked = append(walked, filepath.Base(path))
 			}
+
 			return nil
 		})
 		g.Expect(err).ToNot(HaveOccurred())

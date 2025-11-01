@@ -115,6 +115,7 @@ func (h *sourceHolder) LoadChart(settings *cli.EnvSettings) (*chart.Chart, error
 	}
 
 	h.chart = c
+
 	return h.chart, nil
 }
 

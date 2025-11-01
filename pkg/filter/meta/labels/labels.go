@@ -15,6 +15,7 @@ func HasLabel(key string) types.Filter {
 	return func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 		objLabels := obj.GetLabels()
 		_, ok := objLabels[key]
+
 		return ok, nil
 	}
 }
@@ -28,6 +29,7 @@ func HasLabels(keys ...string) types.Filter {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 }
@@ -41,6 +43,7 @@ func MatchLabels(matchLabels map[string]string) types.Filter {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 }

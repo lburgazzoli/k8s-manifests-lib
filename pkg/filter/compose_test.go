@@ -63,6 +63,7 @@ func TestOr(t *testing.T) {
 		callCount := 0
 		counting := func(_ context.Context, _ unstructured.Unstructured) (bool, error) {
 			callCount++
+
 			return false, nil
 		}
 
@@ -129,6 +130,7 @@ func TestAnd(t *testing.T) {
 		callCount := 0
 		counting := func(_ context.Context, _ unstructured.Unstructured) (bool, error) {
 			callCount++
+
 			return true, nil
 		}
 
@@ -285,6 +287,7 @@ func makePod(name string) unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }
 

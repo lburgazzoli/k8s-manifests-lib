@@ -597,6 +597,7 @@ func TestCacheIntegration(t *testing.T) {
 		callCount := 0
 		dynamicValues := func(_ context.Context) (map[string]string, error) {
 			callCount++
+
 			return map[string]string{
 				"key": xid.New().String(),
 			}, nil

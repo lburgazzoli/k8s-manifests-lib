@@ -67,11 +67,13 @@ func (c *defaultCache[T]) Get(key string) (T, bool) {
 	val, exists := c.entries[key]
 	if !exists {
 		var zero T
+
 		return zero, false
 	}
 
 	if time.Now().After(val.expiration) {
 		var zero T
+
 		return zero, false
 	}
 

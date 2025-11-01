@@ -29,6 +29,7 @@ func (u *unionFS) ReadFile(path string) ([]byte, error) {
 	if u.memory.Exists(path) {
 		return u.memory.ReadFile(path)
 	}
+
 	return u.delegate.ReadFile(path)
 }
 
@@ -56,6 +57,7 @@ func (u *unionFS) Open(path string) (filesys.File, error) {
 	if u.memory.Exists(path) {
 		return u.memory.Open(path)
 	}
+
 	return u.delegate.Open(path)
 }
 
@@ -67,6 +69,7 @@ func (u *unionFS) IsDir(path string) bool {
 	if u.memory.Exists(path) {
 		return u.memory.IsDir(path)
 	}
+
 	return u.delegate.IsDir(path)
 }
 
@@ -125,6 +128,7 @@ func (u *unionFS) Walk(path string, walkFn filepath.WalkFunc) error {
 	if u.memory.Exists(path) {
 		err := u.memory.Walk(path, func(p string, info fs.FileInfo, err error) error {
 			visited[p] = true
+
 			return walkFn(p, info, err)
 		})
 		if err != nil {
@@ -138,6 +142,7 @@ func (u *unionFS) Walk(path string, walkFn filepath.WalkFunc) error {
 			if visited[p] {
 				return nil
 			}
+
 			return walkFn(p, info, err)
 		})
 		if err != nil {
@@ -169,12 +174,14 @@ func NewBuilder(delegate filesys.FileSystem) *Builder {
 // WithOverride adds a virtual file to the memory layer.
 func (b *Builder) WithOverride(path string, content []byte) *Builder {
 	b.overrides[path] = content
+
 	return b
 }
 
 // WithOverrides adds multiple virtual files to the memory layer.
 func (b *Builder) WithOverrides(overrides map[string][]byte) *Builder {
 	maps.Copy(b.overrides, overrides)
+
 	return b
 }
 

@@ -13,6 +13,7 @@ func HasAnnotation(key string) types.Filter {
 	return func(_ context.Context, obj unstructured.Unstructured) (bool, error) {
 		objAnnotations := obj.GetAnnotations()
 		_, ok := objAnnotations[key]
+
 		return ok, nil
 	}
 }
@@ -26,6 +27,7 @@ func HasAnnotations(keys ...string) types.Filter {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 }
@@ -39,6 +41,7 @@ func MatchAnnotations(matchAnnotations map[string]string) types.Filter {
 				return false, nil
 			}
 		}
+
 		return true, nil
 	}
 }

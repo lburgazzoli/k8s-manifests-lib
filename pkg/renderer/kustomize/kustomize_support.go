@@ -104,6 +104,7 @@ func readKustomization(fs filesys.FileSystem, path string) (*kustomizetypes.Kust
 		if fs.Exists(candidate) {
 			kustName = filename
 			kustFile = candidate
+
 			break
 		}
 	}

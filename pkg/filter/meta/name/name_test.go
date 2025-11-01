@@ -127,5 +127,6 @@ func makePod(podName string) unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }

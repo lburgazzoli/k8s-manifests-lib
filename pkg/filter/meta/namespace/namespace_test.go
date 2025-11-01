@@ -120,5 +120,6 @@ func makePodInNamespace(name string, ns string) unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }

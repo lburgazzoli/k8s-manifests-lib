@@ -389,6 +389,7 @@ func makePod(name string) unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }
 
@@ -404,6 +405,7 @@ func makePodWithNamespace(name string, namespace string) unstructured.Unstructur
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }
 
@@ -418,6 +420,7 @@ func makeService() unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Service"))
+
 	return obj
 }
 
@@ -446,6 +449,7 @@ func addLabels(labels map[string]string) func(context.Context, unstructured.Unst
 		}
 		maps.Copy(existingLabels, labels)
 		obj.SetLabels(existingLabels)
+
 		return obj, nil
 	}
 }
@@ -468,6 +472,7 @@ func (m *mockRenderer) Name() string {
 	if m.name != "" {
 		return m.name
 	}
+
 	return "mock"
 }
 
@@ -630,6 +635,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues = values
+
 				return []unstructured.Unstructured{makePod("test-pod")}, nil
 			},
 		}
@@ -656,6 +662,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues = values
+
 				return []unstructured.Unstructured{makePod("test-pod")}, nil
 			},
 		}
@@ -676,6 +683,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer1 := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues1 = values
+
 				return []unstructured.Unstructured{makePod("pod1")}, nil
 			},
 			name: "renderer1",
@@ -684,6 +692,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer2 := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues2 = values
+
 				return []unstructured.Unstructured{makePod("pod2")}, nil
 			},
 			name: "renderer2",
@@ -712,6 +721,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues = values
+
 				return []unstructured.Unstructured{makePod("test-pod")}, nil
 			},
 		}
@@ -738,6 +748,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer1 := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues1 = values
+
 				return []unstructured.Unstructured{makePod("pod1")}, nil
 			},
 			name: "renderer1",
@@ -746,6 +757,7 @@ func TestRenderTimeValues(t *testing.T) {
 		renderer2 := &mockRenderer{
 			processFunc: func(_ context.Context, values map[string]any) ([]unstructured.Unstructured, error) {
 				capturedValues2 = values
+
 				return []unstructured.Unstructured{makePod("pod2")}, nil
 			},
 			name: "renderer2",

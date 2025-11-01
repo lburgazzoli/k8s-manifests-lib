@@ -22,5 +22,6 @@ func (h *sourceHolder) Validate() error {
 			return fmt.Errorf("%w at index %d", ErrObjectEmpty, i)
 		}
 	}
+
 	return nil
 }

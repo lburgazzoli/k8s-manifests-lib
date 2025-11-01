@@ -247,6 +247,7 @@ func TestTransformer(t *testing.T) {
 			transformer, err := jq.Transform(tt.expression, tt.opts...)
 			if tt.expectNewErr {
 				g.Expect(err).To(HaveOccurred())
+
 				return
 			}
 
@@ -257,6 +258,7 @@ func TestTransformer(t *testing.T) {
 			transformed, err := transformer(t.Context(), unstrObj)
 			if tt.expectTransErr {
 				g.Expect(err).To(HaveOccurred())
+
 				return
 			}
 

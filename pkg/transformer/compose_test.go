@@ -60,6 +60,7 @@ func TestChain(t *testing.T) {
 					labels["count"] = "2"
 					obj.SetLabels(labels)
 				}
+
 				return obj, nil
 			},
 		)
@@ -276,6 +277,7 @@ func makePod(name string) unstructured.Unstructured {
 		},
 	}
 	obj.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
+
 	return obj
 }
 
@@ -287,6 +289,7 @@ func setLabel(key string, value string) types.Transformer {
 		}
 		labels[key] = value
 		obj.SetLabels(labels)
+
 		return obj, nil
 	}
 }

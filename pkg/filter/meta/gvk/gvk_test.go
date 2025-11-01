@@ -211,5 +211,6 @@ func makeObject(apiVersion string, kind string, name string) unstructured.Unstru
 	// Set the GVK which is what the filter checks
 	gv, _ := schema.ParseGroupVersion(apiVersion)
 	obj.SetGroupVersionKind(gv.WithKind(kind))
+
 	return obj
 }

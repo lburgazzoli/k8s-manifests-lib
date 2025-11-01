@@ -151,6 +151,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			labels["env"] = "test"
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -172,6 +173,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			labels["label1"] = "value1"
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -182,6 +184,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			labels["label2"] = "value2"
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -217,6 +220,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			labels["test"] = "value"
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -237,6 +241,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			labels["success"] = labelValueTrue
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -263,6 +268,7 @@ func TestApplyTransformers(t *testing.T) {
 				}
 				annotations[key] = value
 				obj.SetAnnotations(annotations)
+
 				return obj, nil
 			}
 		}
@@ -274,6 +280,7 @@ func TestApplyTransformers(t *testing.T) {
 			}
 			annotations["key"] = "overwritten"
 			obj.SetAnnotations(annotations)
+
 			return obj, nil
 		}
 
@@ -398,6 +405,7 @@ func TestTransformerError(t *testing.T) {
 			if obj.GetKind() == "Deployment" {
 				return unstructured.Unstructured{}, errors.New("deployment transformation failed")
 			}
+
 			return obj, nil
 		}
 
@@ -482,6 +490,7 @@ func TestApply(t *testing.T) {
 			}
 			labels["filtered"] = labelValueTrue
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 
@@ -507,6 +516,7 @@ func TestApply(t *testing.T) {
 		transformerCalled := false
 		transformer := func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 			transformerCalled = true
+
 			return obj, nil
 		}
 
@@ -535,6 +545,7 @@ func TestApply(t *testing.T) {
 			}
 			labels["transformed"] = labelValueTrue
 			obj.SetLabels(labels)
+
 			return obj, nil
 		}
 

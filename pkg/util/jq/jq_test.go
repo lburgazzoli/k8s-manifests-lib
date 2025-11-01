@@ -289,6 +289,7 @@ func TestEngineWithFunctions(t *testing.T) {
 			if num, ok := input.(int); ok {
 				return float64(num * 2)
 			}
+
 			return input
 		}
 
@@ -316,6 +317,7 @@ func TestEngineWithFunctions(t *testing.T) {
 					}
 				}
 			}
+
 			return input
 		}
 
@@ -336,6 +338,7 @@ func TestEngineWithFunctions(t *testing.T) {
 			if num, ok := input.(float64); ok {
 				return num + 10
 			}
+
 			return input
 		}
 
@@ -343,6 +346,7 @@ func TestEngineWithFunctions(t *testing.T) {
 			if num, ok := input.(float64); ok {
 				return num * 2
 			}
+
 			return input
 		}
 
@@ -378,6 +382,7 @@ func TestEngineWithCombinedOptions(t *testing.T) {
 					}
 				}
 			}
+
 			return input
 		}
 

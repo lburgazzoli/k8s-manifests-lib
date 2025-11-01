@@ -115,5 +115,6 @@ func makePodWithAnnotations(anns map[string]string) unstructured.Unstructured {
 	if anns != nil {
 		obj.SetAnnotations(anns)
 	}
+
 	return obj
 }

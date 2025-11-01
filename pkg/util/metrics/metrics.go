@@ -104,6 +104,7 @@ func FromContext(ctx context.Context) *Metrics {
 	if m, ok := ctx.Value(contextKey{}).(*Metrics); ok {
 		return m
 	}
+
 	return nil
 }
 

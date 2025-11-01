@@ -206,5 +206,6 @@ func makePodWithLabels(lbls map[string]string) unstructured.Unstructured {
 	if lbls != nil {
 		obj.SetLabels(lbls)
 	}
+
 	return obj
 }

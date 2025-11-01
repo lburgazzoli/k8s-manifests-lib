@@ -13,6 +13,7 @@ import (
 func SetPrefix(prefix string) types.Transformer {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		obj.SetName(prefix + obj.GetName())
+
 		return obj, nil
 	}
 }
@@ -21,6 +22,7 @@ func SetPrefix(prefix string) types.Transformer {
 func SetSuffix(suffix string) types.Transformer {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		obj.SetName(obj.GetName() + suffix)
+
 		return obj, nil
 	}
 }
@@ -29,6 +31,7 @@ func SetSuffix(suffix string) types.Transformer {
 func Replace(from string, to string) types.Transformer {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		obj.SetName(strings.ReplaceAll(obj.GetName(), from, to))
+
 		return obj, nil
 	}
 }

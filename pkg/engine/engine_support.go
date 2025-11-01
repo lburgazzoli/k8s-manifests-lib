@@ -29,6 +29,7 @@ func Helm(source helm.Source, opts ...helm.RendererOption) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create helm renderer: %w", err)
 	}
+
 	return New(WithRenderer(renderer))
 }
 
@@ -46,6 +47,7 @@ func Kustomize(source kustomize.Source, opts ...kustomize.RendererOption) (*Engi
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kustomize renderer: %w", err)
 	}
+
 	return New(WithRenderer(renderer))
 }
 
@@ -64,6 +66,7 @@ func Yaml(source yaml.Source, opts ...yaml.RendererOption) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create yaml renderer: %w", err)
 	}
+
 	return New(WithRenderer(renderer))
 }
 
@@ -83,6 +86,7 @@ func GoTemplate(source gotemplate.Source, opts ...gotemplate.RendererOption) (*E
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gotemplate renderer: %w", err)
 	}
+
 	return New(WithRenderer(renderer))
 }
 
@@ -100,5 +104,6 @@ func Mem(source mem.Source, opts ...mem.RendererOption) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mem renderer: %w", err)
 	}
+
 	return New(WithRenderer(renderer))
 }

@@ -42,6 +42,7 @@ func TestRenderer(t *testing.T) {
 		for _, obj := range objects {
 			if obj.GetKind() == "Deployment" || obj.GetKind() == "Service" {
 				found = true
+
 				break
 			}
 		}
@@ -219,6 +220,7 @@ func TestRenderer(t *testing.T) {
 			if labels := obj.GetLabels(); labels != nil {
 				if instance := labels["app.kubernetes.io/instance"]; instance == releaseName {
 					foundRelease = true
+
 					break
 				}
 			}
@@ -485,6 +487,7 @@ func TestCacheIntegration(t *testing.T) {
 		callCount := 0
 		dynamicValues := func(_ context.Context) (map[string]any, error) {
 			callCount++
+
 			return map[string]any{
 				"shared": map[string]any{
 					"appId": xid.New().String(),

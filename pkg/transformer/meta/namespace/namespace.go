@@ -12,6 +12,7 @@ import (
 func Set(namespace string) types.Transformer {
 	return func(_ context.Context, obj unstructured.Unstructured) (unstructured.Unstructured, error) {
 		obj.SetNamespace(namespace)
+
 		return obj, nil
 	}
 }
@@ -23,6 +24,7 @@ func EnsureDefault(namespace string) types.Transformer {
 		if obj.GetNamespace() == "" {
 			obj.SetNamespace(namespace)
 		}
+
 		return obj, nil
 	}
 }

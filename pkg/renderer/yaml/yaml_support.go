@@ -19,5 +19,6 @@ func (h *sourceHolder) Validate() error {
 	if len(strings.TrimSpace(h.Path)) == 0 {
 		return utilerrors.ErrPathEmpty
 	}
+
 	return nil
 }

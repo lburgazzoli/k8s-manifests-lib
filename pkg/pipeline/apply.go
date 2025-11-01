@@ -34,6 +34,7 @@ func ApplyFilters(
 			}
 			if !ok {
 				matches = false
+
 				break
 			}
 		}

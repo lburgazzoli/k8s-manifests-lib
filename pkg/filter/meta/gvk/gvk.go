@@ -20,6 +20,7 @@ func Filter(gvks ...schema.GroupVersionKind) types.Filter {
 
 	return func(ctx context.Context, object unstructured.Unstructured) (bool, error) {
 		_, ok := m[object.GetObjectKind().GroupVersionKind()]
+
 		return ok, nil
 	}
 }
