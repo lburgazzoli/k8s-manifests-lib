@@ -53,8 +53,6 @@ linters:
           disabled: true  # Magic number detection is too noisy
         - name: unchecked-type-assertion
           disabled: true  # Type assertions in tests are usually safe
-        - name: unhandled-error
-          disabled: true  # Requiring error checks for fmt.Println is excessive
         - name: cyclomatic
           disabled: true  # Cyclomatic complexity is similar to cognitive complexity
         - name: package-directory-mismatch
