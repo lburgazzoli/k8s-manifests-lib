@@ -19,7 +19,7 @@ linters:
           - err113
           - forcetypeassert  # Type assertion panics are acceptable in tests
           - mnd
-          - maintidx
+          - maintidx  # Large test functions with many cases are acceptable
           - nestif  # Some nesting acceptable in test helpers
           - dupl  # Similar test patterns are acceptable
       # Examples directory
