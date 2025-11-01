@@ -9,6 +9,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+var (
+	// ErrRendererNil is returned when a renderer is nil.
+	ErrRendererNil = errors.New("renderer cannot be nil")
+
+	// ErrRendererNameEmpty is returned when a renderer name is empty.
+	ErrRendererNameEmpty = errors.New("renderer must return a non-empty name")
+)
+
 // Filter is a function type that processes a single unstructured.Unstructured object
 // and returns true if the object should be kept, or false if it should be discarded.
 type Filter func(ctx context.Context, object unstructured.Unstructured) (bool, error)
@@ -35,12 +43,12 @@ type Renderer interface {
 // Returns an error if the renderer is nil or if Name() returns an empty string.
 func ValidateRenderer(r Renderer) error {
 	if r == nil {
-		return errors.New("renderer cannot be nil")
+		return ErrRendererNil
 	}
 
 	name := r.Name()
 	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("renderer %T must return a non-empty name", r)
+		return fmt.Errorf("%w: %T", ErrRendererNameEmpty, r)
 	}
 
 	return nil

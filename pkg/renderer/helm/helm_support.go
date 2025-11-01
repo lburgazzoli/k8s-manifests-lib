@@ -25,6 +25,17 @@ const (
 	maxReleaseNameLength = 53
 )
 
+var (
+	// ErrChartEmpty is returned when a chart name is empty or whitespace-only.
+	ErrChartEmpty = errors.New("chart cannot be empty or whitespace-only")
+
+	// ErrReleaseNameEmpty is returned when a release name is empty or whitespace-only.
+	ErrReleaseNameEmpty = errors.New("release name cannot be empty or whitespace-only")
+
+	// ErrReleaseNameTooLong is returned when a release name exceeds the maximum length.
+	ErrReleaseNameTooLong = errors.New("release name exceeds maximum length")
+)
+
 // Values returns a Values function that always returns the provided static values.
 // This is a convenience helper for the common case of non-dynamic values.
 func Values(values map[string]any) func(context.Context) (map[string]any, error) {
@@ -47,15 +58,15 @@ type sourceHolder struct {
 // Validate checks if the Source configuration is valid.
 func (h *sourceHolder) Validate() error {
 	if len(strings.TrimSpace(h.Chart)) == 0 {
-		return errors.New("chart cannot be empty or whitespace-only")
+		return ErrChartEmpty
 	}
 
 	releaseName := strings.TrimSpace(h.ReleaseName)
 	if len(releaseName) == 0 {
-		return errors.New("release name cannot be empty or whitespace-only")
+		return ErrReleaseNameEmpty
 	}
 	if len(releaseName) > maxReleaseNameLength {
-		return fmt.Errorf("release name must not exceed %d characters (got %d)", maxReleaseNameLength, len(releaseName))
+		return fmt.Errorf("%w: must not exceed %d characters (got %d)", ErrReleaseNameTooLong, maxReleaseNameLength, len(releaseName))
 	}
 
 	return nil

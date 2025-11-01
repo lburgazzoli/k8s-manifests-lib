@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -15,6 +16,14 @@ import (
 )
 
 const rendererType = "yaml"
+
+var (
+	// ErrNoFilesMatched is returned when no files match the specified pattern.
+	ErrNoFilesMatched = errors.New("no files matched pattern")
+
+	// ErrPathIsDirectory is returned when a path is a directory instead of a file.
+	ErrPathIsDirectory = errors.New("path is a directory, not a file")
+)
 
 // Source represents the input for a YAML rendering operation.
 type Source struct {
@@ -120,7 +129,7 @@ func (r *Renderer) renderSingle(_ context.Context, holder *sourceHolder) ([]unst
 	}
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("no files matched pattern: %s", holder.Path)
+		return nil, fmt.Errorf("%w: %s", ErrNoFilesMatched, holder.Path)
 	}
 
 	// Process each matched file
@@ -150,7 +159,7 @@ func (r *Renderer) loadYAMLFile(fsys fs.FS, path string) ([]unstructured.Unstruc
 	}
 
 	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory, not a file: %s", path)
+		return nil, fmt.Errorf("%w: %s", ErrPathIsDirectory, path)
 	}
 
 	// Skip non-YAML files

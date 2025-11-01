@@ -2,6 +2,7 @@ package jq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -10,6 +11,11 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/transformer"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util/jq"
+)
+
+var (
+	// ErrJqMustReturnObject is returned when a JQ expression doesn't return an object.
+	ErrJqMustReturnObject = errors.New("jq expression must return an object")
 )
 
 // Transform creates a new JQ transformer with the given expression and options.
@@ -47,7 +53,7 @@ func Transform(expression string, opts ...jq.Option) (types.Transformer, error) 
 		default:
 			return ret, &transformer.Error{
 				Object: obj,
-				Err:    fmt.Errorf("jq expression must return an object, got %T", v),
+				Err:    fmt.Errorf("%w, got %T", ErrJqMustReturnObject, v),
 			}
 		}
 	}, nil

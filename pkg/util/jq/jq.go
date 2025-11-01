@@ -9,6 +9,14 @@ import (
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 )
 
+var (
+	// ErrJqNoResults is returned when a JQ expression returns no results.
+	ErrJqNoResults = errors.New("jq: no results returned")
+
+	// ErrJqMultipleResults is returned when a JQ expression returns multiple results.
+	ErrJqMultipleResults = errors.New("jq: multiple results returned")
+)
+
 // function represents a JQ function with its implementation.
 type function struct {
 	name     string
@@ -131,7 +139,7 @@ func (e *Engine) Run(input any) (any, error) {
 
 	v, ok := iter.Next()
 	if !ok {
-		return nil, errors.New("jq: no results returned")
+		return nil, ErrJqNoResults
 	}
 
 	if err, ok := v.(error); ok {
@@ -140,7 +148,7 @@ func (e *Engine) Run(input any) (any, error) {
 
 	// Check if there are more values
 	if _, ok := iter.Next(); ok {
-		return nil, errors.New("jq: multiple results returned")
+		return nil, ErrJqMultipleResults
 	}
 
 	return v, nil

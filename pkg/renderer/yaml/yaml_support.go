@@ -1,8 +1,9 @@
 package yaml
 
 import (
-	"errors"
 	"strings"
+
+	utilerrors "github.com/lburgazzoli/k8s-manifests-lib/pkg/util/errors"
 )
 
 // sourceHolder wraps a Source with internal state for consistency with other renderers.
@@ -13,10 +14,10 @@ type sourceHolder struct {
 // Validate checks if the Source configuration is valid.
 func (h *sourceHolder) Validate() error {
 	if h.FS == nil {
-		return errors.New("fs is required")
+		return utilerrors.ErrFsRequired
 	}
 	if len(strings.TrimSpace(h.Path)) == 0 {
-		return errors.New("path cannot be empty or whitespace-only")
+		return utilerrors.ErrPathEmpty
 	}
 	return nil
 }

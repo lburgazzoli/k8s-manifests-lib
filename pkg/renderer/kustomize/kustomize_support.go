@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
+	utilerrors "github.com/lburgazzoli/k8s-manifests-lib/pkg/util/errors"
 )
 
 // Values returns a Values function that always returns the provided static values.
@@ -29,6 +30,9 @@ var (
 		"kustomization.yml",
 		"Kustomization",
 	}
+
+	// ErrNoKustomizationFile is returned when no kustomization file is found in a directory.
+	ErrNoKustomizationFile = errors.New("no kustomization file found")
 )
 
 // sourceHolder wraps a Source with internal state for consistency with other renderers.
@@ -39,7 +43,7 @@ type sourceHolder struct {
 // Validate checks if the Source configuration is valid.
 func (h *sourceHolder) Validate() error {
 	if len(strings.TrimSpace(h.Path)) == 0 {
-		return errors.New("path cannot be empty or whitespace-only")
+		return utilerrors.ErrPathEmpty
 	}
 
 	return nil
@@ -105,7 +109,7 @@ func readKustomization(fs filesys.FileSystem, path string) (*kustomizetypes.Kust
 	}
 
 	if kustFile == "" {
-		return nil, "", fmt.Errorf("no kustomization file found in %s", path)
+		return nil, "", fmt.Errorf("%w in %s", ErrNoKustomizationFile, path)
 	}
 
 	content, err := fs.ReadFile(kustFile)

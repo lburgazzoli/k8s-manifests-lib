@@ -13,6 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+var (
+	// ErrRemoveAllNotSupported is returned when RemoveAll is called on a union filesystem.
+	ErrRemoveAllNotSupported = errors.New("RemoveAll not supported on union filesystem")
+)
+
 // unionFS provides a union filesystem that layers an in-memory FS over a delegate FS.
 // Writes go to the memory layer, reads check memory first then fall back to delegate.
 type unionFS struct {
@@ -40,7 +45,7 @@ func (u *unionFS) MkdirAll(path string) error {
 }
 
 func (u *unionFS) RemoveAll(_ string) error {
-	return errors.New("RemoveAll not supported on union filesystem")
+	return ErrRemoveAllNotSupported
 }
 
 func (u *unionFS) Create(path string) (filesys.File, error) {
