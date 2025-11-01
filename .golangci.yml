@@ -17,7 +17,7 @@ linters:
       - path: '.*_test\.go$'
         linters:
           - err113
-          - forcetypeassert
+          - forcetypeassert  # Type assertion panics are acceptable in tests
           - mnd
           - cyclop
           - gocognit
