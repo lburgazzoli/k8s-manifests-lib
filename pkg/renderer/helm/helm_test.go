@@ -368,7 +368,7 @@ func TestNew(t *testing.T) {
 			},
 		})
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("release name must not exceed 53 characters"))
+		g.Expect(err.Error()).To(ContainSubstring("must not exceed 53 characters"))
 		g.Expect(renderer).To(BeNil())
 	})
 

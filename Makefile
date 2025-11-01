@@ -40,8 +40,15 @@ fmt:
 	go fmt ./...
 
 .PHONY: test
-test:
-	go test -v ./...
+test: test/lib test/examples
+
+.PHONY: test/examples
+test/examples:
+	go test -v ./examples/...
+
+.PHONY: test/lib
+test/lib:
+	go test -v ./pkg/...
 
 .PHONY: bench
 bench:
