@@ -35,6 +35,10 @@ type RendererOptions struct {
 	// Individual Sources can override this via Source.LoadRestrictions.
 	// Default: LoadRestrictionsRootOnly (security best practice).
 	LoadRestrictions kustomizetypes.LoadRestrictions
+
+	// WarningHandler processes kustomize deprecation warnings.
+	// Defaults to WarningLog(os.Stderr) if nil.
+	WarningHandler WarningHandler
 }
 
 // ApplyTo applies the renderer options to the target configuration.
@@ -46,6 +50,10 @@ func (opts RendererOptions) ApplyTo(target *RendererOptions) {
 
 	if opts.Cache != nil {
 		target.Cache = opts.Cache
+	}
+
+	if opts.WarningHandler != nil {
+		target.WarningHandler = opts.WarningHandler
 	}
 
 	target.SourceAnnotations = opts.SourceAnnotations
@@ -104,5 +112,21 @@ func WithSourceAnnotations(enabled bool) RendererOption {
 func WithLoadRestrictions(restrictions kustomizetypes.LoadRestrictions) RendererOption {
 	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
 		opts.LoadRestrictions = restrictions
+	})
+}
+
+// WithWarningHandler sets a custom handler for kustomize deprecation warnings.
+// The handler receives a list of warning messages and can choose to log them, fail, or ignore them.
+// Use pre-built handlers like WarningLog(w), WarningFail(), or WarningIgnore(),
+// or provide a custom function.
+//
+// Default: WarningLog(os.Stderr) if not set.
+//
+// Example:
+//
+//	kustomize.New(source, kustomize.WithWarningHandler(kustomize.WarningFail()))
+func WithWarningHandler(handler WarningHandler) RendererOption {
+	return util.FunctionalOption[RendererOptions](func(opts *RendererOptions) {
+		opts.WarningHandler = handler
 	})
 }

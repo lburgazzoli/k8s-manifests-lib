@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 
@@ -17,6 +18,7 @@ import (
 
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/renderer/kustomize/unionfs"
 	"github.com/lburgazzoli/k8s-manifests-lib/pkg/types"
+	"github.com/lburgazzoli/k8s-manifests-lib/pkg/util"
 )
 
 type (
@@ -61,13 +63,36 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 		return nil, fmt.Errorf("unable to read kustomization from path %q: %w", input.Path, err)
 	}
 
+	// Check for deprecated fields and handle warnings
+	if warnings := kust.CheckDeprecatedFields(); warnings != nil && len(*warnings) > 0 {
+		handler := e.opts.WarningHandler
+		if handler == nil {
+			handler = WarningLog(os.Stderr)
+		}
+
+		if err := handler(*warnings); err != nil {
+			return nil, err
+		}
+	}
+
 	// Prepare filesystem with overlays if needed
 	fs, addedOriginAnnotations, err := e.prepareFilesystem(input.Path, kust, name, values)
 	if err != nil {
 		return nil, err
 	}
 
-	resMap, err := kustomizer.Run(fs, input.Path)
+	// Run kustomize with stderr suppressed to avoid duplicate warnings
+	var resMap resmap.ResMap
+	err = util.SuppressStderr(func() error {
+		rm, err := kustomizer.Run(fs, input.Path)
+		if err != nil {
+			return fmt.Errorf("kustomize run failed: %w", err)
+		}
+
+		resMap = rm
+
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to run kustomize for path %q: %w", input.Path, err)
 	}
