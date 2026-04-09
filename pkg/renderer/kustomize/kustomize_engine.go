@@ -38,7 +38,9 @@ func NewEngine(fs filesys.FileSystem, opts *RendererOptions) *Engine {
 	return &Engine{
 		kustomizer: krusty.MakeKustomizer(&krusty.Options{
 			LoadRestrictions: opts.LoadRestrictions,
-			PluginConfig:     &kustomizetypes.PluginConfig{},
+			PluginConfig: &kustomizetypes.PluginConfig{
+				BpLoadingOptions: kustomizetypes.BploUseStaticallyLinked,
+			},
 		}),
 		fs:   fs,
 		opts: opts,
@@ -55,7 +57,9 @@ func (e *Engine) Run(input Source, values map[string]string) ([]unstructured.Uns
 	// Create kustomizer with appropriate restrictions
 	kustomizer := krusty.MakeKustomizer(&krusty.Options{
 		LoadRestrictions: restrictions,
-		PluginConfig:     &kustomizetypes.PluginConfig{},
+		PluginConfig: &kustomizetypes.PluginConfig{
+			BpLoadingOptions: kustomizetypes.BploUseStaticallyLinked,
+		},
 	})
 
 	kust, name, err := readKustomization(e.fs, input.Path)

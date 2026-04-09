@@ -177,6 +177,19 @@ resources:
 - configmap.yaml
 - deployment.yaml
 `
+const withTransformersKustomization = `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+transformers:
+  - |-
+    apiVersion: builtin
+    kind: NamespaceTransformer
+    metadata:
+      name: test
+      namespace: test
+resources:
+- configmap.yaml
+`
 
 const annotationsBaseConfigMap = `
 apiVersion: v1
@@ -1122,4 +1135,31 @@ func TestLoadRestrictions(t *testing.T) {
 		g.Expect(err).Should(HaveOccurred())
 		g.Expect(err.Error()).Should(ContainSubstring("failed to run kustomize"))
 	})
+}
+
+func TestBuiltinTransformers(t *testing.T) {
+	g := NewWithT(t)
+	dir := t.TempDir()
+
+	writeFile(t, dir, "kustomization.yaml", withTransformersKustomization)
+	writeFile(t, dir, "configmap.yaml", basicConfigMap)
+
+	renderer, err := kustomize.New(
+		[]kustomize.Source{
+			{
+				Path: dir,
+				Values: kustomize.Values(map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+				}),
+			},
+		},
+		kustomize.WithCache(),
+	)
+
+	g.Expect(err).ToNot(HaveOccurred())
+
+	objects, err := renderer.Process(t.Context(), nil)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(objects).Should(HaveLen(1))
 }
