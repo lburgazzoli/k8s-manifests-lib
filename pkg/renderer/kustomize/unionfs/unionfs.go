@@ -2,11 +2,13 @@
 package unionfs
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
 	"path/filepath"
+	"strings"
 
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
@@ -26,23 +28,24 @@ type unionFS struct {
 }
 
 func (u *unionFS) ReadFile(path string) ([]byte, error) {
-	if u.memory.Exists(path) {
-		return u.memory.ReadFile(path)
+	memoryPath := toMemoryPath(path)
+	if u.memory.Exists(memoryPath) {
+		return u.memory.ReadFile(memoryPath)
 	}
 
 	return u.delegate.ReadFile(path)
 }
 
 func (u *unionFS) WriteFile(path string, data []byte) error {
-	return u.memory.WriteFile(path, data)
+	return u.memory.WriteFile(toMemoryPath(path), data)
 }
 
 func (u *unionFS) Mkdir(path string) error {
-	return u.memory.Mkdir(path)
+	return u.memory.Mkdir(toMemoryPath(path))
 }
 
 func (u *unionFS) MkdirAll(path string) error {
-	return u.memory.MkdirAll(path)
+	return u.memory.MkdirAll(toMemoryPath(path))
 }
 
 func (u *unionFS) RemoveAll(_ string) error {
@@ -50,24 +53,26 @@ func (u *unionFS) RemoveAll(_ string) error {
 }
 
 func (u *unionFS) Create(path string) (filesys.File, error) {
-	return u.memory.Create(path)
+	return u.memory.Create(toMemoryPath(path))
 }
 
 func (u *unionFS) Open(path string) (filesys.File, error) {
-	if u.memory.Exists(path) {
-		return u.memory.Open(path)
+	memoryPath := toMemoryPath(path)
+	if u.memory.Exists(memoryPath) {
+		return u.memory.Open(memoryPath)
 	}
 
 	return u.delegate.Open(path)
 }
 
 func (u *unionFS) Exists(path string) bool {
-	return u.memory.Exists(path) || u.delegate.Exists(path)
+	return u.memory.Exists(toMemoryPath(path)) || u.delegate.Exists(path)
 }
 
 func (u *unionFS) IsDir(path string) bool {
-	if u.memory.Exists(path) {
-		return u.memory.IsDir(path)
+	memoryPath := toMemoryPath(path)
+	if u.memory.Exists(memoryPath) {
+		return u.memory.IsDir(memoryPath)
 	}
 
 	return u.delegate.IsDir(path)
@@ -77,8 +82,9 @@ func (u *unionFS) ReadDir(path string) ([]string, error) {
 	res := sets.New[string]()
 
 	// Get files from memory layer
-	if u.memory.Exists(path) && u.memory.IsDir(path) {
-		files, err := u.memory.ReadDir(path)
+	memoryPath := toMemoryPath(path)
+	if u.memory.Exists(memoryPath) && u.memory.IsDir(memoryPath) {
+		files, err := u.memory.ReadDir(memoryPath)
 		if err != nil {
 			return nil, err
 		}
@@ -103,9 +109,12 @@ func (u *unionFS) Glob(pattern string) ([]string, error) {
 	res := sets.New[string]()
 
 	// Get matches from memory layer
-	files, err := u.memory.Glob(pattern)
+	files, err := u.memory.Glob(toMemoryPath(pattern))
 	if err != nil {
 		return nil, err
+	}
+	for i := range files {
+		files[i] = fromMemoryPath(pattern, files[i])
 	}
 
 	res.Insert(files...)
@@ -125,8 +134,10 @@ func (u *unionFS) Walk(path string, walkFn filepath.WalkFunc) error {
 	visited := make(map[string]bool)
 
 	// Walk memory layer first
-	if u.memory.Exists(path) {
-		err := u.memory.Walk(path, func(p string, info fs.FileInfo, err error) error {
+	memoryPath := toMemoryPath(path)
+	if u.memory.Exists(memoryPath) {
+		err := u.memory.Walk(memoryPath, func(p string, info fs.FileInfo, err error) error {
+			p = fromMemoryPath(path, p)
 			visited[p] = true
 
 			return walkFn(p, info, err)
@@ -155,6 +166,55 @@ func (u *unionFS) Walk(path string, walkFn filepath.WalkFunc) error {
 
 func (u *unionFS) CleanedAbs(path string) (filesys.ConfirmedDir, string, error) {
 	return u.delegate.CleanedAbs(path)
+}
+
+const memoryVolumeRoot = "__unionfs_windows_volumes__"
+
+// toMemoryPath converts host paths into paths that are safe for kyaml's in-memory FS.
+// Examples: `C:\repo\app` -> `\__unionfs_windows_volumes__\Qzo\repo\app`,
+// `\\server\share\repo` -> `\__unionfs_windows_volumes__\XFxzZXJ2ZXJcc2hhcmU\repo`.
+func toMemoryPath(path string) string {
+	path = filepath.Clean(path)
+	volume := filepath.VolumeName(path)
+	if volume == "" {
+		return path
+	}
+
+	rest := strings.TrimPrefix(path, volume)
+	rest = strings.TrimLeft(rest, `\/`)
+
+	return filepath.Join(toMemoryVolumePath(volume), rest)
+}
+
+// fromMemoryPath converts memory FS results back to the caller's original volume.
+// Example: reference `C:\repo\*.yaml` maps `\__unionfs_windows_volumes__\Qzo\repo\a.yaml` back to `C:\repo\a.yaml`.
+func fromMemoryPath(referencePath, memoryPath string) string {
+	volume := filepath.VolumeName(filepath.Clean(referencePath))
+	if volume == "" {
+		return memoryPath
+	}
+
+	prefix := toMemoryVolumePath(volume)
+	if memoryPath == prefix {
+		return volume + string(filepath.Separator)
+	}
+	if strings.HasPrefix(memoryPath, prefix+string(filepath.Separator)) {
+		return volume + strings.TrimPrefix(memoryPath, prefix)
+	}
+
+	return memoryPath
+}
+
+// toMemoryVolumePath builds the internal memory FS root path for a Windows volume.
+// Example: `C:` -> `\__unionfs_windows_volumes__\Qzo`.
+func toMemoryVolumePath(volume string) string {
+	return filepath.Join(string(filepath.Separator), memoryVolumeRoot, volumePathSegment(volume))
+}
+
+// volumePathSegment encodes a Windows volume name into a safe memory FS path segment.
+// Examples: `C:` -> `Qzo`, `\\server\share` -> `XFxzZXJ2ZXJcc2hhcmU`.
+func volumePathSegment(volume string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(volume))
 }
 
 // Builder provides a fluent API for constructing a union filesystem.
@@ -190,7 +250,7 @@ func (b *Builder) Build() (filesys.FileSystem, error) {
 	memory := filesys.MakeFsInMemory()
 
 	for path, content := range b.overrides {
-		if err := memory.WriteFile(path, content); err != nil {
+		if err := memory.WriteFile(toMemoryPath(path), content); err != nil {
 			return nil, fmt.Errorf("failed to write override %s: %w", path, err)
 		}
 	}
