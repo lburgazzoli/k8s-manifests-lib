@@ -2,13 +2,11 @@
 package unionfs
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
 	"path/filepath"
-	"strings"
 
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
@@ -166,55 +164,6 @@ func (u *unionFS) Walk(path string, walkFn filepath.WalkFunc) error {
 
 func (u *unionFS) CleanedAbs(path string) (filesys.ConfirmedDir, string, error) {
 	return u.delegate.CleanedAbs(path)
-}
-
-const memoryVolumeRoot = "__unionfs_windows_volumes__"
-
-// toMemoryPath converts host paths into paths that are safe for kyaml's in-memory FS.
-// Examples: `C:\repo\app` -> `\__unionfs_windows_volumes__\Qzo\repo\app`,
-// `\\server\share\repo` -> `\__unionfs_windows_volumes__\XFxzZXJ2ZXJcc2hhcmU\repo`.
-func toMemoryPath(path string) string {
-	path = filepath.Clean(path)
-	volume := filepath.VolumeName(path)
-	if volume == "" {
-		return path
-	}
-
-	rest := strings.TrimPrefix(path, volume)
-	rest = strings.TrimLeft(rest, `\/`)
-
-	return filepath.Join(toMemoryVolumePath(volume), rest)
-}
-
-// fromMemoryPath converts memory FS results back to the caller's original volume.
-// Example: reference `C:\repo\*.yaml` maps `\__unionfs_windows_volumes__\Qzo\repo\a.yaml` back to `C:\repo\a.yaml`.
-func fromMemoryPath(referencePath, memoryPath string) string {
-	volume := filepath.VolumeName(filepath.Clean(referencePath))
-	if volume == "" {
-		return memoryPath
-	}
-
-	prefix := toMemoryVolumePath(volume)
-	if memoryPath == prefix {
-		return volume + string(filepath.Separator)
-	}
-	if strings.HasPrefix(memoryPath, prefix+string(filepath.Separator)) {
-		return volume + strings.TrimPrefix(memoryPath, prefix)
-	}
-
-	return memoryPath
-}
-
-// toMemoryVolumePath builds the internal memory FS root path for a Windows volume.
-// Example: `C:` -> `\__unionfs_windows_volumes__\Qzo`.
-func toMemoryVolumePath(volume string) string {
-	return filepath.Join(string(filepath.Separator), memoryVolumeRoot, volumePathSegment(volume))
-}
-
-// volumePathSegment encodes a Windows volume name into a safe memory FS path segment.
-// Examples: `C:` -> `Qzo`, `\\server\share` -> `XFxzZXJ2ZXJcc2hhcmU`.
-func volumePathSegment(volume string) string {
-	return base64.RawURLEncoding.EncodeToString([]byte(volume))
 }
 
 // Builder provides a fluent API for constructing a union filesystem.

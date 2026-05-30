@@ -3,6 +3,8 @@
 package unionfs_test
 
 import (
+	"io/fs"
+	"path/filepath"
 	"testing"
 
 	"sigs.k8s.io/kustomize/kyaml/filesys"
@@ -27,6 +29,108 @@ func TestBuilderWindowsPaths(t *testing.T) {
 		content, err := ufs.ReadFile(windowsPath)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(string(content)).Should(Equal(testContent1))
+	})
+
+	t.Run("should handle override with unsafe windows path segments", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsInMemory()
+		windowsPath := `C:\Users\RUNNER~1\AppData\Local\Temp\kustomization.yaml`
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		content, err := ufs.ReadFile(windowsPath)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(string(content)).Should(Equal(testContent1))
+	})
+
+	t.Run("should handle override with space in windows path segment", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsInMemory()
+		windowsPath := `C:\Program Files\app\kustomization.yaml`
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		content, err := ufs.ReadFile(windowsPath)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(string(content)).Should(Equal(testContent1))
+	})
+
+	t.Run("should handle override with dot-dot in windows path segment", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsInMemory()
+		windowsPath := `C:\repo\file..yaml`
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		content, err := ufs.ReadFile(windowsPath)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(string(content)).Should(Equal(testContent1))
+	})
+
+	t.Run("should handle override with internal prefix in windows path segment", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsInMemory()
+		windowsPath := `C:\repo\__unionfs_windows_segment__real\kustomization.yaml`
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		content, err := ufs.ReadFile(windowsPath)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(string(content)).Should(Equal(testContent1))
+	})
+
+	t.Run("should glob overrides under unsafe windows path segment", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsInMemory()
+		windowsPath := `C:\Users\RUNNER~1\AppData\Local\Temp\file.txt`
+		pattern := `C:\Users\RUNNER~1\AppData\Local\Temp\*.txt`
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		files, err := ufs.Glob(pattern)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(files).Should(ConsistOf(windowsPath))
+	})
+
+	t.Run("should walk overrides under unsafe windows path segment", func(t *testing.T) {
+		g := NewWithT(t)
+		delegate := filesys.MakeFsOnDisk()
+		root := `C:\Users\RUNNER~1\AppData\Local\Temp`
+		windowsPath := filepath.Join(root, "file.txt")
+
+		ufs, err := unionfs.NewBuilder(delegate).
+			WithOverride(windowsPath, []byte(testContent1)).
+			Build()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		var walked []string
+		err = ufs.Walk(root, func(path string, info fs.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				walked = append(walked, path)
+			}
+
+			return nil
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(walked).Should(ConsistOf(windowsPath))
 	})
 
 	t.Run("should keep windows volume paths isolated", func(t *testing.T) {
