@@ -110,7 +110,7 @@ func TestBuilderWindowsPaths(t *testing.T) {
 	t.Run("should walk overrides under unsafe windows path segment", func(t *testing.T) {
 		g := NewWithT(t)
 		delegate := filesys.MakeFsOnDisk()
-		root := `C:\Users\RUNNER~1\AppData\Local\Temp`
+		root := filepath.Join(t.TempDir(), "RUNNER~1", "Temp")
 		windowsPath := filepath.Join(root, "file.txt")
 
 		ufs, err := unionfs.NewBuilder(delegate).
