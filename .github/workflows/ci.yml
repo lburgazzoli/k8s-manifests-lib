@@ -46,3 +46,18 @@ jobs:
       - name: Run tests
         run: |
           make test
+
+  test-windows:
+    name: Test Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run unionfs tests
+        run: go test -v ./pkg/renderer/kustomize/unionfs
